@@ -17,15 +17,26 @@ CACH DUNG
 4. Xong thi tai ba file o /kaggle/working ve roi chay:
        python scripts/07_ingest_kaggle_features.py <thu muc vua tai ve>
 
-CHAY LAI DUOC
--------------
-Neu dut giua chung (mat mang, het gio, GitHub loi 5xx), cu bam Run All lai:
-  * Script DOC LAI `/kaggle/working/features_dinov2_<plane>.npz` va BO QUA cac study da
-    xong - khong lam lai tu dau.
+CHAY LAI DUOC - hai truong hop KHAC NHAU
+----------------------------------------
+(1) CUNG PHIEN (tab van mo, chi bam Run All lai sau khi dut):
+    /kaggle/working con nguyen -> script doc lai .npz va BO QUA cac study da xong.
+    Khong phai lam gi them.
+
+(2) PHIEN MOI (da tat may, mo lai notebook, hoac ban Save Version):
+    /kaggle/working TRONG TRON - moi ban ghi tam deu mat.
+    Muon chay tiep thi phai dua ban da tai ve QUAY LAI Kaggle:
+      a. Kaggle -> Datasets -> New Dataset -> upload features_dinov2_<plane>.npz
+         (upload ca dicom_headers.csv neu co)
+      b. Trong notebook: Add Input -> chon dataset vua tao
+      c. Run All. Script tu tim file trong /kaggle/input va chay tiep tu do.
+    Khong lam buoc nay thi no chay lai tu dau (van ra ket qua dung, chi ton thoi gian).
+
+Cac co che khac:
   * Ghi tam moi 300 study, ghi ca dac trung lan header.
-  * Study co nhan nguoi gan duoc xep LEN DAU, nen 58 ca quan trong nhat xong trong vai phut.
+  * Study co nhan nguoi gan xep LEN DAU, nen 58 ca quan trong nhat xong trong vai phut.
   * Tai trong so DINOv2 tu dong thu lai 6 lan khi gap loi tam thoi (5xx/429/mat ket noi).
-Muon lam lai sach: xoa file .npz trong tab Output truoc khi chay.
+  * Muon lam lai sach: xoa file .npz trong tab Output truoc khi chay.
 
 GHI CHU: Kaggle gioi han 12 tieng moi phien va 20 GB o /kaggle/working. Trich dac trung cho
 ca 4,407 study uoc tinh ~700 MB, nam thoai mai trong gioi han.
@@ -272,20 +283,43 @@ def main() -> None:
           f"mat phang {PLANE}")
 
     # --- Chay tiep tu lan truoc ------------------------------------------------------
-    # /kaggle/working duoc giu nguyen giua cac lan Run All trong cung mot phien, nen mot
-    # lan chay dut giua chung khong can lam lai tu dau. Doc lai ban ghi tam va bo qua cac
-    # study da xong. Neu muon lam lai sach thi xoa file .npz trong tab Output truoc.
-    npz_path = OUT / f"features_dinov2_{PLANE.lower()}.npz"
-    feats: dict[str, np.ndarray] = {}
-    if npz_path.exists():
-        with np.load(npz_path) as z:
-            feats = {k: z[k] for k in z.files}
-        print(f"chay tiep: doc lai {len(feats):,} study da xong tu {npz_path.name}")
+    # HAI truong hop khac han nhau:
+    #   1. CUNG phien (tab van mo): /kaggle/working con nguyen -> doc thang, chay tiep.
+    #   2. Phien MOI (da tat may, hoac ban Save Version): /kaggle/working TRONG TRON.
+    #      Luc do phai lay ban da tai ve, upload nguoc len lam Dataset roi Add Input.
+    #      Khong co buoc nay thi moi lan mo phien moi la chay lai tu dau.
+    ten_npz = f"features_dinov2_{PLANE.lower()}.npz"
+    npz_path = OUT / ten_npz
 
-    headers_path = OUT / "dicom_headers.csv"
+    nguon = None
+    if npz_path.exists():
+        nguon = npz_path
+    else:
+        # Tim ban da upload lam Dataset. Glob nong 2 cap cho nhanh.
+        for pattern in (f"*/{ten_npz}", f"*/*/{ten_npz}"):
+            for hit in Path("/kaggle/input").glob(pattern):
+                nguon = hit
+                break
+            if nguon:
+                break
+
+    feats: dict[str, np.ndarray] = {}
+    if nguon:
+        with np.load(nguon) as z:
+            feats = {k: z[k] for k in z.files}
+        print(f"chay tiep: doc lai {len(feats):,} study da xong tu {nguon}")
+    else:
+        print("bat dau tu dau (khong tim thay ban ghi tam nao)")
+
+    ung_vien = [OUT / "dicom_headers.csv"]
+    if nguon is not None:
+        ung_vien.append(nguon.parent / "dicom_headers.csv")
+
     headers: list[dict] = []
-    if headers_path.exists():
-        headers = pd.read_csv(headers_path).to_dict("records")
+    for cand in ung_vien:
+        if cand.exists():
+            headers = pd.read_csv(cand).to_dict("records")
+            break
 
     con_lai = want[~want["StudyInstanceUID"].isin(feats)].reset_index(drop=True)
     if len(con_lai) == 0:
