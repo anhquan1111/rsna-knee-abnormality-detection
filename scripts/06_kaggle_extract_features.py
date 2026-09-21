@@ -14,10 +14,18 @@ CACH DUNG
 1. Mo https://www.kaggle.com/competitions/rsna-knee-abnormality-detection -> New Notebook.
 2. Settings: Accelerator = GPU T4 x2, Internet = ON (de tai trong so DINOv2).
 3. Dan toan bo file nay vao MOT cell, sua CONFIG o duoi neu can, roi Run All.
-4. Xong thi tai ba file o /kaggle/working ve, dat vao:
-       data/interim/features_dinov2_vits14_224.npz
-       data/manifest/dicom_headers.csv
-5. Chay tiep o may: scripts/31_train_frozen_head.py va scripts/40_experiment_weak_labels.py
+4. Xong thi tai ba file o /kaggle/working ve roi chay:
+       python scripts/07_ingest_kaggle_features.py <thu muc vua tai ve>
+
+CHAY LAI DUOC
+-------------
+Neu dut giua chung (mat mang, het gio, GitHub loi 5xx), cu bam Run All lai:
+  * Script DOC LAI `/kaggle/working/features_dinov2_<plane>.npz` va BO QUA cac study da
+    xong - khong lam lai tu dau.
+  * Ghi tam moi 300 study, ghi ca dac trung lan header.
+  * Study co nhan nguoi gan duoc xep LEN DAU, nen 58 ca quan trong nhat xong trong vai phut.
+  * Tai trong so DINOv2 tu dong thu lai 6 lan khi gap loi tam thoi (5xx/429/mat ket noi).
+Muon lam lai sach: xoa file .npz trong tab Output truoc khi chay.
 
 GHI CHU: Kaggle gioi han 12 tieng moi phien va 20 GB o /kaggle/working. Trich dac trung cho
 ca 4,407 study uoc tinh ~700 MB, nam thoai mai trong gioi han.
@@ -74,7 +82,9 @@ def find_root() -> Path:
     )
 
 
-ROOT = find_root()
+# `find_root()` duoc goi trong main() chu khong o cap module: neu goi ngay luc import thi
+# khong the import file nay o bat ky dau ngoai Kaggle (ke ca de kiem thu cac ham cua no).
+ROOT: Path | None = None
 OUT = Path("/kaggle/working")
 LABELS = ["ACL", "MCL", "Medial Meniscus", "Lateral Meniscus", "Medial OA", "Lateral OA",
           "PF OA", "Effusion", "Synovitis", "Baker's", "Contusion", "Fracture"]
@@ -139,23 +149,65 @@ IMAGENET_MEAN = torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1)
 IMAGENET_STD = torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1)
 
 
-def build_backbone(device: str):
-    """Tai DINOv2-S/14 va dong bang.
+def nen_thu_lai(exc: BaseException) -> bool:
+    """Loi nay co dang thu lai khong?
 
-    `torch.hub.load` can Internet. Kaggle mac dinh TAT Internet va phai xac minh so dien
-    thoai moi bat duoc - day la cho hay ket nhat khi chay lan dau, nen bao loi that ro.
+    `HTTPError` la lop con cua `URLError`, nen phai xet no TRUOC - neu khong thi loi 404
+    (that su khong co) cung bi thu lai vo ich. Dang thu lai: 5xx (su co may chu), 408 va
+    429 (timeout, gioi han toc do). Con lai la loi that, bao ngay cho nguoi dung.
     """
-    try:
-        model = torch.hub.load("facebookresearch/dinov2", "dinov2_vits14")
-    except Exception as exc:
+    import urllib.error
+
+    if isinstance(exc, urllib.error.HTTPError):
+        return exc.code >= 500 or exc.code in (408, 429)
+    return isinstance(exc, (urllib.error.URLError, TimeoutError, ConnectionError))
+
+
+def build_backbone(device: str):
+    """Tai DINOv2-S/14 va dong bang, co thu lai khi GitHub tro chung.
+
+    `torch.hub.load` keo ma nguon tu GitHub roi trong so tu dl.fbaipublicfiles.com. Hai
+    dich vu nay thinh thoang tra 5xx - do la su co TAM THOI ben ho, khong phai loi cau
+    hinh. Thu lai vai lan gan nhu luc nao cung qua, nen dung de mot lan that bai lam hong
+    ca phien chay dai.
+    """
+    import urllib.error
+
+    model, last = None, None
+
+    for attempt in range(6):
+        try:
+            model = torch.hub.load("facebookresearch/dinov2", "dinov2_vits14")
+            break
+        except Exception as exc:
+            last = exc
+            if not nen_thu_lai(exc) or attempt == 5:
+                break
+            wait = min(10 * 2 ** attempt, 120)
+            print(f"  tai DINOv2 that bai ({type(exc).__name__}: {exc}) "
+                  f"- lan {attempt + 1}/6, cho {wait}s roi thu lai", flush=True)
+            time.sleep(wait)
+
+    if model is None:
+        code = getattr(last, "code", None)
+        # Phan biet ro nguyen nhan: bao nham "tat Internet" khi that ra GitHub loi 504 se
+        # day nguoi dung di sua dung cai khong hong.
+        if code is not None and code >= 500:
+            chuan_doan = (f"GitHub tra ve HTTP {code} - su co ben phia GitHub.\n"
+                          "  Internet DANG BAT (da toi duoc GitHub roi moi bi tu choi).\n"
+                          "  Doi vai phut roi Run All lai thuong la qua.")
+        elif code == 403:
+            chuan_doan = "GitHub gioi han toc do (403). Doi 10-15 phut roi chay lai."
+        else:
+            chuan_doan = ("Kha nang cao la Kaggle notebook dang TAT Internet.\n"
+                          "  Sua: panel ben phai -> Settings -> Internet = On "
+                          "(can xac minh so dien thoai).")
         raise SystemExit(
-            f"Khong tai duoc trong so DINOv2 ({type(exc).__name__}).\n"
-            "Nguyen nhan hay gap nhat: Kaggle notebook dang TAT Internet.\n"
-            "  Sua: panel ben phai -> Settings -> Internet = On "
-            "(can xac minh so dien thoai).\n"
-            "  Khong bat duoc Internet? Add Data -> tim dataset chua trong so dinov2,\n"
-            "  roi doi build_backbone() sang torch.load tu duong dan /kaggle/input do."
-        ) from exc
+            f"Khong tai duoc trong so DINOv2 sau 6 lan thu ({type(last).__name__}).\n"
+            f"  {chuan_doan}\n"
+            "  Cach khac khong phu thuoc GitHub: Add Data -> tim dataset chua trong so\n"
+            "  dinov2, roi doi build_backbone() sang torch.load tu /kaggle/input do."
+        ) from last
 
     model.eval().to(device)
     for p in model.parameters():
@@ -176,8 +228,27 @@ def extract(slices: np.ndarray, model, device: str, batch: int) -> np.ndarray:
     return torch.cat(outs).numpy().astype(np.float32)
 
 
+# ---------------------------------------------------------------- ghi ket qua
+def ghi_ket_qua(feats: dict, headers: list[dict]) -> None:
+    """Ghi dac trung va header ra /kaggle/working.
+
+    Goi ca o checkpoint lan o cuoi, nen phai khu trung header: chay lai nhieu lan se doc
+    lai file cu roi noi them, de sinh ra dong lap.
+    """
+    np.savez_compressed(OUT / f"features_dinov2_{PLANE.lower()}.npz", **feats)
+    if headers:
+        hdf = pd.DataFrame(headers)
+        keys = [c for c in ("SeriesInstanceUID", "InstanceNumber") if c in hdf.columns]
+        if keys:
+            hdf = hdf.drop_duplicates(subset=keys, keep="last")
+        hdf.to_csv(OUT / "dicom_headers.csv", index=False)
+
+
 # ---------------------------------------------------------------- chay
 def main() -> None:
+    global ROOT
+    ROOT = find_root()
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"device: {device}")
 
@@ -200,9 +271,35 @@ def main() -> None:
     print(f"se xu ly {len(want):,} study ({int(want.is_gold.sum())} co nhan nguoi gan), "
           f"mat phang {PLANE}")
 
-    model = build_backbone(device)
-    feats, headers, failed = {}, [], []
+    # --- Chay tiep tu lan truoc ------------------------------------------------------
+    # /kaggle/working duoc giu nguyen giua cac lan Run All trong cung mot phien, nen mot
+    # lan chay dut giua chung khong can lam lai tu dau. Doc lai ban ghi tam va bo qua cac
+    # study da xong. Neu muon lam lai sach thi xoa file .npz trong tab Output truoc.
+    npz_path = OUT / f"features_dinov2_{PLANE.lower()}.npz"
+    feats: dict[str, np.ndarray] = {}
+    if npz_path.exists():
+        with np.load(npz_path) as z:
+            feats = {k: z[k] for k in z.files}
+        print(f"chay tiep: doc lai {len(feats):,} study da xong tu {npz_path.name}")
+
+    headers_path = OUT / "dicom_headers.csv"
+    headers: list[dict] = []
+    if headers_path.exists():
+        headers = pd.read_csv(headers_path).to_dict("records")
+
+    con_lai = want[~want["StudyInstanceUID"].isin(feats)].reset_index(drop=True)
+    if len(con_lai) == 0:
+        print("khong con study nao de xu ly - da xong tu lan truoc")
+    else:
+        print(f"con {len(con_lai):,} study can xu ly "
+              f"({int(con_lai.is_gold.sum())} co nhan nguoi gan)")
+
+    # Chi tai backbone khi that su con viec: neu da xong het ma GitHub dang hong thi
+    # khong co ly do gi de lan chay nay that bai.
+    model = build_backbone(device) if len(con_lai) else None
+    failed: list[tuple[str, str]] = []
     t0 = time.time()
+    want = con_lai                    # tu day tro di chi duyet phan con lai
 
     for i, row in want.iterrows():
         sdir = ROOT / "train_series" / row["StudyInstanceUID"] / row["SeriesInstanceUID"]
@@ -220,14 +317,13 @@ def main() -> None:
             print(f"  {done:>5}/{len(want)} study | {el/60:>5.1f} phut | "
                   f"con ~{el/done*(len(want)-done)/60:>5.1f} phut | hong {len(failed)}",
                   flush=True)
-            # Ghi tam moi 500 study: Kaggle cat phien o 12 tieng, va study co nhan nguoi
-            # gan da duoc xep len dau nen ban ghi tam dau tien da du dung cho ngay 5 va 8.
-            if (i + 1) % 500 == 0:
-                np.savez_compressed(OUT / f"features_dinov2_{PLANE.lower()}.npz", **feats)
-                print(f"    (da ghi tam {len(feats)} study)", flush=True)
+            # Ghi tam moi 300 study. Ghi CA hai file, neu khong thi khi chay lai se doc
+            # duoc dac trung nhung mat header cua dung nhung study do.
+            if (i + 1) % 300 == 0:
+                ghi_ket_qua(feats, headers)
+                print(f"    (da ghi tam {len(feats):,} study)", flush=True)
 
-    np.savez_compressed(OUT / f"features_dinov2_{PLANE.lower()}.npz", **feats)
-    pd.DataFrame(headers).to_csv(OUT / "dicom_headers.csv", index=False)
+    ghi_ket_qua(feats, headers)
 
     n_slices = sum(f.shape[0] for f in feats.values())
     size_mb = (OUT / f"features_dinov2_{PLANE.lower()}.npz").stat().st_size / 1024**2
