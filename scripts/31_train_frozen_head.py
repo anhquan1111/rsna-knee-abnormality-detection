@@ -32,7 +32,7 @@ from rsna_knee.config import (
     STUDY_COL,
 )
 from rsna_knee.dataset import FeatureDataset, StudyDataset
-from rsna_knee.features import ensure_features
+from rsna_knee.features import ensure_features, usable_studies
 from rsna_knee.head import StudyHead, collate_features, predict, train_head
 from rsna_knee.manifest import (
     build_study_manifest,
@@ -140,19 +140,22 @@ def main() -> None:
     ap.add_argument("--pooling", default=None, choices=["mean", "max", "attn"])
     ap.add_argument("--epochs", type=int, default=80)
     ap.add_argument("--lr", type=float, default=1e-3)
+    ap.add_argument("--extract-missing", action="store_true",
+                    help="trich them dac trung o may cho study co anh nhung chua co trong cache")
     args = ap.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     train, series = load_raw()
     gold = gold_subset(build_study_manifest(train, series))
 
-    # Chi lay study da tai DU file: study dang tai do dang van co thu muc va file
-    # hop le, train tren series thieu lat khong nem loi nao.
-    have = complete_local_studies()
+    # Study dung duoc = da co dac trung (trich tren Kaggle) HOAC co du anh o may de trich.
+    # Chi hoi "co anh o may khong" se bo qua gan het du lieu trich tren Kaggle.
+    cache = DATA_INTERIM / f"features_{args.backbone}_{args.size}.npz"
+    have = usable_studies(cache, IMAGES, extract_missing=args.extract_missing)
     gold = gold[gold[STUDY_COL].isin(have)].reset_index(drop=True)
     if len(gold) < 6:
-        raise SystemExit(f"Moi co anh cho {len(gold)} study gold - tai them bang scripts/04_...")
-    print(f"=== Du lieu: {len(gold)} / 58 study co nhan nguoi gan da co anh ===")
+        raise SystemExit(f"Moi co {len(gold)} study gold dung duoc - can them dac trung hoac anh")
+    print(f"=== Du lieu: {len(gold)} / 58 study co nhan nguoi gan ===")
     print(f"  duong tinh moi nhan: "
           f"{ {l: int(gold[l].sum()) for l in LABELS} }")
 

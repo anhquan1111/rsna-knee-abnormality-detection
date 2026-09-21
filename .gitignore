@@ -13,6 +13,15 @@ data/raw/*.csv
 data/raw/images/
 data/interim/study_manifest.csv
 data/interim/weak_labels.csv
+# Metadata quet tu header DICOM cua anh cuoc thi - cung la du lieu cuoc thi,
+# va sinh lai duoc bang scripts/06 + 07 trong mot buoc.
+data/manifest/dicom_headers.csv
+data/manifest/study_manufacturer.csv
+# Ban tai thang tu Kaggle ve, nguoi dung hay tha vao goc repo truoc khi nap.
+# Bat o MOI thu muc, khong chi data/, vi cho tha file la tuy nguoi.
+features_dinov2_*.npz
+dicom_headers.csv
+extract_summary.json
 
 # --- File nang sinh lai duoc ---
 data/interim/*.npz

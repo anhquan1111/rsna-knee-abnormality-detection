@@ -33,7 +33,7 @@ from rsna_knee.config import (
     STUDY_COL,
 )
 from rsna_knee.dataset import FeatureDataset, StudyDataset
-from rsna_knee.features import ensure_features
+from rsna_knee.features import ensure_features, usable_studies
 from rsna_knee.head import StudyHead, collate_features, predict, train_head
 from rsna_knee.manifest import (
     build_study_manifest,
@@ -47,13 +47,14 @@ from rsna_knee.splits import assert_no_leakage, assign_folds
 IMAGES = DATA_RAW / "images"
 
 
-def available_studies() -> set[str]:
-    """Study da tai DU file - khong chi 'co thu muc'.
+def available_studies(cache, extract_missing: bool) -> set[str]:
+    """Study dung duoc: da co dac trung, hoac co du anh o may de trich.
 
-    Study dang tai do dang van co thu muc va vai chuc file hop le, nen kiem bang
-    `iterdir()` se nhan nham. Train tren mot series thieu lat khong nem loi nao.
+    KHONG chi hoi "co anh o may khong": dac trung duoc trich tren Kaggle nen hang nghin
+    study co dac trung ma khong co file .dcm nao o day. Hoi nham cau se lam thi nghiem
+    chay tren mot phan nho du lieu ma khong co gi bao.
     """
-    return complete_local_studies()
+    return usable_studies(cache, IMAGES, extract_missing=extract_missing)
 
 
 def run_config(name: str, train_pool: pd.DataFrame, gold: pd.DataFrame, feats: dict,
@@ -95,6 +96,8 @@ def main() -> None:
     ap.add_argument("--size", type=int, default=224)
     ap.add_argument("--epochs", type=int, default=80)
     ap.add_argument("--lr", type=float, default=1e-3)
+    ap.add_argument("--extract-missing", action="store_true",
+                    help="trich them dac trung o may cho study co anh nhung chua co trong cache")
     args = ap.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -102,7 +105,8 @@ def main() -> None:
     man = build_study_manifest(train, series)
     gold_all = gold_subset(man)
 
-    have = available_studies()
+    cache = DATA_INTERIM / f"features_{args.backbone}_{args.size}.npz"
+    have = available_studies(cache, args.extract_missing)
     gold = gold_all[gold_all[STUDY_COL].isin(have)].reset_index(drop=True)
     extra = man[(~man[STUDY_COL].isin(gold_all[STUDY_COL]))
                 & (man[STUDY_COL].isin(have))].reset_index(drop=True)
@@ -122,8 +126,7 @@ def main() -> None:
 
     print("\n=== Trich dac trung ===")
     feats = ensure_features(pd.concat([gold, extra]), IMAGES, backbone=args.backbone,
-                            size=args.size, device=device,
-                            cache_path=DATA_INTERIM / f"features_{args.backbone}_{args.size}.npz")
+                            size=args.size, device=device, cache_path=cache)
     dim = next(iter(feats.values())).shape[1]
 
     # Ghep nhan may vao cac study ngoai gold. Nhan `NaN` = chua ket luan duoc -> loss bo qua.
@@ -192,8 +195,20 @@ def main() -> None:
     print(f"  khoang tin cay 95%  : [{lo:+.4f}, {hi:+.4f}] (bootstrap theo study)")
     verdict = "KHONG ket luan duoc" if lo < 0 < hi else ("nhan may GIUP" if lo > 0 else "nhan may HAI")
     print(f"  -> {verdict}")
-    print(f"  Voi {int(keep.sum())} study danh gia, khoang tin cay con qua rong de chot. "
-          f"Ket luan chi vung khi co du 58 study + nhieu study nhan may hon.")
+
+    # Cau ket luan phai theo SO DO, khong duoc viet cung. Bang mot cau "chua du du lieu"
+    # co dinh se sai ngay khi du lieu du - va do la luc nguoi doc can cau tra loi nhat.
+    n_eval = int(keep.sum())
+    n_weak = results["B_gold+weak"]["n_train"] - results["A_gold_only"]["n_train"]
+    if lo < 0 < hi:
+        print("  Khoang tin cay trum qua 0 nen chenh lech quan sat duoc CHUA la bang chung.")
+        print(f"  Dang co {n_eval} study danh gia va {n_weak:,} study nhan may - can them ca hai.")
+    else:
+        print("  Khoang tin cay KHONG chua 0 -> day la bang chung that theo huong tren.")
+        print(f"  Dua tren {n_eval} study danh gia (nhan nguoi) va {n_weak:,} study nhan may.")
+        print(f"  Gioi han con lai: tap danh gia toi da chi 58 study, nen be rong khoang")
+        print(f"  tin cay ({hi - lo:.3f}) chi hep lai duoc bang cach co them nhan NGUOI,")
+        print(f"  them nhan may khong giup gi cho phan nay.")
 
 
 if __name__ == "__main__":

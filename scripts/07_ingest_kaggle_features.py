@@ -39,9 +39,14 @@ VENDOR_RULES = (
     ("philips", "PHILIPS"),
     ("ge medical", "GE"),
     ("ge health", "GE"),
-    ("toshiba", "TOSHIBA"),
+    ("gehc", "GE"),                 # viet tat cua GE HealthCare
+    # Toshiba Medical -> Canon Medical (2016), Hitachi Medical -> Fujifilm Healthcare
+    # (2021). Cung mot dong may duoc doi ten, nen dau van tay thiet bi la mot. Muc dich
+    # o day la nhom theo PHAN CUNG chu khong theo phap nhan, nen gop lai.
+    ("toshiba", "CANON"),
     ("canon", "CANON"),
-    ("hitachi", "HITACHI"),
+    ("hitachi", "FUJIFILM"),
+    ("fujifilm", "FUJIFILM"),
     ("united imaging", "UIH"),
 )
 
@@ -111,15 +116,31 @@ def main() -> None:
             old = {k: z[k] for k in z.files}
         shared = sorted(set(old) & set(feats))
         if shared:
-            diffs = []
-            for uid in shared[:20]:
+            # Lech tuyet doi mot minh KHONG doc duoc: dac trung DINOv2 co do lon rat khac
+            # nhau giua cac chieu. Thuoc do dung la do tuong dong cosin - no tra loi dung
+            # cau hoi can hoi: "hai ben co phai CUNG MOT bieu dien khong?"
+            cos, rel, lech_shape = [], [], 0
+            for uid in shared[:50]:
                 a, b = old[uid], feats[uid]
-                diffs.append(np.abs(a - b).max() if a.shape == b.shape else float("inf"))
-            worst = max(diffs)
-            print(f"  doi chieu {len(diffs)} study chung | lech lon nhat {worst:.2e}")
-            if worst > 1e-3:
-                print("  ⚠ LECH DANG KE - Kaggle dung GPU fp16 con may dung CPU fp32,")
-                print("    sai so nho la binh thuong; lech lon nghia la khac tien xu ly.")
+                if a.shape != b.shape:
+                    lech_shape += 1
+                    continue
+                af, bf = a.ravel(), b.ravel()
+                cos.append(float(af @ bf / (np.linalg.norm(af) * np.linalg.norm(bf) + 1e-12)))
+                rel.append(float(np.abs(a - b).max() / (np.abs(a).max() + 1e-12)))
+
+            if lech_shape:
+                print(f"  {lech_shape} study lech so lat - KHAC tien xu ly, phai xem lai")
+            if cos:
+                print(f"  doi chieu {len(cos)} study chung:")
+                print(f"    tuong dong cosin : {min(cos):.6f} - {max(cos):.6f}")
+                print(f"    lech tuong doi   : {max(rel):.2%} so voi gia tri lon nhat")
+                if min(cos) > 0.999:
+                    print("    -> CUNG mot bieu dien. Chenh lech den tu GPU fp16 (Kaggle)")
+                    print("       vs CPU fp32 (may) - khong anh huong ket qua.")
+                else:
+                    print("    -> KHAC bieu dien. Kiem lai tien xu ly hai ben co giong nhau")
+                    print("       khong (chuan hoa, resize, thu tu lat).")
         else:
             print("  khong co study chung de doi chieu")
     else:

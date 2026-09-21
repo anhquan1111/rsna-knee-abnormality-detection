@@ -104,10 +104,31 @@ def ensure_features(
     from .config import STUDY_COL
 
     todo = manifest[~manifest[STUDY_COL].astype(str).isin(feats)]
+
+    # Truong hop pho bien nhat sau khi trich tren Kaggle: cache da du, khong con gi de lam.
+    # Phai thoat SOM - mot Series rong co dtype object, nen `~s` va `s.sum()` phia duoi se
+    # nem loi kho hieu thay vi chay qua.
     if len(todo) == 0:
         if verbose:
             print(f"  cache du: {len(feats)} study, khong can trich them")
         return feats
+
+    # Chi trich duoc cho study CO ANH tren dia. Tu khi dac trung duoc trich tren Kaggle,
+    # phan lon study co dac trung ma khong co anh o may - do la binh thuong, khong phai
+    # thieu sot. Khong loc o day thi StudyDataset nem FileNotFoundError ngay study dau.
+    from .config import short_uid
+
+    root = Path(image_root)
+    co_anh = todo[STUDY_COL].astype(str).map(lambda u: (root / short_uid(u)).is_dir())
+    bo_qua = int((~co_anh).sum())
+    todo = todo[co_anh]
+
+    if len(todo) == 0:
+        if verbose:
+            print(f"  cache du: {len(feats)} study; {bo_qua} study con lai chua co anh o may")
+        return feats
+    if verbose and bo_qua:
+        print(f"  bo qua {bo_qua} study chua co anh o may (chi trich cho {len(todo)} study)")
 
     ds = StudyDataset(todo, image_root, size=size)
     model, _ = build_backbone(backbone)
@@ -115,11 +136,24 @@ def ensure_features(
     if verbose:
         print(f"  trich them {len(todo)} study (da co {len(feats)})")
 
+    # Mot study hong KHONG duoc lam sap ca lan chay. Da gap that: MemoryError khi vua giu
+    # dac trung cua 1,500 study trong RAM vua doc mot series 1024x1024. Bo qua study do va
+    # bao ra con hon mat toan bo cong viec - nhung phai BAO, khong duoc im lang.
+    loi: list[tuple[str, str]] = []
     for i in range(len(ds)):
-        x, _, uid = ds[i]
-        feats[uid] = extract_study_features(x.numpy(), model, device=device)
+        uid = str(ds.manifest.iloc[i][STUDY_COL])
+        try:
+            x, _, _ = ds[i]
+            feats[uid] = extract_study_features(x.numpy(), model, device=device)
+        except Exception as exc:
+            loi.append((uid, f"{type(exc).__name__}: {exc}"))
         if verbose and (i + 1) % 5 == 0:
-            print(f"    {i+1}/{len(ds)}")
+            print(f"    {i+1}/{len(ds)}" + (f" (hong {len(loi)})" if loi else ""))
+
+    if loi and verbose:
+        print(f"  {len(loi)} study khong trich duoc, da bo qua:")
+        for uid, err in loi[:5]:
+            print(f"    ...{uid[-12:]}  {err[:90]}")
 
     if cache_path:
         save_features(feats, cache_path)
@@ -127,3 +161,29 @@ def ensure_features(
             print(f"  ghi {cache_path.name}: {len(feats)} study, "
                   f"{cache_path.stat().st_size/1024**2:.1f} MB")
     return feats
+
+
+def usable_studies(cache_path, image_root, extract_missing: bool = False) -> set[str]:
+    """Study dung duoc cho mot thi nghiem.
+
+    MAC DINH: chi lay study DA CO dac trung trong cache. Hai ly do:
+      * Nhat quan. Dac trung trich tren Kaggle chay GPU fp16, trich o may chay CPU fp32.
+        Do tuong dong cosin giua hai ben la 0.99999 nen tron lai van dung, nhung mot thi
+        nghiem chi nen co MOT nguon dac trung - de sau nay con quy duoc nguyen nhan.
+      * Tai nguyen. Trich them o may trong khi dang giu dac trung cua hang nghin study
+        trong RAM da lam segfault vi het bo nho - va segfault thi khong `try` nao bat duoc.
+
+    `extract_missing=True` mo lai che do cu: gop them study co anh o may de trich tai cho.
+    Chi dung khi chua co cache, hoac khi that su can vai study le.
+    """
+    from .manifest import complete_local_studies
+
+    cache_path = Path(cache_path)
+    co_dac_trung: set[str] = set()
+    if cache_path.exists():
+        with np.load(cache_path) as z:
+            co_dac_trung = set(z.files)
+
+    if co_dac_trung and not extract_missing:
+        return co_dac_trung
+    return co_dac_trung | complete_local_studies()
