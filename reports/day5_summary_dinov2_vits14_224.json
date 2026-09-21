@@ -1,0 +1,15 @@
+{
+  "n_studies": 15,
+  "n_slices": 1022,
+  "backbone": "dinov2_vits14",
+  "dim": 384,
+  "best_pooling": "attn",
+  "macro_auc": 0.545254514004514,
+  "ci95": [
+    0.4357496514428333,
+    0.6339302276427276
+  ],
+  "baseline_auc": 0.5,
+  "epochs": 80,
+  "device": "cpu"
+}

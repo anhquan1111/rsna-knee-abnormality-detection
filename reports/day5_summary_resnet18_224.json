@@ -1,0 +1,15 @@
+{
+  "n_studies": 15,
+  "n_slices": 416,
+  "backbone": "resnet18",
+  "dim": 512,
+  "best_pooling": "attn",
+  "macro_auc": 0.46149336774336774,
+  "ci95": [
+    0.3650766361164088,
+    0.5655309549457276
+  ],
+  "baseline_auc": 0.5,
+  "epochs": 80,
+  "device": "cpu"
+}

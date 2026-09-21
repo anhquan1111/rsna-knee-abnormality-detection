@@ -1,0 +1,39 @@
+# Moi truong
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# --- Du lieu cuoc thi: KHONG commit ---
+# Quy dinh cua Kaggle cam phat tan lai du lieu cuoc thi. Repo phai tai lai duoc du lieu,
+# khong phai nhung san du lieu vao trong. `study_manifest.csv` va `weak_labels.csv` deu
+# duoc dan xuat tu cot `Report` nen cung khong commit - sinh lai bang scripts/10 va 20.
+data/raw/*.csv
+data/raw/images/
+data/interim/study_manifest.csv
+data/interim/weak_labels.csv
+
+# --- File nang sinh lai duoc ---
+data/interim/*.npz
+data/interim/*.npz.bak
+data/interim/*.pt
+data/manifest/competition_files.csv
+data/manifest/local_images.csv
+data/manifest/*.state.json
+data/manifest/*.log
+data/tmp*/
+
+# Ket qua chay - sinh lai duoc tu script, khong phai nguon su that
+reports/_langs.csv
+
+# NGOAI LE co chu y - data/interim/splits_gold.csv DUOC commit.
+# No chi chua UID va so fold, khong chua du lieu cuoc thi. Phai commit vi moi so do
+# cua ngay 5 va 8 chi so sanh duoc voi nhau khi split co dinh y het nhau.
+!data/interim/splits_gold.csv
+
+# He dieu hanh / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
