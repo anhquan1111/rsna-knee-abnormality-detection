@@ -34,10 +34,11 @@ src/rsna_knee/
 
 ```bash
 uv venv --python 3.12 .venv
-uv pip install --python .venv/Scripts/python.exe \
-    pandas numpy scikit-learn pydicom pylibjpeg pylibjpeg-libjpeg pylibjpeg-openjpeg \
-    langdetect torch torchvision pillow matplotlib kaggle
+uv sync --extra data --extra dev     # cài đúng phiên bản ghim trong uv.lock
+uv run pytest                        # 60 test, ~15 giây, phải xanh hết
 ```
+
+Phiên bản được **ghim trong `uv.lock`**, không cài tự do. Lý do: nhiều con số trong tài liệu gắn chặt với hành vi của đúng phiên bản đó — ví dụ `roc_auc_score` trả `nan` thay vì ném lỗi là hành vi của `scikit-learn 1.9.x`, và cả phần đánh giá của ngày 4 dựa trên điều đó.
 
 | Bước | Lệnh | Cần mạng | Đầu ra |
 |---|---|:---:|---|
@@ -70,6 +71,25 @@ Ba file CSV gốc đã đủ cho ngày 1, 4, 6 và 7 — không cần tải ản
 > ⚠️ **Kaggle giới hạn tốc độ API.** Tải ~1.500 file `.dcm` cộng với hơn 4.000 request liệt kê trong một buổi làm tài khoản bị chặn: HTTP `429 RESOURCE_EXHAUSTED`, header `retry-after: 179280` giây ≈ **50 giờ**. Lệnh liệt kê vẫn chạy được, chỉ lệnh tải file bị chặn.
 >
 > **Vì vậy đường đi chính thức là Kaggle notebook, không phải tải về máy:** dataset đã mount sẵn ở `/kaggle/input` nên không tốn request API nào, lại có GPU T4 miễn phí. Dán `scripts/06_kaggle_extract_features.py` vào một notebook, chạy, rồi chỉ tải kết quả về (vài trăm MB thay vì 569 GB). Tải `.dcm` về máy chỉ nên dùng cho một tập con nhỏ để soi dữ liệu thật.
+
+## Kiểm thử
+
+`uv run pytest` — 60 test, không cần dữ liệu ảnh.
+
+Test ở đây **không kiểm "hàm có chạy không"** mà kiểm đúng những hành vi hỏng âm thầm — loại lỗi cho ra một con số đẹp thay vì một dòng lỗi:
+
+| File | Chặn điều gì |
+|---|---|
+| `test_metrics.py` | macro AUC trả `nan`, nhãn một lớp bị bỏ khỏi mẫu số mà không báo, baseline hằng số phải đúng 0.5 |
+| `test_head.py` | pooling quên mask, `max` pad bằng 0 thay vì `-inf`, loss không bỏ qua nhãn `NaN` |
+| `test_splits.py` | rò rỉ giữa các fold, báo cáo trùng bị tách hai bên, split không tái lập được |
+| `test_reports.py` | phủ định lật nhầm vế sau của câu, `unknown` bị ép thành âm tính, recall đẹp giả tạo |
+| `test_dicom_io.py` | chuẩn hoá ra `inf`/`nan`, chuẩn hoá từng lát xoá mất độ sáng tương đối |
+
+Bộ test bắt được **hai lỗi thật ngay lần chạy đầu**:
+
+- `normalize_series` trả `float64` thay vì `float32` như docstring — scalar `float64` của `np.percentile` nâng kiểu cả mảng. Cache to gấp đôi mà hàm vẫn chạy đúng nên không ai thấy.
+- Từ điển tiếng Thổ bỏ lọt biến âm `k → ğ` (`yırtık → yırtığı`), tức bỏ lọt một phần nhóm **546 báo cáo tiếng Thổ** (12,4% dataset).
 
 ## Quyết định đã chốt
 
