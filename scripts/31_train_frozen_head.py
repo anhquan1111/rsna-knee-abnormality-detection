@@ -52,10 +52,13 @@ def get_features(manifest: pd.DataFrame, backbone: str, size: int, device: str) 
     t0 = time.time()
     feats = ensure_features(manifest, IMAGES, backbone=backbone, size=size,
                             device=device, cache_path=cache)
-    n_slices = sum(f.shape[0] for f in feats.values())
-    print(f"  {len(feats)} study | {n_slices} lat | {time.time()-t0:.1f}s | "
-          f"cache {cache.stat().st_size/1024**2:.1f} MB "
-          f"({cache.stat().st_size/max(n_slices,1)/1024:.1f} KB/lat)")
+    # Cache co the chua rat nhieu study hon so study se dung (4,407 vs 58). Dem lat theo
+    # DUNG phan se dung, neu khong bao cao ra mot con so khong lien quan gi toi thi nghiem.
+    from rsna_knee.config import STUDY_COL as _SC
+    dung = [u for u in manifest[_SC].astype(str) if u in feats]
+    n_slices = sum(feats[u].shape[0] for u in dung)
+    print(f"  cache {len(feats):,} study | dung {len(dung)} study / {n_slices:,} lat "
+          f"| {time.time()-t0:.1f}s | file {cache.stat().st_size/1024**2:.0f} MB")
     return feats
 
 
@@ -162,8 +165,8 @@ def main() -> None:
     print("\n=== 1. Trich dac trung (backbone dong bang) ===")
     feats = get_features(gold, args.backbone, args.size, device)
     dim = next(iter(feats.values())).shape[1]
-    n_slices = sum(f.shape[0] for f in feats.values())
-    print(f"  {len(feats)} study | {n_slices} lat | {dim} chieu")
+    n_slices = sum(feats[u].shape[0] for u in gold[STUDY_COL].astype(str) if u in feats)
+    print(f"  {len(gold)} study dung de train | {n_slices:,} lat | {dim} chieu")
 
     print("\n=== 2. Moc so sanh: baseline hang so ===")
     y = gold[list(LABELS)].to_numpy(dtype=float)
@@ -242,7 +245,7 @@ def main() -> None:
           f"khong ket luan duoc gi.")
 
     summary = {
-        "n_studies": len(gold), "n_slices": n_slices, "backbone": args.backbone,
+        "n_studies": len(gold), "n_slices": int(n_slices), "backbone": args.backbone,
         "dim": dim, "best_pooling": best_pooling, "macro_auc": res.macro_auc,
         "ci95": [float(lo), float(hi)], "baseline_auc": base.macro_auc,
         "epochs": args.epochs, "device": device,
