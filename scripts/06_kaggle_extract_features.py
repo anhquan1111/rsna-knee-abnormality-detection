@@ -1,50 +1,45 @@
 """CHAY TREN KAGGLE NOTEBOOK - khong chay o may local.
 
-Vi sao can file nay: tai anh qua Kaggle API bi gioi han toc do (HTTP 429). Tren Kaggle
-notebook, dataset da duoc mount san o /kaggle/input nen KHONG co request API nao - doc
-file truc tiep tu dia. Them nua, GPU T4 mien phi nhanh hon CPU may nha nhieu lan.
+Trich dac trung DINOv2 cho nhieu mat phang trong MOT lan chay. Moi mat phang ghi mot
+file rieng:
+    /kaggle/working/features_dinov2_<plane>.npz   dac trung tung lat, moi study mot mang
+    /kaggle/working/dicom_headers_<plane>.csv     metadata may chup
+    /kaggle/working/extract_summary.json          tom tat tat ca mat phang
 
-Dau ra chi vai tram MB thay vi 569 GB anh goc:
-    /kaggle/working/features_dinov2_<plane>.npz   - dac trung tung lat, moi study mot mang
-    /kaggle/working/dicom_headers.csv             - metadata de chan ro ri theo may chup
-    /kaggle/working/extract_summary.json          - so lieu de doi chieu
+Vi sao chay o day: tai anh qua Kaggle API bi gioi han toc do (HTTP 429). Tren Kaggle,
+dataset mount san o /kaggle/input nen khong ton request API nao, lai co GPU T4 mien phi.
 
 CACH DUNG
 ---------
-1. Mo https://www.kaggle.com/competitions/rsna-knee-abnormality-detection -> New Notebook.
+1. Mo trang competition -> New Notebook (hoac mo lai notebook cu).
 2. Settings: Accelerator = GPU T4 x2, Internet = ON (de tai trong so DINOv2).
-3. Dan toan bo file nay vao MOT cell, sua CONFIG o duoi neu can, roi Run All.
-4. Xong thi tai ba file o /kaggle/working ve roi chay:
-       python scripts/07_ingest_kaggle_features.py <thu muc vua tai ve>
+3. Dan file nay vao MOT cell. Sua PLANES o CONFIG cho dung thu can chay.
+4. **Save Version -> Save & Run All (Commit)**, KHONG phai Run All.
+   Ban Commit chay tren may chu Kaggle, khong can giu tab mo, va ket qua duoc luu vao
+   version nen tai ve bang API duoc - khong phai bam tai tung file tren trinh duyet.
+5. Chay xong bao lai; ket qua se duoc tai ve bang `kaggle kernels output`.
 
-CHAY LAI DUOC - hai truong hop KHAC NHAU
-----------------------------------------
-(1) CUNG PHIEN (tab van mo, chi bam Run All lai sau khi dut):
-    /kaggle/working con nguyen -> script doc lai .npz va BO QUA cac study da xong.
-    Khong phai lam gi them.
+THOI GIAN: ~52 phut moi mat phang cho 4,407 study (do that: 149,496 lat, 0 ca loi).
 
-(2) PHIEN MOI (da tat may, mo lai notebook, hoac ban Save Version):
-    /kaggle/working TRONG TRON - moi ban ghi tam deu mat.
-    Muon chay tiep thi phai dua ban da tai ve QUAY LAI Kaggle:
-      a. Kaggle -> Datasets -> New Dataset -> upload features_dinov2_<plane>.npz
-         (upload ca dicom_headers.csv neu co)
-      b. Trong notebook: Add Input -> chon dataset vua tao
-      c. Run All. Script tu tim file trong /kaggle/input va chay tiep tu do.
-    Khong lam buoc nay thi no chay lai tu dau (van ra ket qua dung, chi ton thoi gian).
+CHAY LAI DUOC
+-------------
+* Mat phang nao da co file .npz day du trong /kaggle/working thi duoc bo qua.
+* Trong mot mat phang, ghi tam moi 300 study; chay lai se doc lai va bo qua study da xong.
+* Study co nhan nguoi gan xep LEN DAU, nen 58 ca quan trong nhat xong trong vai phut.
+* Mot mat phang loi khong lam mat ket qua cua mat phang da xong truoc do.
+* Sang PHIEN MOI thi /kaggle/working trong tron: muon chay tiep phai upload ban .npz da
+  tai ve len lam Dataset roi Add Input - script tu tim trong /kaggle/input.
+* Tai trong so DINOv2 tu thu lai 6 lan khi gap loi tam thoi (5xx/429/mat ket noi).
 
-Cac co che khac:
-  * Ghi tam moi 300 study, ghi ca dac trung lan header.
-  * Study co nhan nguoi gan xep LEN DAU, nen 58 ca quan trong nhat xong trong vai phut.
-  * Tai trong so DINOv2 tu dong thu lai 6 lan khi gap loi tam thoi (5xx/429/mat ket noi).
-  * Muon lam lai sach: xoa file .npz trong tab Output truoc khi chay.
-
-GHI CHU: Kaggle gioi han 12 tieng moi phien va 20 GB o /kaggle/working. Trich dac trung cho
-ca 4,407 study uoc tinh ~700 MB, nam thoai mai trong gioi han.
+GIOI HAN KAGGLE: 12 tieng moi phien, 20 GB o /kaggle/working. Ba mat phang uoc tinh
+~600 MB, nam thoai mai trong gioi han.
 """
 from __future__ import annotations
 
 # ============================== CONFIG ==============================
-PLANE = "Sagittal"        # Sagittal | Coronal | Axial
+# Chay nhieu mat phang trong MOT lan, moi cai ghi mot file rieng. Mat phang nao da co
+# file day du thi bo qua, nen chay lai khong lam lai tu dau.
+PLANES = ["Coronal", "Axial"]   # da co Sagittal roi; dat ["Sagittal","Coronal","Axial"] neu lam lai tu dau
 SIZE = 224                # boi cua 14 cho DINOv2 patch-14
 BATCH = 64                # so lat moi lo dua vao backbone
 ONLY_LABELLED = False     # True = chi 58 study co nhan nguoi gan (chay ~2 phut de thu)
@@ -240,36 +235,27 @@ def extract(slices: np.ndarray, model, device: str, batch: int) -> np.ndarray:
 
 
 # ---------------------------------------------------------------- ghi ket qua
-def ghi_ket_qua(feats: dict, headers: list[dict]) -> None:
+def ghi_ket_qua(feats: dict, headers: list[dict], plane: str) -> None:
     """Ghi dac trung va header ra /kaggle/working.
 
     Goi ca o checkpoint lan o cuoi, nen phai khu trung header: chay lai nhieu lan se doc
     lai file cu roi noi them, de sinh ra dong lap.
     """
-    np.savez_compressed(OUT / f"features_dinov2_{PLANE.lower()}.npz", **feats)
+    np.savez_compressed(OUT / f"features_dinov2_{plane.lower()}.npz", **feats)
     if headers:
         hdf = pd.DataFrame(headers)
         keys = [c for c in ("SeriesInstanceUID", "InstanceNumber") if c in hdf.columns]
         if keys:
             hdf = hdf.drop_duplicates(subset=keys, keep="last")
-        hdf.to_csv(OUT / "dicom_headers.csv", index=False)
+        hdf.to_csv(OUT / f"dicom_headers_{plane.lower()}.csv", index=False)
 
 
 # ---------------------------------------------------------------- chay
-def main() -> None:
-    global ROOT
-    ROOT = find_root()
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"device: {device}")
-
-    train = pd.read_csv(ROOT / "train.csv")
-    series = pd.read_csv(ROOT / "train_series.csv")
-    labelled = set(train[train[LABELS].notna().all(axis=1)]["StudyInstanceUID"])
-    print(f"train.csv {train.shape} | train_series.csv {series.shape} "
-          f"| study co nhan nguoi gan: {len(labelled)}")
-
-    want = series[series["Anatomical_Plane"] == PLANE].copy()
+def chay_mot_mat_phang(plane: str, series: pd.DataFrame, labelled: set, device: str) -> dict:
+    """Trich dac trung cho MOT mat phang. Tra ve tom tat de gop lai o cuoi."""
+    gach = "=" * 70
+    print(f"\n{gach}\n=== MAT PHANG: {plane} ===\n{gach}", flush=True)
+    want = series[series["Anatomical_Plane"] == plane].copy()
     if ONLY_LABELLED:
         want = want[want["StudyInstanceUID"].isin(labelled)]
     # Moi study lay dung MOT series cua mat phang do
@@ -280,7 +266,7 @@ def main() -> None:
     if MAX_STUDIES:
         want = want.head(MAX_STUDIES)
     print(f"se xu ly {len(want):,} study ({int(want.is_gold.sum())} co nhan nguoi gan), "
-          f"mat phang {PLANE}")
+          f"mat phang {plane}")
 
     # --- Chay tiep tu lan truoc ------------------------------------------------------
     # HAI truong hop khac han nhau:
@@ -288,7 +274,7 @@ def main() -> None:
     #   2. Phien MOI (da tat may, hoac ban Save Version): /kaggle/working TRONG TRON.
     #      Luc do phai lay ban da tai ve, upload nguoc len lam Dataset roi Add Input.
     #      Khong co buoc nay thi moi lan mo phien moi la chay lai tu dau.
-    ten_npz = f"features_dinov2_{PLANE.lower()}.npz"
+    ten_npz = f"features_dinov2_{plane.lower()}.npz"
     npz_path = OUT / ten_npz
 
     nguon = None
@@ -354,15 +340,15 @@ def main() -> None:
             # Ghi tam moi 300 study. Ghi CA hai file, neu khong thi khi chay lai se doc
             # duoc dac trung nhung mat header cua dung nhung study do.
             if (i + 1) % 300 == 0:
-                ghi_ket_qua(feats, headers)
+                ghi_ket_qua(feats, headers, plane)
                 print(f"    (da ghi tam {len(feats):,} study)", flush=True)
 
-    ghi_ket_qua(feats, headers)
+    ghi_ket_qua(feats, headers, plane)
 
     n_slices = sum(f.shape[0] for f in feats.values())
-    size_mb = (OUT / f"features_dinov2_{PLANE.lower()}.npz").stat().st_size / 1024**2
+    size_mb = (OUT / f"features_dinov2_{plane.lower()}.npz").stat().st_size / 1024**2
     summary = {
-        "plane": PLANE, "size": SIZE, "n_studies": len(feats),
+        "plane": plane, "size": SIZE, "n_studies": len(feats),
         "n_gold": len(set(feats) & labelled), "n_slices": n_slices,
         "dim": int(next(iter(feats.values())).shape[1]) if feats else 0,
         "npz_mb": round(size_mb, 1), "minutes": round((time.time() - t0) / 60, 1),
@@ -370,14 +356,52 @@ def main() -> None:
     }
     (OUT / "extract_summary.json").write_text(json.dumps(summary, indent=2))
 
-    print("\n=== XONG ===")
+    print(f"\n=== XONG {plane} ===")
     print(json.dumps({k: v for k, v in summary.items() if k != "failed"}, indent=2))
-    print(f"\nTai ve: features_dinov2_{PLANE.lower()}.npz ({size_mb:,.0f} MB), "
-          f"dicom_headers.csv, extract_summary.json")
     if failed:
-        print(f"\n{len(failed)} study loi, vi du dau tien:")
+        print(f"{len(failed)} study loi, vi du dau tien:")
         for uid, err in failed[:5]:
             print(f"  {uid[-16:]}  {err}")
+    return summary
+
+
+def main() -> None:
+    global ROOT
+    ROOT = find_root()
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"device: {device}")
+
+    # dtype=str cho UID: pandas doc UID toan chu so thanh so nguyen, lam vo phep noi
+    # duong dan - hoac te hon, mat so 0 dau ma khong bao gi.
+    uid = {"StudyInstanceUID": str, "SeriesInstanceUID": str}
+    train = pd.read_csv(ROOT / "train.csv", dtype=uid)
+    series = pd.read_csv(ROOT / "train_series.csv", dtype=uid)
+    labelled = set(train[train[LABELS].notna().all(axis=1)]["StudyInstanceUID"])
+    print(f"train.csv {train.shape} | train_series.csv {series.shape} "
+          f"| study co nhan nguoi gan: {len(labelled)}")
+    print(f"se chay {len(PLANES)} mat phang: {PLANES}")
+
+    tom_tat: dict[str, dict] = {}
+    for plane in PLANES:
+        # Mot mat phang hong KHONG duoc lam mat ket qua cua mat phang da xong truoc do.
+        try:
+            tom_tat[plane] = chay_mot_mat_phang(plane, series, labelled, device)
+        except Exception as exc:
+            print(f"\n!!! MAT PHANG {plane} LOI: {type(exc).__name__}: {exc}", flush=True)
+            tom_tat[plane] = {"loi": f"{type(exc).__name__}: {exc}"}
+        (OUT / "extract_summary.json").write_text(json.dumps(tom_tat, indent=2))
+
+    gach = "=" * 70
+    print(f"\n{gach}\n=== TAT CA XONG ===\n{gach}")
+    for plane, t in tom_tat.items():
+        if "loi" in t:
+            print(f"  {plane:<10} LOI: {t['loi'][:70]}")
+        else:
+            print(f"  {plane:<10} {t['n_studies']:,} study | {t['n_gold']}/58 gold | "
+                  f"{t['n_slices']:,} lat | {t['npz_mb']:,.0f} MB | {t['minutes']:.0f} phut")
+    print("\nTai ve tu tab Output: features_dinov2_*.npz, dicom_headers_*.csv, "
+          "extract_summary.json")
 
 
 if __name__ == "__main__":

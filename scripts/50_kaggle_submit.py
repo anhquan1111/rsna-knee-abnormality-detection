@@ -71,23 +71,39 @@ def find_assets() -> tuple[Path, Path, Path]:
     Bao loi that ro neu thieu - day la cho hay hong nhat khi nop lan dau.
     """
     base = Path("/kaggle/input")
-    repo = next((p.parent for p in base.glob("*/*/hubconf.py")), None) \
-        or next((p.parent for p in base.glob("*/*/*/hubconf.py")), None)
-    w = next(iter(base.glob("*/dinov2_vits14_pretrain.pth")), None) \
-        or next(iter(base.glob("*/*/dinov2_vits14_pretrain.pth")), None)
-    head = next(iter(base.glob("*/head_*.pt")), None) \
-        or next(iter(base.glob("*/*/head_*.pt")), None)
+
+    # Kaggle dat dataset o do sau KHAC NHAU tuy cach them input:
+    #   /kaggle/input/<slug>/...
+    #   /kaggle/input/datasets/<user>/<slug>/...
+    # Nen khong duoc dem do sau co dinh. Quet de quy, nhung PHAI bo qua thu muc
+    # `competitions` - trong do co 819,640 file anh, rglob vao se treo vai phut.
+    goc = [d for d in base.iterdir() if d.is_dir() and d.name != "competitions"]
+
+    def tim(mau: str):
+        for g in goc:
+            for hit in g.rglob(mau):
+                return hit
+        return None
+
+    hub = tim("hubconf.py")
+    repo = hub.parent if hub else None
+    w = tim("dinov2_vits14_pretrain.pth")
+    head = tim("head_*.pt")
 
     thieu = [n for n, v in (("ma nguon DINOv2 (hubconf.py)", repo),
                             ("dinov2_vits14_pretrain.pth", w),
                             ("head_*.pt", head)) if v is None]
     if thieu:
-        co = sorted(p.name for p in base.glob("*"))
+        # Liet ke thu that su co (tru competitions) de chan doan ngay, thay vi chi in
+        # ten thu muc cap 1 - lan truoc chi thay ['competitions', 'datasets'], vo ich.
+        co: list[str] = []
+        for g in goc:
+            co += [str(x.relative_to(base)) for x in list(g.rglob("*"))[:40]]
         raise SystemExit(
             f"Thieu asset trong /kaggle/input: {thieu}\n"
-            f"  /kaggle/input dang co: {co}\n"
-            "  Chay scripts/49_pack_submission_assets.py o may, upload thu muc\n"
-            "  data/submit_assets/ len Kaggle Datasets, roi Add Input vao notebook nay."
+            f"  Ngoai `competitions`, dang co: {co[:25]}\n"
+            "  Chay scripts/49_pack_submission_assets.py o may, upload\n"
+            "  data/submit_assets.zip len Kaggle Datasets, roi Add Input vao notebook nay."
         )
     return repo, w, head
 
