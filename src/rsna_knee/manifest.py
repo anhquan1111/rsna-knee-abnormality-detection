@@ -13,8 +13,12 @@ from .config import DATA_RAW, LABELS, REPORT_COL, SERIES_COL, STUDY_COL, check_l
 
 
 def load_raw() -> tuple[pd.DataFrame, pd.DataFrame]:
-    train = pd.read_csv(DATA_RAW / "train.csv")
-    series = pd.read_csv(DATA_RAW / "train_series.csv")
+    # UID luon doc thanh CHUOI. UID DICOM toan chu so va dau cham, nen mot file co UID
+    # khong chua dau cham se bi pandas doc thanh so nguyen - lam vo phep noi duong dan,
+    # hoac mat so 0 dau ma khong bao gi.
+    uid = {"StudyInstanceUID": str, "SeriesInstanceUID": str}
+    train = pd.read_csv(DATA_RAW / "train.csv", dtype=uid)
+    series = pd.read_csv(DATA_RAW / "train_series.csv", dtype=uid)
     check_label_order(train.columns)
     return train, series
 

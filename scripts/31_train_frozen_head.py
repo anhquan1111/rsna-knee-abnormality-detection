@@ -207,14 +207,32 @@ def main() -> None:
           f"Voi {len(gold)} study, khoang tin cay rat rong - xem muc 6.")
 
     print("\n=== 5. Luu va nap lai checkpoint - du doan co giong het khong? ===")
-    torch.manual_seed(SEED)
-    model = StudyHead(dim, pooling=best_pooling)
+    # Head cuoi cung: train lai tren TOAN BO 58 study, khong chia fold.
+    #
+    # Truoc day cho nay luu mot `StudyHead(...)` vua khoi tao - tuc mot head CHUA TRAIN.
+    # Phep kiem "luu roi nap lai co giong nhau" van xanh (0.00e+00) vi no chi kiem I/O,
+    # khong kiem trong so co hoc duoc gi. Dem checkpoint do di nop bai thi ra 0.5 het.
+    # Bay gio train that, va co mot phep kiem chan duoc dung loi do o muc duoi.
+    folded = assign_folds(gold, n_splits=N_FOLDS, seed=SEED)
     ds = FeatureDataset(feats, gold)
     loader = DataLoader(ds, batch_size=4, shuffle=False, collate_fn=collate_features)
+
+    torch.manual_seed(SEED)
+    model = StudyHead(dim, pooling=best_pooling)
+    tl = DataLoader(FeatureDataset(feats, folded), batch_size=4, shuffle=True,
+                    collate_fn=collate_features)
+    # Val = chinh tap train o day. So epoch da duoc chon o buoc CV phia tren, nen day chi
+    # la lan train cuoi de dung het du lieu - KHONG dung diem val nay de bao cao.
+    out_final = train_head(model, tl, loader, epochs=args.epochs, lr=args.lr,
+                           device=device, log_every=0)
+    model.load_state_dict(out_final["best"]["state"])
+
     _, p1, _ = predict(model, loader, device)
     ckpt = DATA_INTERIM / f"head_{args.backbone}_{best_pooling}.pt"
     torch.save({"state_dict": model.state_dict(), "dim": dim, "pooling": best_pooling,
-                "labels": list(LABELS), "backbone": args.backbone, "size": args.size}, ckpt)
+                "labels": list(LABELS), "backbone": args.backbone, "size": args.size,
+                "n_train_studies": len(gold), "oof_macro_auc": round(res.macro_auc, 4),
+                "epochs": args.epochs}, ckpt)
 
     blob = torch.load(ckpt, weights_only=True)
     model2 = StudyHead(blob["dim"], pooling=blob["pooling"])
@@ -222,7 +240,19 @@ def main() -> None:
     _, p2, _ = predict(model2, loader, device)
     print(f"  lech lon nhat giua hai lan du doan: {np.abs(p1-p2).max():.2e}")
     print(f"  thu tu nhan trong checkpoint khop config: {blob['labels'] == list(LABELS)}")
-    print(f"  ghi {ckpt.name} ({ckpt.stat().st_size/1024:.0f} KB)")
+
+    # Chan dung loi "luu head chua train": mot head ngau nhien se cho du doan gan nhu nhu
+    # nhau cho moi study, nen do lech chuan giua cac study se rat nho. Phep kiem I/O phia
+    # tren KHONG bat duoc chuyen nay.
+    do_lech = float(p1.std(axis=0).mean())
+    print(f"  do lech chuan du doan giua cac study: {do_lech:.4f}")
+    if do_lech < 0.01:
+        raise SystemExit(
+            "Head hinh nhu CHUA TRAIN: du doan gan nhu giong nhau cho moi study.\n"
+            "Nop checkpoint nay se ra 0.5 het. Kiem lai buoc train cuoi."
+        )
+    print(f"  ghi {ckpt.name} ({ckpt.stat().st_size/1024:.0f} KB) - head da train tren "
+          f"ca {len(gold)} study")
 
     print("\n=== 6. Do bat dinh: bootstrap theo study ===")
     y_all = best_run["folded"][list(LABELS)].to_numpy(dtype=float)

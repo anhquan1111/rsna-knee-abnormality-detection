@@ -22,6 +22,10 @@ data/manifest/study_manufacturer.csv
 features_dinov2_*.npz
 dicom_headers.csv
 extract_summary.json
+# Asset dong goi de nop bai: 88 MB, sinh lai bang scripts/49_... trong 10 giay.
+data/submit_assets/
+# Nhan LLM tai tu dataset cong khai cua nguoi khac - khong phat tan lai.
+data/external/
 
 # --- File nang sinh lai duoc ---
 data/interim/*.npz
