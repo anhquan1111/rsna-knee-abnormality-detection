@@ -79,6 +79,16 @@ def main() -> None:
     print(f"  head -> {best.name} ({best.stat().st_size/1024:.0f} KB) | "
           f"pooling {blob.get('pooling')} | OOF AUC {blob.get('oof_macro_auc')} <- CHON")
 
+    # 3b. Nhan may - notebook fine-tune ngay 9 (scripts/60) can file nay tren Kaggle.
+    # Khong lien quan den viec nop bai, nhung di chung mot dataset thi do mot vong upload.
+    weak = DATA_INTERIM / "weak_labels.csv"
+    if weak.exists():
+        shutil.copy2(weak, OUT / weak.name)
+        print(f"  nhan may -> {weak.name} ({weak.stat().st_size/1024:.0f} KB) "
+              f"[cho scripts/60_kaggle_finetune.py]")
+    else:
+        print("  (chua co weak_labels.csv - ngay 9 se can, chay scripts/20 truoc)")
+
     tong = sum(f.stat().st_size for f in OUT.rglob("*") if f.is_file())
     print(f"\nThu muc: {OUT}  ({tong/1024**2:.0f} MB)")
 

@@ -53,3 +53,9 @@ Thumbs.db
 
 # Output tai tu notebook trich dac trung tren Kaggle ve (~450 MB, sinh lai duoc)
 data/kaggle_out/
+
+# Zip dong goi de upload (sinh lai bang scripts/49)
+data/submit_assets.zip
+
+# Output tai tu notebook Kaggle ve (sinh lai bang kaggle.api.kernels_output)
+data/kernel_out/
