@@ -1,15 +1,25 @@
-"""Dong goi asset can thiet cho notebook nop bai (chay o may, khong phai Kaggle).
+r"""Dong goi asset can thiet cho notebook nop bai (chay o may, khong phai Kaggle).
 
 Vi sao can: notebook nop bai cua Kaggle KHONG CO INTERNET, nen `torch.hub.load` se that
 bai. Phai mang san ma nguon DINOv2, trong so backbone va checkpoint head len lam Dataset.
 
 Chay:  python scripts/49_pack_submission_assets.py
-Ra:    data/submit_assets/  (~85 MB) - upload ca thu muc nay len Kaggle Datasets
+Ra:    data/submit_assets/      (~88 MB) - thu muc da dong goi
+       data/submit_assets.zip   (~88 MB) - UPLOAD FILE NAY len Kaggle Datasets
+
+Vi sao phai co file .zip: trang upload cua Kaggle Datasets chi nhan TUNG FILE, khong keo
+tha ca thu muc duoc, ma `dinov2_repo/` lai la mot cay thu muc. Nen phai nen lai.
+
+Va vi sao phai tu nen bang Python: `Compress-Archive` cua PowerShell ghi dau `\` lam dau
+phan cach duong dan trong zip. Chuan ZIP quy dinh la `/`. Kaggle giai nen ra se thanh
+MOT file ten "dinov2_repo\hubconf.py" thay vi thu muc - roi notebook bao thieu asset ma
+khong hieu vi sao. Da dinh that mot lan.
 """
 from __future__ import annotations
 
 import shutil
 import sys
+import zipfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -70,9 +80,31 @@ def main() -> None:
           f"pooling {blob.get('pooling')} | OOF AUC {blob.get('oof_macro_auc')} <- CHON")
 
     tong = sum(f.stat().st_size for f in OUT.rglob("*") if f.is_file())
-    print(f"\nXong: {OUT}  ({tong/1024**2:.0f} MB)")
-    print("Buoc tiep: Kaggle -> Datasets -> New Dataset -> upload ca thu muc nay,")
-    print("           roi Add Input vao notebook nop bai.")
+    print(f"\nThu muc: {OUT}  ({tong/1024**2:.0f} MB)")
+
+    # 4. Nen lai thanh mot file de upload
+    zip_path = OUT.with_suffix(".zip")
+    if zip_path.exists():
+        zip_path.unlink()
+    n = 0
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED, compresslevel=1) as z:
+        for f in sorted(OUT.rglob("*")):
+            if f.is_file():
+                # `as_posix()` moi ra dau `/`. Dung f.relative_to(OUT) truc tiep tren
+                # Windows se ghi dau `\` vao zip - xem giai thich o dau file.
+                z.write(f, f.relative_to(OUT).as_posix())
+                n += 1
+    print(f"File zip: {zip_path}  ({zip_path.stat().st_size/1024**2:.0f} MB, {n} file)")
+
+    # Doc lai zip vua ghi de chac chan khong co dau `\` nao lot vao.
+    with zipfile.ZipFile(zip_path) as z:
+        xau = [t for t in z.namelist() if "\\" in t]
+    if xau:
+        raise SystemExit(f"Zip co {len(xau)} duong dan dung dau `\\`: {xau[:3]}")
+    print("  kiem tra: moi duong dan trong zip dung dau `/` - Kaggle giai nen duoc")
+
+    print("\nBuoc tiep: Kaggle -> dataset rsna-knee-my-assets -> nut ... -> New Version")
+    print(f"           -> xoa file cu -> upload DUY NHAT file {zip_path.name}")
 
 
 if __name__ == "__main__":

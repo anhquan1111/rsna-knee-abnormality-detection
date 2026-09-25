@@ -342,10 +342,16 @@ def main() -> None:
     if float(v.std(axis=0).mean()) < 0.01:
         print("\nCANH BAO: du doan gan nhu giong nhau cho moi study -> AUC se ~0.5.")
         print("Kiem lai head da train chua.")
-    if loi:
-        print(f"\n{len(loi)} ca loi (da dien 0.5), vi du:")
-        for uid, e in loi[:5]:
-            print(f"  ...{uid[-14:]}  {e[:90]}")
+    # Doan in loi nay chay SAU khi submission.csv da ghi xong. Mot exception o day se
+    # lam ca notebook bi danh FAILED va Kaggle tu choi bai nop - du file ket qua da dung.
+    # Nen bat het, khong de doan bao cao lam hong thu no dang bao cao.
+    try:
+        if loi:
+            print(f"\n{len(loi)} loi (ca hong da dien 0.5), vi du:")
+            for uid, series, e in loi[:5]:
+                print(f"  ...{str(uid)[-14:]} / ...{str(series)[-8:]}  {str(e)[:80]}")
+    except Exception as exc:
+        print(f"(khong in duoc danh sach loi: {type(exc).__name__}: {exc})")
 
 
 if __name__ == "__main__":
