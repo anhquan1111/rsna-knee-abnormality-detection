@@ -50,3 +50,6 @@ reports/_langs.csv
 Thumbs.db
 .vscode/
 .idea/
+
+# Output tai tu notebook trich dac trung tren Kaggle ve (~450 MB, sinh lai duoc)
+data/kaggle_out/

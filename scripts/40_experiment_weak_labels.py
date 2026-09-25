@@ -12,6 +12,7 @@ Chay:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import sys
 import time
 from pathlib import Path
@@ -28,6 +29,7 @@ from rsna_knee.config import (
     DATA_RAW,
     LABELS,
     N_FOLDS,
+    REPORT_COL,
     REPORTS_DIR,
     SEED,
     STUDY_COL,
@@ -45,6 +47,7 @@ from rsna_knee.metrics import macro_auc
 from rsna_knee.splits import assert_no_leakage, assign_folds
 
 IMAGES = DATA_RAW / "images"
+REPORT_KEY = "report_key"    # ma bam bao cao, dung de chan trung bao cao giua train va val
 
 
 def available_studies(cache, extract_missing: bool) -> set[str]:
@@ -64,10 +67,19 @@ def run_config(name: str, train_pool: pd.DataFrame, gold: pd.DataFrame, feats: d
     assert_no_leakage(folded)
     oof = np.full((len(folded), len(LABELS)), np.nan, dtype=np.float32)
 
+    n_dup = 0
     for fold in range(N_FOLDS):
         va = folded[folded.fold == fold]
         va_ids = set(va[STUDY_COL])
         tr = train_pool[~train_pool[STUDY_COL].isin(va_ids)]   # khong bao gio de val lot vao train
+
+        # Loai theo UID thoi la CHUA DU. Nhan may duoc suy ra tu bao cao, nen mot study
+        # ngoai gold co bao cao TRUNG Y HET voi mot ca val se mang dap an cua ca val do
+        # vao train duoi mot UID khac. Loai theo ma bam bao cao moi bit duoc duong nay.
+        if REPORT_KEY in tr.columns and REPORT_KEY in va.columns:
+            truoc = len(tr)
+            tr = tr[~tr[REPORT_KEY].isin(set(va[REPORT_KEY]))]
+            n_dup += truoc - len(tr)
 
         tr_ds, va_ds = FeatureDataset(feats, tr), FeatureDataset(feats, va)
         if len(tr_ds) == 0 or len(va_ds) == 0:
@@ -87,7 +99,42 @@ def run_config(name: str, train_pool: pd.DataFrame, gold: pd.DataFrame, feats: d
     y = folded[list(LABELS)].to_numpy(dtype=float)
     keep = ~np.isnan(oof).all(axis=1)
     res = macro_auc(y[keep], oof[keep], LABELS)
-    return {"config": name, "result": res, "n_train": len(train_pool), "oof": oof, "keep": keep}
+    return {"config": name, "result": res, "n_train": len(train_pool), "oof": oof,
+            "keep": keep, "n_dup_removed": n_dup}
+
+
+def save_winner(name: str, pool: pd.DataFrame, feats: dict, dim: int, oof_auc: float,
+                epochs: int, lr: float, device: str, backbone: str) -> Path:
+    """Train lai cau hinh thang tren TOAN BO pool cua no roi ghi checkpoint.
+
+    Vi sao can: vong lap thi nghiem o tren chi do diem, no vut model cua tung fold di.
+    Neu khong co buoc nay thi cau hinh tot nhat KHONG co checkpoint de nop - va bai nop
+    se chay bang head cua ngay 5 (chi 58 study), tuc la do mot dang va nop mot dang khac.
+    """
+    torch.manual_seed(SEED)
+    ds = FeatureDataset(feats, pool)
+    loader = DataLoader(ds, batch_size=4, shuffle=True, collate_fn=collate_features)
+    model = StudyHead(dim, pooling="mean")
+    out = train_head(model, loader, loader, epochs=epochs, lr=lr, device=device, log_every=0)
+    model.load_state_dict(out["best"]["state"])
+
+    # Bay da dinh that o ngay 5: checkpoint ghi ra la head CHUA train, ma moi phep kiem
+    # luc do (luu -> nap lai -> so sanh) van bao dung vi no chi kiem I/O. Do lech chuan
+    # cua du doan giua cac study moi phan biet duoc "da hoc" voi "tra ve hang so".
+    _, logits, _ = predict(model, DataLoader(ds, batch_size=4, shuffle=False,
+                                             collate_fn=collate_features), device)
+    do_lech = float(logits.std(axis=0).mean())
+    print(f"  do lech chuan du doan giua cac study: {do_lech:.4f}")
+    if do_lech < 0.01:
+        raise SystemExit("Head hinh nhu CHUA TRAIN: du doan gan nhu giong nhau cho moi "
+                         "study. Nop checkpoint nay se ra 0.5 het.")
+
+    path = DATA_INTERIM / f"head_{backbone}_mean_weak.pt"
+    torch.save({"state_dict": model.state_dict(), "dim": dim, "pooling": "mean",
+                "labels": list(LABELS), "backbone": backbone,
+                "oof_macro_auc": round(float(oof_auc), 4),
+                "n_train_studies": len(pool), "epochs": epochs, "config": name}, path)
+    return path
 
 
 def main() -> None:
@@ -103,6 +150,8 @@ def main() -> None:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     train, series = load_raw()
     man = build_study_manifest(train, series)
+    man[REPORT_KEY] = (man[REPORT_COL].astype(str).str.strip().str.lower()
+                       .map(lambda t: hashlib.md5(t.encode("utf-8")).hexdigest()))
     gold_all = gold_subset(man)
 
     cache = DATA_INTERIM / f"features_{args.backbone}_{args.size}.npz"
@@ -156,10 +205,21 @@ def main() -> None:
         dt = time.time() - t0
         results[name] = out
         rows.append(out["result"].to_row(config=name, n_train=out["n_train"], seconds=round(dt, 1)))
-        print(f"  {name:<26} n_train={out['n_train']:>3}  {out['result']}  ({dt:.0f}s)")
+        print(f"  {name:<26} n_train={out['n_train']:>3}  {out['result']}  ({dt:.0f}s)"
+              + (f"  [bo {out['n_dup_removed']} dong trung bao cao voi val]"
+                 if out["n_dup_removed"] else ""))
 
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows).to_csv(REPORTS_DIR / "day8_experiment.csv", index=False)
+
+    print("\n=== Ghi checkpoint cho cau hinh thang ===")
+    ten_thang = max(results, key=lambda k: results[k]["result"].macro_auc)
+    pool_thang = dict(configs)[ten_thang]
+    auc_thang = results[ten_thang]["result"].macro_auc
+    print(f"  thang: {ten_thang} (macro AUC {auc_thang:.4f}, {len(pool_thang):,} study train)")
+    ck = save_winner(ten_thang, pool_thang, feats, dim, auc_thang,
+                     args.epochs, args.lr, device, args.backbone)
+    print(f"  ghi {ck.name} ({ck.stat().st_size/1024:.0f} KB)")
 
     base = results["A_gold_only"]["result"]
     print("\n=== Chenh lech so voi A, theo tung nhan ===")

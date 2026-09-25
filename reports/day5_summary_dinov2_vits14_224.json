@@ -1,13 +1,13 @@
 {
   "n_studies": 58,
-  "n_slices": 2053,
+  "n_slices": 5500,
   "backbone": "dinov2_vits14",
   "dim": 384,
-  "best_pooling": "max",
-  "macro_auc": 0.5658504446637515,
+  "best_pooling": "mean",
+  "macro_auc": 0.6266486080214985,
   "ci95": [
-    0.520280736128278,
-    0.6156985502964883
+    0.5668524545653046,
+    0.6839101595082256
   ],
   "baseline_auc": 0.5,
   "epochs": 80,

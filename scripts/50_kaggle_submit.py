@@ -13,7 +13,7 @@ CHUAN BI (lam mot lan)
    `data/submit_assets/` gom:
        dinov2_repo/                     ma nguon DINOv2 (tu cache torch.hub)
        dinov2_vits14_pretrain.pth       trong so backbone (~84 MB)
-       head_dinov2_vits14_max.pt        head da train (~24 KB)
+       head_dinov2_vits14_mean.pt       head da train (~24 KB)
 2. Kaggle -> Datasets -> New Dataset -> upload ca thu muc do. Dat ten vi du
    `rsna-knee-my-assets`.
 3. Notebook: Add Input -> chon dataset do. Settings: Accelerator = GPU, Internet = OFF.
@@ -29,8 +29,12 @@ from __future__ import annotations
 # ============================== CONFIG ==============================
 SIZE = 224                 # phai khop voi luc train
 BATCH = 64                 # so lat moi lo qua backbone
-POOLING = "max"            # phai khop checkpoint; doc lai tu file nen day chi la du phong
-PLANE = "Sagittal"         # mat phang dung de suy luan (khop luc train)
+POOLING = "mean"           # phai khop checkpoint; doc lai tu file nen day chi la du phong
+# Ba mat phang, giong het luc train. Moi study lay MOT series moi mat phang roi NOI CAC
+# LAT lai thanh mot chong duy nhat - dung phep gop da dung o scripts/07. Thu tu khong
+# quan trong (masked pooling mean/max/attn deu bat bien voi hoan vi) nhung van giu dung
+# thu tu luc train cho de doi chieu khi co su co.
+PLANES = ["Sagittal", "Axial", "Coronal"]
 DEBUG_N = 0                # >0 = chi chay N study dau, de thu nhanh truoc khi nop
 # ====================================================================
 
@@ -89,6 +93,12 @@ def find_assets() -> tuple[Path, Path, Path]:
     repo = hub.parent if hub else None
     w = tim("dinov2_vits14_pretrain.pth")
     head = tim("head_*.pt")
+    # Neu dataset co nhieu head, rglob tra ve cai nao la ngau nhien -> co the nop bang
+    # head cu cua vong truoc ma khong co dau hieu gi. Tha bao loi con hon nop nham.
+    moi_head = [h for g in goc for h in g.rglob("head_*.pt")]
+    if len(moi_head) > 1:
+        raise SystemExit(f"Co {len(moi_head)} head trong asset: "
+                         f"{[h.name for h in moi_head]}. Xoa bot, chi de lai mot cai.")
 
     thieu = [n for n, v in (("ma nguon DINOv2 (hubconf.py)", repo),
                             ("dinov2_vits14_pretrain.pth", w),
@@ -109,6 +119,32 @@ def find_assets() -> tuple[Path, Path, Path]:
 
 
 # ---------------------------------------------------------------- tien xu ly
+def chon_series(ts: "pd.DataFrame", planes: list[str]):
+    """Moi study lay MOT series moi mat phang - phai khop y het luc train.
+
+    Tra ve (bang series duoc chon, tap study khong co mat phang nao trong `planes`).
+
+    Tach rieng ra khoi `main()` de test duoc o may: day la doan de hong mot cach am
+    tham nhat. Chon sai mat phang thi model van chay, van ra file nop hop le, chi co
+    diem la thap - va khong co gi bao la vi sao.
+    """
+    chon = []
+    for pl in planes:
+        g = ts[ts["Anatomical_Plane"] == pl]
+        if len(g):
+            chon.append(g.groupby("StudyInstanceUID", as_index=False).first())
+    want = pd.concat(chon, ignore_index=True) if chon else ts.head(0).copy()
+
+    # Study khong co mat phang nao trong `planes` van phai co du doan - lay bat ky series
+    # nao con lai. Bo trang mot dong la mat diem dong do, khong phai mat diem mo hinh.
+    thieu = set(ts["StudyInstanceUID"]) - set(want["StudyInstanceUID"])
+    if thieu:
+        want = pd.concat([want, ts[ts["StudyInstanceUID"].isin(thieu)]
+                          .groupby("StudyInstanceUID", as_index=False).first()],
+                         ignore_index=True)
+    return want, thieu
+
+
 def normalize_series(arr: np.ndarray) -> np.ndarray:
     """Percentile 1-99 tren ca series. PHAI giong het luc train, khong duoc lech mot chi tiet."""
     p_low, p_high = (np.float32(v) for v in np.percentile(arr, (1, 99)))
@@ -230,50 +266,62 @@ def main() -> None:
     # phep noi duong dan nem TypeError - hoac te hon, mat so 0 dau ma khong bao gi.
     ts = pd.read_csv(root / "test_series.csv",
                      dtype={"StudyInstanceUID": str, "SeriesInstanceUID": str})
-    want = ts[ts["Anatomical_Plane"] == PLANE]
-    # Ca test nao khong co mat phang nay thi lay bat ky series nao con lai
-    thieu = set(ts["StudyInstanceUID"]) - set(want["StudyInstanceUID"])
-    if thieu:
-        want = pd.concat([want, ts[ts["StudyInstanceUID"].isin(thieu)]], ignore_index=True)
-    want = want.groupby("StudyInstanceUID", as_index=False).first()
+    want, thieu = chon_series(ts, PLANES)
+    uids = sorted(set(want["StudyInstanceUID"]))
     if DEBUG_N:
-        want = want.head(DEBUG_N)
-    print(f"test: {len(ts):,} series -> {len(want):,} study can du doan"
-          + (f" (thieu {PLANE}: {len(thieu)} ca)" if thieu else ""))
+        uids = uids[:DEBUG_N]
+        want = want[want["StudyInstanceUID"].isin(uids)]
+    theo_study = {u: g for u, g in want.groupby("StudyInstanceUID")}
+    print(f"test: {len(ts):,} series -> {len(uids):,} study, "
+          f"{len(want):,} series dung ({len(want)/max(len(uids),1):.2f} series/study)"
+          + (f" | {len(thieu)} ca khong co mat phang nao trong {PLANES}" if thieu else ""))
 
     # --- suy luan ---
-    rows, loi, t_io, t_gpu = [], [], 0.0, 0.0
-    for i, r in want.iterrows():
-        uid = r["StudyInstanceUID"]
-        sdir = root / "test_series" / uid / r["SeriesInstanceUID"]
+    rows, loi, t_io, t_gpu, n_lat = [], [], 0.0, 0.0, 0
+    for i, uid in enumerate(uids):
         try:
-            t0 = time.time()
-            arr = resize_volume(normalize_series(load_series(sdir)), SIZE)
-            t_io += time.time() - t0
+            phan = []
+            for _, r in theo_study[uid].iterrows():
+                sdir = root / "test_series" / uid / r["SeriesInstanceUID"]
+                try:
+                    t0 = time.time()
+                    arr = resize_volume(normalize_series(load_series(sdir)), SIZE)
+                    t_io += time.time() - t0
+                    t0 = time.time()
+                    phan.append(encode(arr, backbone, device))
+                    t_gpu += time.time() - t0
+                except Exception as exc:
+                    # Hong MOT mat phang khong duoc lam hong ca study: hai mat phang kia
+                    # van du de du doan. Chi khi ca ba deu hong moi rot xuong 0.5.
+                    loi.append((uid, r["SeriesInstanceUID"], f"{type(exc).__name__}: {exc}"))
+            if not phan:
+                raise RuntimeError("khong doc duoc mat phang nao")
 
-            t0 = time.time()
-            feat = encode(arr, backbone, device).unsqueeze(0)
+            feat = torch.cat(phan).unsqueeze(0)
+            n_lat += feat.shape[1]
             mask = torch.ones(1, feat.shape[1], dtype=torch.bool)
+            t0 = time.time()
             with torch.no_grad():
                 prob = torch.sigmoid(head(feat.to(device), mask.to(device)))[0].cpu().numpy()
             t_gpu += time.time() - t0
             rows.append([uid, *prob.astype(float)])
         except Exception as exc:
             # Ca nao loi thi dien 0.5 - KHONG duoc de mot ca lam vo ca bai nop.
-            loi.append((uid, f"{type(exc).__name__}: {exc}"))
+            loi.append((uid, "-", f"{type(exc).__name__}: {exc}"))
             rows.append([uid, *([0.5] * len(LABELS))])
 
         if (i + 1) % 100 == 0:
             el = time.time() - t_start
-            print(f"  {i+1:>5}/{len(want)} | {el/60:.1f} phut | "
-                  f"con ~{el/(i+1)*(len(want)-i-1)/60:.1f} phut | loi {len(loi)}", flush=True)
+            print(f"  {i+1:>5}/{len(uids)} | {el/60:.1f} phut | "
+                  f"con ~{el/(i+1)*(len(uids)-i-1)/60:.1f} phut | "
+                  f"{n_lat/(i+1):.0f} lat/study | loi {len(loi)}", flush=True)
 
     sub = pd.DataFrame(rows, columns=["StudyInstanceUID", *LABELS])
 
     # --- kiem truoc khi ghi: nhung loi nay neu lot ra se mat diem ma khong biet vi sao ---
     assert list(sub.columns) == ["StudyInstanceUID", *LABELS], "sai thu tu cot"
     assert sub["StudyInstanceUID"].is_unique, "co study bi trung"
-    assert set(sub["StudyInstanceUID"]) == set(want["StudyInstanceUID"]), "thieu/thua study"
+    assert set(sub["StudyInstanceUID"]) == set(uids), "thieu/thua study"
     v = sub[LABELS].to_numpy()
     assert np.isfinite(v).all(), "co gia tri nan/inf"
     assert (v >= 0).all() and (v <= 1).all(), "gia tri ngoai [0,1]"

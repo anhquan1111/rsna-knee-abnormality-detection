@@ -1,19 +1,30 @@
 """Nhan ket qua tu Kaggle notebook vao repo va kiem tra truoc khi dung.
 
-Chay sau khi tai ba file tu /kaggle/working ve mot thu muc bat ky:
+Chay sau khi tai output cua notebook trich dac trung ve mot thu muc bat ky:
 
-    python scripts/07_ingest_kaggle_features.py ~/Downloads
-    python scripts/07_ingest_kaggle_features.py "C:/Users/Admin/Downloads" --plane sagittal
+    python scripts/07_ingest_kaggle_features.py data/kaggle_out
+    python scripts/07_ingest_kaggle_features.py data/kaggle_out --planes coronal axial
 
 Viec no lam:
-  1. Tim `features_dinov2_<plane>.npz`, `dicom_headers.csv`, `extract_summary.json`.
-  2. Kiem dac trung: dung so chieu, khong co nan/inf, khop UID trong train.csv.
-  3. Doi chieu voi dac trung da trich o may (neu co) - phai trung khop tung bit.
-  4. Chuan hoa ten hang may chup, ghi cot `manufacturer_norm` vao manifest header.
-  5. Chep vao dung cho, in ra viec can chay tiep.
+  1. Tim moi `features_dinov2_<plane>.npz` + `dicom_headers*.csv` + `extract_summary.json`.
+  2. GOP CAC MAT PHANG: noi cac lat cua cung mot study lai voi nhau.
+  3. Kiem dac trung: dung so chieu, khong co nan/inf, khop UID trong train.csv.
+  4. Doi chieu voi dac trung da trich o may (neu trich lai cung mat phang).
+  5. Chuan hoa ten hang may chup, ghi cot `manufacturer_norm` vao manifest header.
+  6. Ghi de cache dac trung (ban cu duoc doi ten thanh .npz.bak).
 
-Buoc 3 la buoc dang gia nhat: no chung minh dac trung tren Kaggle va o may sinh ra tu
-cung mot phep tinh. Neu lech, moi so do sau deu khong so sanh duoc voi so do truoc.
+Hai quyet dinh dang ghi lai:
+
+* Gop bang cach NOI LAT chu khong phai noi VECTOR dac trung. Noi vector se doi so chieu
+  dau vao cua head va bien day thanh thi nghiem hai bien (them anh + doi kien truc), luc
+  do khong con quy duoc thay doi diem so ve nguyen nhan nao. Noi lat giu kien truc y
+  nguyen: bien duy nhat thay doi la luong du lieu. Masked pooling von da xu ly so lat
+  khac nhau giua cac study nen khong can sua gi them.
+
+* Luu float16. Ba mat phang la 436,950 lat x 384 chieu = 671 MB o float32, qua nang cho
+  may nay (da tung segfault khi RAM trong con 3.2 GB). fp16 con mot nua. Day khong phai
+  danh doi do chinh xac: GPU Kaggle von da tinh o fp16 luc trich, vong truoc do cosin
+  giua ban fp16 va ban fp32 la 0.999988-0.999997.
 """
 from __future__ import annotations
 
@@ -64,32 +75,62 @@ def normalize_vendor(raw: object) -> str:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("src_dir", help="thu muc chua ba file tai tu Kaggle ve")
-    ap.add_argument("--plane", default="sagittal")
+    ap.add_argument("--planes", nargs="+", default=None,
+                    help="mac dinh: tu tim moi features_dinov2_*.npz trong thu muc")
     ap.add_argument("--size", type=int, default=224)
     args = ap.parse_args()
 
     src = Path(args.src_dir).expanduser()
-    npz = src / f"features_dinov2_{args.plane}.npz"
-    heads = src / "dicom_headers.csv"
-    summary = src / "extract_summary.json"
-
-    missing = [p.name for p in (npz, heads) if not p.exists()]
-    if missing:
-        raise SystemExit(f"Khong thay {missing} trong {src}\n"
+    if args.planes:
+        files = [src / f"features_dinov2_{p.lower()}.npz" for p in args.planes]
+    else:
+        files = sorted(src.glob("features_dinov2_*.npz"))
+    files = [f for f in files if f.exists()]
+    if not files:
+        raise SystemExit(f"Khong thay features_dinov2_*.npz trong {src}\n"
                          f"Co trong thu muc do: {sorted(p.name for p in src.glob('*'))[:20]}")
 
+    old_path = DATA_INTERIM / f"features_dinov2_vits14_{args.size}.npz"
+    heads = sorted(src.glob("dicom_headers*.csv"))
+    summary = src / "extract_summary.json"
     if summary.exists():
         print("=== Tom tat tu Kaggle ===")
-        for k, v in json.loads(summary.read_text()).items():
-            if k != "failed":
-                print(f"  {k:<12} {v}")
+        for plane, t in json.loads(summary.read_text()).items():
+            if isinstance(t, dict) and "n_studies" in t:
+                print(f"  {plane:<10} {t['n_studies']:,} study | {t['n_gold']}/58 gold | "
+                      f"{t['n_slices']:,} lat | {t.get('n_failed', '?')} loi")
 
-    print("\n=== 1. Kiem dac trung ===")
-    with np.load(npz) as z:
-        feats = {k: z[k] for k in z.files}
+    print("\n=== 1. Gop dac trung cac mat phang ===")
+    # Gop bang cach NOI CAC LAT lai, khong phai gop vector dac trung. Nho vay kien truc
+    # model khong doi mot chu nao - bien duy nhat thay doi la LUONG DU LIEU, dung tinh
+    # than thi nghiem co kiem soat cua ngay 8.
+    nguon = list(files)
+    if old_path.exists() and not any("sagittal" in f.name.lower() for f in files):
+        # Sagittal da trich o vong 1 va da nam trong cache. No la MOT mat phang nhu hai
+        # mat phang moi, nen dua vao cung duong gop thay vi xu ly rieng.
+        nguon.insert(0, old_path)
+
+    feats: dict[str, np.ndarray] = {}
+    for f in nguon:
+        plane = ("sagittal (cache)" if f == old_path
+                 else f.stem.replace("features_dinov2_", ""))
+        n_lat, n_study = 0, 0
+        with np.load(f) as z:
+            for k in z.files:
+                a = z[k]
+                n_lat += a.shape[0]
+                n_study += 1
+                # Luu float16: 436,950 lat x 384 chieu = 671 MB o float32, qua nang cho
+                # may nay (da tung segfault o 230 MB). float16 con mot nua, va sai so cung
+                # bac voi fp16 ma GPU Kaggle da dung luc trich - khong them mat mat gi.
+                a16 = a.astype(np.float16)
+                feats[k] = np.concatenate([feats[k], a16]) if k in feats else a16
+        print(f"  {plane:<17} {n_study:,} study | {n_lat:,} lat")
+
     dims = {f.shape[1] for f in feats.values()}
     n_slices = sum(f.shape[0] for f in feats.values())
-    print(f"  {len(feats):,} study | {n_slices:,} lat | so chieu {dims}")
+    print(f"  GOP LAI           {len(feats):,} study | {n_slices:,} lat | so chieu {dims} | "
+          f"{n_slices * 384 * 2 / 1024**2:.0f} MB trong RAM (float16)")
     if len(dims) != 1:
         raise SystemExit(f"Dac trung co nhieu so chieu khac nhau: {dims}")
 
@@ -110,18 +151,22 @@ def main() -> None:
           + ("  <- DU" if len(have_gold) == 58 else "  <- CON THIEU"))
 
     print("\n=== 2. Doi chieu voi dac trung da trich o may ===")
-    old_path = DATA_INTERIM / f"features_dinov2_vits14_{args.size}.npz"
-    if old_path.exists():
+    # Doi chieu phai lam tren RIENG mat phang sagittal: dac trung cu o may chi co sagittal,
+    # con `feats` gio la ba mat phang noi lai nen so lat khac nhau la dung, khong phai loi.
+    sag = next((f for f in files if "sagittal" in f.name.lower()), None)
+    if sag is not None and old_path.exists():
         with np.load(old_path) as z:
             old = {k: z[k] for k in z.files}
-        shared = sorted(set(old) & set(feats))
+        with np.load(sag) as z:
+            new_sag = {k: z[k] for k in z.files[:200]}
+        shared = sorted(set(old) & set(new_sag))
         if shared:
             # Lech tuyet doi mot minh KHONG doc duoc: dac trung DINOv2 co do lon rat khac
             # nhau giua cac chieu. Thuoc do dung la do tuong dong cosin - no tra loi dung
             # cau hoi can hoi: "hai ben co phai CUNG MOT bieu dien khong?"
             cos, rel, lech_shape = [], [], 0
             for uid in shared[:50]:
-                a, b = old[uid], feats[uid]
+                a, b = old[uid], new_sag[uid]
                 if a.shape != b.shape:
                     lech_shape += 1
                     continue
@@ -143,11 +188,20 @@ def main() -> None:
                     print("       khong (chuan hoa, resize, thu tu lat).")
         else:
             print("  khong co study chung de doi chieu")
+    elif sag is None:
+        print("  lan nay khong trich lai sagittal (da co san trong cache) - khong can")
+        print("  doi chieu. Vong truoc da xac nhan cosin 0.999988-0.999997.")
     else:
         print(f"  chua co {old_path.name} o may - bo qua buoc doi chieu")
 
     print("\n=== 3. Chuan hoa ten hang may chup ===")
-    hdf = pd.read_csv(heads)
+    if not heads:
+        raise SystemExit(f"Khong thay dicom_headers*.csv trong {src}")
+    hdf = pd.concat([pd.read_csv(h, dtype={"StudyInstanceUID": str,
+                                           "SeriesInstanceUID": str}) for h in heads],
+                    ignore_index=True)
+    print(f"  gop {len(heads)} file header: {', '.join(h.name for h in heads)}")
+    hdf = hdf.drop_duplicates(subset=["SeriesInstanceUID"])
     hdf["manufacturer_norm"] = hdf["Manufacturer"].map(normalize_vendor)
     raw_n = hdf["Manufacturer"].nunique(dropna=False)
     norm_n = hdf["manufacturer_norm"].nunique()
@@ -166,7 +220,8 @@ def main() -> None:
         backup = dst_npz.with_suffix(".npz.bak")
         shutil.move(str(dst_npz), str(backup))
         print(f"  ban cu doi ten thanh {backup.name}")
-    shutil.copy2(npz, dst_npz)
+    np.savez(dst_npz, **feats)   # khong nen: fp16 gan nhu khong nen duoc,
+                                 # nen nen chi ton them vai phut CPU
     hdf.to_csv(DATA_MANIFEST / "dicom_headers.csv", index=False)
     per_study.to_csv(DATA_MANIFEST / "study_manufacturer.csv", index=False)
     print(f"  {dst_npz}  ({dst_npz.stat().st_size/1024**2:,.0f} MB)")

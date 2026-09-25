@@ -54,11 +54,20 @@ def main() -> None:
     if not heads:
         raise SystemExit("Khong thay head_*.pt trong data/interim.\n"
                          "  Chay scripts/31_train_frozen_head.py truoc.")
-    for h in heads:
-        blob = torch.load(h, map_location="cpu", weights_only=True)
-        shutil.copy2(h, OUT / h.name)
-        print(f"  head -> {h.name} ({h.stat().st_size/1024:.0f} KB) | "
-              f"pooling {blob.get('pooling')} | OOF AUC {blob.get('oof_macro_auc')}")
+    # CHI dong goi MOT head. Truoc day goi het, va notebook nop bai lay file dau tien
+    # rglob tra ve - thu tu do khong xac dinh, nen co the nop bang head cu cua vong truoc
+    # ma khong co dau hieu nao bao. Chon theo OOF AUC de lua chon la tuong minh.
+    xep = sorted(((torch.load(h, map_location="cpu", weights_only=True), h) for h in heads),
+                 key=lambda t: t[0].get("oof_macro_auc") or -1, reverse=True)
+    for blob, h in xep:
+        print(f"  co: {h.name:<28} pooling {str(blob.get('pooling')):<5} "
+              f"OOF AUC {blob.get('oof_macro_auc')}")
+    blob, best = xep[0]
+    for cu in OUT.glob("head_*.pt"):      # don head cua lan dong goi truoc
+        cu.unlink()
+    shutil.copy2(best, OUT / best.name)
+    print(f"  head -> {best.name} ({best.stat().st_size/1024:.0f} KB) | "
+          f"pooling {blob.get('pooling')} | OOF AUC {blob.get('oof_macro_auc')} <- CHON")
 
     tong = sum(f.stat().st_size for f in OUT.rglob("*") if f.is_file())
     print(f"\nXong: {OUT}  ({tong/1024**2:.0f} MB)")

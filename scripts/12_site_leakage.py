@@ -72,7 +72,8 @@ def main() -> None:
             feats = {k: z[k] for k in z.files}
         # Gop dac trung tung lat len cap study dung cach giong het luc train (mean pooling)
         co_dt = [u for u in g[STUDY_COL] if u in feats]
-        X = np.stack([feats[u].mean(axis=0) for u in co_dt])
+        # cache dac trung luu fp16 (xem scripts/07) - ep fp32 truoc khi dua vao sklearn
+        X = np.stack([feats[u].astype(np.float32).mean(axis=0) for u in co_dt])
         y = g.set_index(STUDY_COL).loc[co_dt, "vendor"].to_numpy()
         print(f"  {len(co_dt)} study co dac trung | {len(set(y))} hang")
 
