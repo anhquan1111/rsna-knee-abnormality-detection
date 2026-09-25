@@ -80,7 +80,13 @@ from torch.utils.data import DataLoader, Dataset
 
 COMPETITION = "rsna-knee-abnormality-detection"
 OUT = Path("/kaggle/working")
-CACHE = OUT / "cache"
+
+# Cache ~11 GB PHAI nam ngoai /kaggle/working. Moi thu trong /kaggle/working deu duoc
+# Kaggle luu lai thanh output cua version - 11 GB cache tam se lam buoc luu version cham
+# kinh khung hoac that bai, trong khi thu ta can giu chi la vai chuc MB npz.
+# /kaggle/temp la o nhap: mat khi het phien nhung KHONG bi tinh vao output.
+_TEMP = Path("/kaggle/temp")
+CACHE = (_TEMP if _TEMP.exists() else OUT) / "ft_cache"
 LABELS = ["ACL", "MCL", "Medial Meniscus", "Lateral Meniscus", "Medial OA", "Lateral OA",
           "PF OA", "Effusion", "Synovitis", "Baker's", "Contusion", "Fracture"]
 IMAGENET_MEAN = torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1)
