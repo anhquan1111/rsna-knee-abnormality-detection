@@ -59,3 +59,6 @@ data/submit_assets.zip
 
 # Output tai tu notebook Kaggle ve (sinh lai bang kaggle.api.kernels_output)
 data/kernel_out/
+
+# Ket qua fine-tune tai tu Kaggle ve (sinh lai duoc)
+data/kaggle_ft/

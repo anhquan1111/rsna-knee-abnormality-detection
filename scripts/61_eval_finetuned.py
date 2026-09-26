@@ -137,6 +137,49 @@ def main() -> None:
             continue
         print(f"  {lab:<18} {x:>10.3f} {y2:>10.3f} {y2-x:>+8.3f}")
 
+    # --- gop hai model ---
+    # Vi sao dang thu: chenh lech TUNG NHAN rat lon (+0.23 den -0.14) trong khi trung
+    # binh gan 0. Nghia la hai bo dac trung khong phai "mot tot mot xau" ma la KHAC NHAU
+    # - moi ben bat duoc thu ben kia bo lo. Do la dung dieu kien de gop co loi.
+    #
+    # Gop theo HANG chu khong theo gia tri: hai head train rieng nen thang do logit cua
+    # chung khong chung goc. Trung binh logit se de model nao "tu tin" hon lan at, ma do
+    # tu tin do khong co nghia gi khi so giua hai model. AUC von chi quan tam thu hang.
+    from scipy.stats import rankdata
+
+    keep_g = a["keep"] & b["keep"]
+    yk = a["y"][keep_g]
+    pa_, pb_ = a["oof"][keep_g], b["oof"][keep_g]
+
+    def theo_hang(p_: np.ndarray) -> np.ndarray:
+        out = np.empty_like(p_)
+        for j in range(p_.shape[1]):
+            out[:, j] = rankdata(p_[:, j]) / len(p_)
+        return out
+
+    gop = (theo_hang(pa_) + theo_hang(pb_)) / 2
+    auc_gop = macro_auc(yk, gop, LABELS).macro_auc
+    print("\n=== Gop hai model (trung binh theo hang) ===")
+    print(f"  dong bang {a['res'].macro_auc:.4f} | fine-tune {b['res'].macro_auc:.4f} "
+          f"| GOP {auc_gop:.4f}")
+
+    rng_g = np.random.default_rng(SEED)
+    dg = []
+    for _ in range(args.boot):
+        i = rng_g.integers(0, len(yk), len(yk))
+        try:
+            dg.append(macro_auc(yk[i], gop[i], LABELS).macro_auc
+                      - macro_auc(yk[i], pa_[i], LABELS).macro_auc)
+        except ValueError:
+            continue
+    dg = np.asarray(dg)
+    lo_g, hi_g = np.percentile(dg, (2.5, 97.5))
+    obs_g = auc_gop - a["res"].macro_auc
+    print(f"  GOP - dong bang : {obs_g:+.4f}   KTC 95% [{lo_g:+.4f}, {hi_g:+.4f}]")
+    ket_luan_gop = ("CHUA ket luan duoc" if lo_g < 0 < hi_g
+                    else ("GOP GIUP" if lo_g > 0 else "GOP HAI"))
+    print(f"  -> {ket_luan_gop}")
+
     print("\n=== Chenh lech co vuot duoc nhieu khong? ===")
     keep = a["keep"] & b["keep"]
     yt = a["y"][keep]
@@ -173,7 +216,10 @@ def main() -> None:
     ]).to_csv(ra, index=False)
     (REPORTS_DIR / "day9_finetune.json").write_text(json.dumps({
         "dong_bang": a["res"].macro_auc, "fine_tune": b["res"].macro_auc,
+        "gop": auc_gop,
         "chenh": obs, "ci95": [float(lo), float(hi)], "ket_luan": ket_luan,
+        "chenh_gop": obs_g, "ci95_gop": [float(lo_g), float(hi_g)],
+        "ket_luan_gop": ket_luan_gop,
         "n_gold": len(gold), "epochs": args.epochs, "boot": len(diffs),
     }, indent=2))
     print(f"\nDa ghi {ra.name} va day9_finetune.json")
