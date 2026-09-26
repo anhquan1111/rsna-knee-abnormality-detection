@@ -21,6 +21,35 @@ import torch.nn as nn
 from .config import LABELS
 
 
+class PerLabelAttnPool(nn.Module):
+    """Moi BENH co mot bo trong so chu y RIENG: (B, K, d) + mask -> (B, L, d).
+
+    Vi sao dang co kieu pooling nay: ba kieu tren deu gop ra MOT vector dung chung cho ca
+    12 benh, tuc la ngam gia dinh "lat nao quan trong voi benh nay thi cung quan trong voi
+    benh kia". Gia dinh do sai ve mat benh hoc. Dut day chang cheo truoc hien o vai lat
+    sagittal giua khop; tran dich khop hien o lat khac han. Bat chung dung chung mot bo
+    trong so thi lat quan trong cua benh hiem se bi lat quan trong cua benh pho bien lan at.
+
+    Ngay 5 da do duoc hau qua: voi backbone dong bang, ACL dat 0.341 - DUOI muc doan mo,
+    tuc la model xep hang NGUOC. Day la mot trong hai gia thuyet giai thich chuyen do
+    (gia thuyet con lai - backbone khong nhin thay day chang - da duoc ngay 9 xac nhan la
+    dung; hai gia thuyet khong loai tru nhau).
+    """
+
+    def __init__(self, dim: int, n_labels: int, hidden: int = 128):
+        super().__init__()
+        self.n_labels = n_labels
+        self.score = nn.Sequential(nn.Linear(dim, hidden), nn.Tanh(),
+                                   nn.Linear(hidden, n_labels))
+
+    def forward(self, x: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        w = self.score(x)                                    # (B, K, L)
+        w = w.masked_fill(~mask.unsqueeze(-1), float("-inf"))
+        w = w.softmax(dim=1)                                 # softmax TREN CAC LAT
+        # (B,K,L) x (B,K,d) -> (B,L,d): moi benh mot vector gop rieng
+        return torch.einsum("bkl,bkd->bld", w, x)
+
+
 class MaskedPool(nn.Module):
     """Gop (B, K, d) + mask (B, K) -> (B, d), bo qua cac vi tri pad."""
 
@@ -46,17 +75,35 @@ class MaskedPool(nn.Module):
 
 
 class StudyHead(nn.Module):
-    """LayerNorm -> pooling -> tuyen tinh 12 chieu. Tra ve LOGIT, khong sigmoid."""
+    """LayerNorm -> pooling -> tuyen tinh 12 chieu. Tra ve LOGIT, khong sigmoid.
+
+    `pooling="per_label_attn"` doi ca duong di: pooling tra ve (B, L, d) thay vi (B, d),
+    nen phan phan loai cung phai rieng theo benh - moi benh mot vector trong so, an theo
+    dung vector gop cua chinh no. Dung `nn.Linear(d, L)` o day se sai, vi no se tron
+    vector gop cua benh nay vao logit cua benh kia.
+    """
 
     def __init__(self, dim: int, pooling: str = "mean", dropout: float = 0.2):
         super().__init__()
+        self.pooling = pooling
         self.norm = nn.LayerNorm(dim)
-        self.pool = MaskedPool(pooling, dim)
         self.drop = nn.Dropout(dropout)
-        self.fc = nn.Linear(dim, len(LABELS))
+        if pooling == "per_label_attn":
+            self.pool = PerLabelAttnPool(dim, len(LABELS))
+            # Mot vector trong so cho MOI benh. Khoi tao giong nn.Linear de hai nhanh
+            # xuat phat cung dieu kien - neu khong thi so sanh giua chung khong sach.
+            self.w = nn.Parameter(torch.empty(len(LABELS), dim))
+            self.b = nn.Parameter(torch.zeros(len(LABELS)))
+            nn.init.kaiming_uniform_(self.w, a=5 ** 0.5)
+        else:
+            self.pool = MaskedPool(pooling, dim)
+            self.fc = nn.Linear(dim, len(LABELS))
 
     def forward(self, x: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-        return self.fc(self.drop(self.pool(self.norm(x), mask)))
+        pooled = self.drop(self.pool(self.norm(x), mask))
+        if self.pooling == "per_label_attn":
+            return (pooled * self.w).sum(-1) + self.b     # (B,L,d)*(L,d) -> (B,L)
+        return self.fc(pooled)
 
 
 def masked_bce(logits: torch.Tensor, targets: torch.Tensor,

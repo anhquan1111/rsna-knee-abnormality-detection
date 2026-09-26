@@ -140,7 +140,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--backbone", default="resnet18")
     ap.add_argument("--size", type=int, default=224)
-    ap.add_argument("--pooling", default=None, choices=["mean", "max", "attn"])
+    ap.add_argument("--pooling", default=None, choices=["mean", "max", "attn", "per_label_attn"])
     ap.add_argument("--epochs", type=int, default=80)
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--extract-missing", action="store_true",
@@ -174,7 +174,7 @@ def main() -> None:
     print(f"  {base}")
 
     print("\n=== 3. So sanh ba kieu pooling (cung split, cung seed, cung so epoch) ===")
-    poolings = [args.pooling] if args.pooling else ["mean", "max", "attn"]
+    poolings = [args.pooling] if args.pooling else ["mean", "max", "attn", "per_label_attn"]
     rows, all_curves, best_run = [], [], None
     for pooling in poolings:
         t0 = time.time()
