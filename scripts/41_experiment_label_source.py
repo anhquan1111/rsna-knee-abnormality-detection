@@ -113,8 +113,44 @@ def kiem_nguon_nhan(d: pd.DataFrame, gold: pd.DataFrame, ten: str) -> float:
     return auc
 
 
+def luu_cau_hinh_thang(name: str, pool: pd.DataFrame, feats: dict, dim: int,
+                       oof_auc: float, epochs: int, lr: float, device: str,
+                       pooling: str, backbone: str) -> Path:
+    """Train lai cau hinh thang tren TOAN BO pool cua no roi ghi checkpoint.
+
+    Ngay 8 da dinh dung loi nay mot lan: vong lap thi nghiem chi CHAM DIEM roi vut model
+    cua tung fold di, nen cau hinh tot nhat khong co file trong so nao - va bai nop se
+    chay bang head cu ma khong co dong log nao bao. Do mot dang, nop mot neo.
+    """
+    torch.manual_seed(SEED)
+    ds = FeatureDataset(feats, pool)
+    loader = DataLoader(ds, batch_size=4, shuffle=True, collate_fn=collate_features)
+    model = StudyHead(dim, pooling=pooling)
+    out = train_head(model, loader, loader, epochs=epochs, lr=lr, device=device, log_every=0)
+    model.load_state_dict(out["best"]["state"])
+
+    # Phep kiem I/O (luu -> nap lai -> so sanh) KHONG bat duoc head chua train, vi no chi
+    # kiem doc ghi. Do lech chuan du doan giua cac ca moi phan biet duoc "da hoc" voi
+    # "tra ve hang so". Ngay 5 da mat mot luot nop vi thieu chot nay.
+    _, logits, _ = predict(model, DataLoader(ds, batch_size=4, shuffle=False,
+                                             collate_fn=collate_features), device)
+    do_lech = float(logits.std(axis=0).mean())
+    print(f"  do lech chuan du doan giua cac ca: {do_lech:.4f}")
+    if do_lech < 0.01:
+        raise SystemExit("Head hinh nhu CHUA TRAIN: du doan gan nhu giong nhau cho moi ca.")
+
+    path = DATA_INTERIM / f"head_{backbone}_{pooling}_llm.pt"
+    torch.save({"state_dict": model.state_dict(), "dim": dim, "pooling": pooling,
+                "labels": L, "backbone": backbone,
+                "oof_macro_auc": round(float(oof_auc), 4),
+                "n_train_studies": len(pool), "epochs": epochs,
+                "config": name, "nguon_nhan": "llm_labels_v4_blend"}, path)
+    return path
+
+
 def run_config(name: str, pool: pd.DataFrame, gold: pd.DataFrame, feats: dict,
-               dim: int, epochs: int, lr: float, device: str) -> dict:
+               dim: int, epochs: int, lr: float, device: str,
+               pooling: str = "mean") -> dict:
     """Y het run_config cua ngay 8, ke ca buoc chan trung bao cao voi val."""
     folded = assign_folds(gold, n_splits=N_FOLDS, seed=SEED)
     assert_no_leakage(folded)
@@ -133,7 +169,7 @@ def run_config(name: str, pool: pd.DataFrame, gold: pd.DataFrame, feats: dict,
         if len(tr_ds) == 0 or len(va_ds) == 0:
             continue
         torch.manual_seed(SEED + fold)
-        model = StudyHead(dim, pooling="mean")
+        model = StudyHead(dim, pooling=pooling)
         tl = DataLoader(tr_ds, batch_size=4, shuffle=True, collate_fn=collate_features)
         vl = DataLoader(va_ds, batch_size=4, shuffle=False, collate_fn=collate_features)
         out = train_head(model, tl, vl, epochs=epochs, lr=lr, device=device, log_every=0)
@@ -171,6 +207,16 @@ def main() -> None:
     ap.add_argument("--epochs", type=int, default=80)
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--boot", type=int, default=300)
+    ap.add_argument("--pooling", default="mean",
+                    choices=["mean", "max", "attn", "per_label_attn"])
+    ap.add_argument("--configs", nargs="+", default=None,
+                    help="chi chay mot so cau hinh, vd: --configs A_gold_only D_llm")
+    ap.add_argument("--tag", default="day10a", help="tien to ten file ket qua")
+    ap.add_argument("--chi-luu-head", action="store_true",
+                    dest="chi_luu_head",
+                    help="bo qua 5-fold, chi train head tren toan bo pool va ghi checkpoint")
+    ap.add_argument("--oof-auc", type=float, default=None, dest="oof_auc",
+                    help="diem CV da do truoc do, de ghi vao checkpoint")
     args = ap.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -238,11 +284,37 @@ def main() -> None:
         ("E_llm_bit_theo_tu_dien", pd.concat([gold, e_llm_bit], ignore_index=True)),
     ]
 
+    if args.configs:
+        thieu = [c for c in args.configs if c not in dict(configs)]
+        if thieu:
+            raise SystemExit(f"Khong co cau hinh {thieu}. "
+                             f"Co: {[c for c, _ in configs]}")
+        configs = [(c, p_) for c, p_ in configs if c in args.configs]
+        print(f"\n  --configs: chi chay {[c for c, _ in configs]}")
+
+    # `--chi-luu-head` bo qua vong 5-fold va chi train lai head tren toan bo pool roi ghi
+    # checkpoint. Dung khi da biet diem CV roi (da chay truoc do) va chi con thieu file
+    # trong so de nop - vong CV mat 42 phut, buoc nay mat 5.
+    if args.chi_luu_head:
+        if len(configs) != 1:
+            raise SystemExit("--chi-luu-head can dung mot cau hinh: them --configs <ten>")
+        ten_ch, pool_ch = configs[0]
+        print(f"\n=== Chi train lai head de ghi checkpoint ({ten_ch}) ===")
+        print(f"  KHONG chay 5-fold. Diem CV lay tu --oof-auc = {args.oof_auc}")
+        if args.oof_auc is None:
+            raise SystemExit("Can --oof-auc <so> de ghi vao checkpoint "
+                             "(lay tu lan chay CV truoc).")
+        ck = luu_cau_hinh_thang(ten_ch, pool_ch, feats, dim, args.oof_auc,
+                                args.epochs, args.lr, device, args.pooling, args.backbone)
+        print(f"  ghi {ck.name} ({ck.stat().st_size/1024:.0f} KB)")
+        return
+
     print("\n=== Ket qua (danh gia LUON tren 58 ca nhan bac si) ===")
     rows, res = [], {}
     for name, pool in configs:
         t0 = time.time()
-        o = run_config(name, pool, gold, feats, dim, args.epochs, args.lr, device)
+        o = run_config(name, pool, gold, feats, dim, args.epochs, args.lr, device,
+                       pooling=args.pooling)
         res[name] = o
         rows.append(o["result"].to_row(config=name, n_train=o["n_train"],
                                        seconds=round(time.time() - t0, 1)))
@@ -251,7 +323,23 @@ def main() -> None:
               + (f"  [bo {o['n_dup']} dong trung bao cao]" if o["n_dup"] else ""))
 
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(rows).to_csv(REPORTS_DIR / "day10a_label_source.csv", index=False)
+    pd.DataFrame(rows).to_csv(REPORTS_DIR / f"{args.tag}_label_source.csv", index=False)
+
+    # Phan so sanh duoi day can du ca bon cau hinh. Khi chay voi --configs (vd de thu
+    # mot kieu pooling khac tren rieng D_llm) thi bo qua, chi ghi ket qua tho.
+    du_bon = all(k in res for k in
+                 ("A_gold_only", "B_tu_dien", "D_llm", "E_llm_bit_theo_tu_dien"))
+    if not du_bon:
+        np.savez_compressed(REPORTS_DIR / f"{args.tag}_oof.npz",
+                            y=next(iter(res.values()))["y"],
+                            **{k: v["oof"] for k, v in res.items()})
+        (REPORTS_DIR / f"{args.tag}_label_source.json").write_text(json.dumps({
+            "pooling": args.pooling, "epochs": args.epochs,
+            **{k: v["result"].macro_auc for k, v in res.items()},
+        }, indent=2))
+        print(f"\n  chi chay {list(res)} -> bo qua phan tach nguyen nhan.")
+        print(f"  da ghi {args.tag}_oof.npz va {args.tag}_label_source.json")
+        return
 
     a, b, d = res["A_gold_only"], res["B_tu_dien"], res["D_llm"]
     print("\n=== Chenh lech tung nhan ===")
@@ -292,12 +380,12 @@ def main() -> None:
 
     # Luu du doan out-of-fold de cac buoc sau (error analysis ngay 10, gop model) khong
     # phai train lai 20 phut moi lan muon hoi mot cau moi.
-    np.savez_compressed(REPORTS_DIR / "day10a_oof.npz",
+    np.savez_compressed(REPORTS_DIR / f"{args.tag}_oof.npz",
                         y=b["y"], **{k: v["oof"] for k, v in res.items()})
-    print(f"\n  da luu du doan out-of-fold -> day10a_oof.npz "
+    print(f"\n  da luu du doan out-of-fold -> {args.tag}_oof.npz "
           f"({', '.join(res)})")
 
-    (REPORTS_DIR / "day10a_label_source.json").write_text(json.dumps({
+    (REPORTS_DIR / f"{args.tag}_label_source.json").write_text(json.dumps({
         "A_gold_only": a["result"].macro_auc,
         "B_tu_dien": b["result"].macro_auc,
         "D_llm": d["result"].macro_auc,
@@ -307,7 +395,17 @@ def main() -> None:
         "tach_nguyen_nhan": tom,
         "epochs": args.epochs, "boot": n,
     }, indent=2))
-    print("\nDa ghi day10a_label_source.csv va .json")
+    print(f"\nDa ghi {args.tag}_label_source.csv va .json")
+
+    print("\n=== Ghi checkpoint cho cau hinh thang ===")
+    ten_thang = max(res, key=lambda k: res[k]["result"].macro_auc)
+    pool_thang = dict(configs)[ten_thang]
+    auc_thang = res[ten_thang]["result"].macro_auc
+    print(f"  thang: {ten_thang} (macro AUC {auc_thang:.4f}, "
+          f"{len(pool_thang):,} ca train, pooling {args.pooling})")
+    ck = luu_cau_hinh_thang(ten_thang, pool_thang, feats, dim, auc_thang,
+                            args.epochs, args.lr, device, args.pooling, args.backbone)
+    print(f"  ghi {ck.name} ({ck.stat().st_size/1024:.0f} KB)")
 
 
 if __name__ == "__main__":

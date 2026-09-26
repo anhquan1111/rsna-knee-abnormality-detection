@@ -207,18 +207,46 @@ class MaskedPool(nn.Module):
         return (x * w).sum(1)
 
 
+class PerLabelAttnPool(nn.Module):
+    """Moi benh mot bo trong so chu y rieng: (B,K,d) -> (B,L,d). Giong src/rsna_knee/head.py."""
+
+    def __init__(self, dim: int, n_labels: int, hidden: int = 128):
+        super().__init__()
+        self.score = nn.Sequential(nn.Linear(dim, hidden), nn.Tanh(),
+                                   nn.Linear(hidden, n_labels))
+
+    def forward(self, x, mask):
+        w = self.score(x).masked_fill(~mask.unsqueeze(-1), float("-inf")).softmax(dim=1)
+        return torch.einsum("bkl,bkd->bld", w, x)
+
+
 class StudyHead(nn.Module):
-    """Phai giong HET src/rsna_knee/head.py, neu khong `load_state_dict` se bao thieu khoa."""
+    """Phai giong HET src/rsna_knee/head.py, neu khong `load_state_dict` se bao thieu khoa.
+
+    Day la ban SAO CHEP co chu y: notebook nop bai khong import duoc package cua repo.
+    Moi lan doi kien truc o src/rsna_knee/head.py deu phai chep sang day - va neu quen,
+    `load_state_dict` se bao thieu khoa NGAY, chu khong am tham. Do la ly do KHONG dung
+    `strict=False` o duoi.
+    """
 
     def __init__(self, dim: int, pooling: str = "mean", dropout: float = 0.2):
         super().__init__()
+        self.pooling = pooling
         self.norm = nn.LayerNorm(dim)
-        self.pool = MaskedPool(pooling, dim)
         self.drop = nn.Dropout(dropout)
-        self.fc = nn.Linear(dim, len(LABELS))
+        if pooling == "per_label_attn":
+            self.pool = PerLabelAttnPool(dim, len(LABELS))
+            self.w = nn.Parameter(torch.empty(len(LABELS), dim))
+            self.b = nn.Parameter(torch.zeros(len(LABELS)))
+        else:
+            self.pool = MaskedPool(pooling, dim)
+            self.fc = nn.Linear(dim, len(LABELS))
 
     def forward(self, x, mask):
-        return self.fc(self.drop(self.pool(self.norm(x), mask)))
+        pooled = self.drop(self.pool(self.norm(x), mask))
+        if self.pooling == "per_label_attn":
+            return (pooled * self.w).sum(-1) + self.b
+        return self.fc(pooled)
 
 
 @torch.no_grad()
