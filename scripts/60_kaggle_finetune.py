@@ -37,8 +37,10 @@ tieu them 3 tieng GPU cho giai doan 2.
 
 CHUAN BI
 ========
-1. Upload `data/interim/weak_labels.csv` len Kaggle Dataset `rsna-knee-my-assets`
-   (chay `python scripts/49_pack_submission_assets.py` o may, no da gop san vao zip).
+1. Chay `python scripts/49_pack_submission_assets.py` o may - no gop san nguon nhan
+   vao data/submit_assets.zip - roi upload zip do len Dataset `rsna-knee-my-assets`.
+   Script nay UU TIEN nhan LLM (llm_labels_v4_blend.csv) vi ngay 10 do duoc no hon
+   han nhan tu dien: 0.7467 so voi 0.6923 khi dung train head.
 2. Notebook: Add Input = competition + dataset do. Settings: GPU On, Internet On.
 3. Dan file nay vao mot cell -> Run All.
 4. Tai ve 3 file tu /kaggle/working: features_finetuned_*.npz, backbone_finetuned.pt,
@@ -48,7 +50,7 @@ CHUAN BI
 from __future__ import annotations
 
 # ============================== CONFIG ==============================
-STAGE = "gold"             # "gold" = re, "all" = day du (xem tren)
+STAGE = "all"              # "gold" = re, "all" = day du (xem tren)
 PLANES = ["Sagittal", "Axial", "Coronal"]
 SIZE = 224
 N_TRAIN_STUDIES = 1000     # so ca ngoai gold dung de fine-tune (gioi han boi dia 20 GB)
@@ -107,16 +109,28 @@ def find_root() -> Path:
                      f"Co: {sorted(p.name for p in base.glob('*'))[:20]}")
 
 
-def find_weak_labels() -> Path:
-    """Tim weak_labels.csv trong cac dataset da Add Input (bo qua `competitions`)."""
+def find_weak_labels() -> tuple[Path, str]:
+    """Tim nguon nhan may trong cac dataset da Add Input (bo qua `competitions`).
+
+    UU TIEN nhan LLM. Ngay 10 do duoc no hon han nhan tu dien khi dung de train head:
+    0.7467 so voi 0.6923 (KTC cua chenh lech khong chua 0, va tai lap duoc o ca hai kieu
+    pooling). Fine-tune backbone bang nguon nhan tot hon thi hop ly hon han - vong truoc
+    dung nhan tu dien chi vi luc do chua do.
+
+    Nhan LLM la nhan MEM (211 muc tu 0.005 den 1.0) chu khong phai 0/1. `masked_bce`
+    dung duoc thang: BCE nhan target trong [0,1]. Nhan 0.25 cho gradient nho hon nhan
+    0.0 - dung la thu ta muon khi nguon nhan khong chac chan.
+    """
     base = Path("/kaggle/input")
-    for g in base.iterdir():
-        if g.is_dir() and g.name != "competitions":
-            for hit in g.rglob("weak_labels.csv"):
-                return hit
+    goc = [g for g in base.iterdir() if g.is_dir() and g.name != "competitions"]
+    for mau, ten in (("llm_labels_v4_blend.csv", "llm"), ("weak_labels.csv", "tu_dien")):
+        for g in goc:
+            for hit in g.rglob(mau):
+                return hit, ten
     raise SystemExit(
-        "Khong thay weak_labels.csv trong /kaggle/input.\n"
-        "  O may: python scripts/49_pack_submission_assets.py (da gop file nay vao zip)\n"
+        "Khong thay nguon nhan nao trong /kaggle/input "
+        "(can llm_labels_v4_blend.csv hoac weak_labels.csv).\n"
+        "  O may: python scripts/49_pack_submission_assets.py (da gop san vao zip)\n"
         "  roi upload lai data/submit_assets.zip len dataset rsna-knee-my-assets."
     )
 
@@ -416,7 +430,12 @@ def main() -> None:
     train = pd.read_csv(root / "train.csv", dtype={"StudyInstanceUID": str})
     series = pd.read_csv(root / "train_series.csv",
                          dtype={"StudyInstanceUID": str, "SeriesInstanceUID": str})
-    weak = pd.read_csv(find_weak_labels(), dtype={"StudyInstanceUID": str})
+    weak_path, nguon_nhan = find_weak_labels()
+    weak = pd.read_csv(weak_path, dtype={"StudyInstanceUID": str})
+    wv = weak[LABELS].to_numpy(dtype=float)
+    print(f"nguon nhan may: {nguon_nhan} ({weak_path.name}) | "
+          f"do phu {np.isfinite(wv).mean():.1%} | "
+          f"{len(np.unique(wv[np.isfinite(wv)]))} muc gia tri")
 
     co_nhan = train[LABELS].notna().any(axis=1)
     gold_ids = set(train.loc[co_nhan, "StudyInstanceUID"])
@@ -528,6 +547,7 @@ def main() -> None:
         p.requires_grad_(False)
     torch.save({"state_dict": backbone.state_dict(), "arch": "dinov2_vits14",
                 "unfreeze_blocks": UNFREEZE_BLOCKS, "val_auc_weak": tot_nhat,
+                "nguon_nhan": nguon_nhan,
                 "n_train_studies": len(tr_uid), "epochs": EPOCHS, "lich_su": lich_su},
                OUT / "backbone_finetuned.pt")
     print(f"  ghi backbone_finetuned.pt | val AUC tot nhat (nhan may) {tot_nhat:.4f}")
@@ -558,7 +578,7 @@ def main() -> None:
 
     npz = OUT / f"features_finetuned_{STAGE}.npz"
     np.savez_compressed(npz, **feats)
-    tom_tat = {"stage": STAGE, "n_study": len(feats),
+    tom_tat = {"stage": STAGE, "nguon_nhan": nguon_nhan, "n_study": len(feats),
                "n_gold": len(set(feats) & gold_ids),
                "n_slice": int(sum(v.shape[0] for v in feats.values())),
                "n_hong": len(hong), "hong": hong[:20],

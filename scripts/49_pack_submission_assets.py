@@ -81,13 +81,21 @@ def main() -> None:
 
     # 3b. Nhan may - notebook fine-tune ngay 9 (scripts/60) can file nay tren Kaggle.
     # Khong lien quan den viec nop bai, nhung di chung mot dataset thi do mot vong upload.
-    weak = DATA_INTERIM / "weak_labels.csv"
-    if weak.exists():
-        shutil.copy2(weak, OUT / weak.name)
-        print(f"  nhan may -> {weak.name} ({weak.stat().st_size/1024:.0f} KB) "
-              f"[cho scripts/60_kaggle_finetune.py]")
-    else:
-        print("  (chua co weak_labels.csv - ngay 9 se can, chay scripts/20 truoc)")
+    # Uu tien nhan LLM: ngay 10 do duoc no hon han nhan tu dien khi train head
+    # (0.7467 vs 0.6923). scripts/60 tu chon nhan LLM neu tim thay.
+    nguon = [
+        (REPO_ROOT / "data" / "external" / "rsna-knee-llm-report-labels"
+         / "llm_labels_v4_blend.csv", "llm"),
+        (DATA_INTERIM / "weak_labels.csv", "tu dien"),
+    ]
+    co_nhan = False
+    for f, ten in nguon:
+        if f.exists():
+            shutil.copy2(f, OUT / f.name)
+            print(f"  nhan may ({ten}) -> {f.name} ({f.stat().st_size/1024:.0f} KB)")
+            co_nhan = True
+    if not co_nhan:
+        print("  (chua co nguon nhan may nao - ngay 9 se can)")
 
     tong = sum(f.stat().st_size for f in OUT.rglob("*") if f.is_file())
     print(f"\nThu muc: {OUT}  ({tong/1024**2:.0f} MB)")
