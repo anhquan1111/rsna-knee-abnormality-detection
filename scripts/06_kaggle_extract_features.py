@@ -2,9 +2,9 @@
 
 Trich dac trung DINOv2 cho nhieu mat phang trong MOT lan chay. Moi mat phang ghi mot
 file rieng:
-    /kaggle/working/features_dinov2_<plane>.npz   dac trung tung lat, moi study mot mang
-    /kaggle/working/dicom_headers_<plane>.csv     metadata may chup
-    /kaggle/working/extract_summary.json          tom tat tat ca mat phang
+    /kaggle/working/features_<backbone>_<size>_<plane>.npz   dac trung tung lat
+    /kaggle/working/dicom_headers_<backbone>_<size>_<plane>.csv  metadata may chup
+    /kaggle/working/extract_summary_<backbone>_<size>.json       tom tat
 
 Vi sao chay o day: tai anh qua Kaggle API bi gioi han toc do (HTTP 429). Tren Kaggle,
 dataset mount san o /kaggle/input nen khong ton request API nao, lai co GPU T4 mien phi.
@@ -39,9 +39,13 @@ from __future__ import annotations
 # ============================== CONFIG ==============================
 # Chay nhieu mat phang trong MOT lan, moi cai ghi mot file rieng. Mat phang nao da co
 # file day du thi bo qua, nen chay lai khong lam lai tu dau.
-PLANES = ["Coronal", "Axial"]   # da co Sagittal roi; dat ["Sagittal","Coronal","Axial"] neu lam lai tu dau
-SIZE = 224                # boi cua 14 cho DINOv2 patch-14
-BATCH = 64                # so lat moi lo dua vao backbone
+PLANES = ["Sagittal", "Coronal", "Axial"]
+BACKBONE = "dinov2_vitb14"   # do o scripts/62 tren T4: B@336 chi dat hon S@224 ~40 phut
+SIZE = 336                   # boi cua 14. 336 -> 24x24 = 576 patch moi lat (224 -> 256)
+BATCH = 32                   # B@336 nang hon S@224, giam batch cho chac VRAM (T4 co 16 GB)
+# Ten file mang theo backbone + size. Tron dac trung cua hai backbone vao mot file la
+# loi khong nhin thay duoc; dat ten ro rang la cach re nhat de no khong xay ra.
+TEN = f"{BACKBONE}_{SIZE}"
 ONLY_LABELLED = False     # True = chi 58 study co nhan nguoi gan (chay ~2 phut de thu)
 MAX_STUDIES = 0           # 0 = khong gioi han. CHAY THU LAN DAU: dat 60 (~3 phut)
                           # de chac chan moi thu chay duoc, roi doi ve 0 va Run All lai.
@@ -170,7 +174,7 @@ def nen_thu_lai(exc: BaseException) -> bool:
 
 
 def build_backbone(device: str):
-    """Tai DINOv2-S/14 va dong bang, co thu lai khi GitHub tro chung.
+    """Tai backbone DINOv2 (theo bien BACKBONE) va dong bang, thu lai khi GitHub tro chung.
 
     `torch.hub.load` keo ma nguon tu GitHub roi trong so tu dl.fbaipublicfiles.com. Hai
     dich vu nay thinh thoang tra 5xx - do la su co TAM THOI ben ho, khong phai loi cau
@@ -183,7 +187,7 @@ def build_backbone(device: str):
 
     for attempt in range(6):
         try:
-            model = torch.hub.load("facebookresearch/dinov2", "dinov2_vits14")
+            model = torch.hub.load("facebookresearch/dinov2", BACKBONE)
             break
         except Exception as exc:
             last = exc
@@ -241,13 +245,13 @@ def ghi_ket_qua(feats: dict, headers: list[dict], plane: str) -> None:
     Goi ca o checkpoint lan o cuoi, nen phai khu trung header: chay lai nhieu lan se doc
     lai file cu roi noi them, de sinh ra dong lap.
     """
-    np.savez_compressed(OUT / f"features_dinov2_{plane.lower()}.npz", **feats)
+    np.savez_compressed(OUT / f"features_{TEN}_{plane.lower()}.npz", **feats)
     if headers:
         hdf = pd.DataFrame(headers)
         keys = [c for c in ("SeriesInstanceUID", "InstanceNumber") if c in hdf.columns]
         if keys:
             hdf = hdf.drop_duplicates(subset=keys, keep="last")
-        hdf.to_csv(OUT / f"dicom_headers_{plane.lower()}.csv", index=False)
+        hdf.to_csv(OUT / f"dicom_headers_{TEN}_{plane.lower()}.csv", index=False)
 
 
 # ---------------------------------------------------------------- chay
@@ -274,7 +278,7 @@ def chay_mot_mat_phang(plane: str, series: pd.DataFrame, labelled: set, device: 
     #   2. Phien MOI (da tat may, hoac ban Save Version): /kaggle/working TRONG TRON.
     #      Luc do phai lay ban da tai ve, upload nguoc len lam Dataset roi Add Input.
     #      Khong co buoc nay thi moi lan mo phien moi la chay lai tu dau.
-    ten_npz = f"features_dinov2_{plane.lower()}.npz"
+    ten_npz = f"features_{TEN}_{plane.lower()}.npz"
     npz_path = OUT / ten_npz
 
     nguon = None
@@ -346,7 +350,7 @@ def chay_mot_mat_phang(plane: str, series: pd.DataFrame, labelled: set, device: 
     ghi_ket_qua(feats, headers, plane)
 
     n_slices = sum(f.shape[0] for f in feats.values())
-    size_mb = (OUT / f"features_dinov2_{plane.lower()}.npz").stat().st_size / 1024**2
+    size_mb = (OUT / f"features_{TEN}_{plane.lower()}.npz").stat().st_size / 1024**2
     summary = {
         "plane": plane, "size": SIZE, "n_studies": len(feats),
         "n_gold": len(set(feats) & labelled), "n_slices": n_slices,
@@ -354,7 +358,7 @@ def chay_mot_mat_phang(plane: str, series: pd.DataFrame, labelled: set, device: 
         "npz_mb": round(size_mb, 1), "minutes": round((time.time() - t0) / 60, 1),
         "failed": failed[:50], "n_failed": len(failed),
     }
-    (OUT / "extract_summary.json").write_text(json.dumps(summary, indent=2))
+    (OUT / f"extract_summary_{TEN}.json").write_text(json.dumps(summary, indent=2))
 
     print(f"\n=== XONG {plane} ===")
     print(json.dumps({k: v for k, v in summary.items() if k != "failed"}, indent=2))
@@ -390,7 +394,7 @@ def main() -> None:
         except Exception as exc:
             print(f"\n!!! MAT PHANG {plane} LOI: {type(exc).__name__}: {exc}", flush=True)
             tom_tat[plane] = {"loi": f"{type(exc).__name__}: {exc}"}
-        (OUT / "extract_summary.json").write_text(json.dumps(tom_tat, indent=2))
+        (OUT / f"extract_summary_{TEN}.json").write_text(json.dumps(tom_tat, indent=2))
 
     gach = "=" * 70
     print(f"\n{gach}\n=== TAT CA XONG ===\n{gach}")
@@ -401,7 +405,7 @@ def main() -> None:
             print(f"  {plane:<10} {t['n_studies']:,} study | {t['n_gold']}/58 gold | "
                   f"{t['n_slices']:,} lat | {t['npz_mb']:,.0f} MB | {t['minutes']:.0f} phut")
     print("\nTai ve tu tab Output: features_dinov2_*.npz, dicom_headers_*.csv, "
-          "extract_summary.json")
+          f"extract_summary_{TEN}.json")
 
 
 if __name__ == "__main__":
