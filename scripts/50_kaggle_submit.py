@@ -95,10 +95,17 @@ def find_assets() -> tuple[Path, Path, Path]:
     head = tim("head_*.pt")
     # Neu dataset co nhieu head, rglob tra ve cai nao la ngau nhien -> co the nop bang
     # head cu cua vong truoc ma khong co dau hieu gi. Tha bao loi con hon nop nham.
+    # Bai nop la BO GOP 5 head, nen "nhieu hon mot head" khong con la loi. Nhung van phai
+    # kiem: thieu head thi diem tut ma khong bao gi, thua head la con sot cua lan goi truoc.
     moi_head = [h for g in goc for h in g.rglob("head_*.pt")]
-    if len(moi_head) > 1:
-        raise SystemExit(f"Co {len(moi_head)} head trong asset: "
-                         f"{[h.name for h in moi_head]}. Xoa bot, chi de lai mot cai.")
+    mong_doi = {"head_mp_sagittal.pt", "head_mp_axial.pt", "head_mp_coronal.pt",
+                "head_chung_s224.pt", "head_chung_b336.pt"}
+    co = {h.name for h in moi_head}
+    if co != mong_doi:
+        raise SystemExit(
+            f"Danh sach head khong dung.\n  thieu: {sorted(mong_doi - co)}\n"
+            f"  thua : {sorted(co - mong_doi)}\n"
+            "  Chay lai scripts/49_pack_submission_assets.py o may roi upload lai dataset.")
 
     thieu = [n for n, v in (("ma nguon DINOv2 (hubconf.py)", repo),
                             ("dinov2_vits14_pretrain.pth", w),
@@ -270,24 +277,43 @@ def main() -> None:
     print(f"device {device} | du lieu {root}")
     print(f"assets: repo={repo.name} weights={w_path.name} head={head_path.name}")
 
-    # --- backbone, nap OFFLINE tu dataset ---
-    backbone = torch.hub.load(str(repo), "dinov2_vits14", source="local", pretrained=False)
-    backbone.load_state_dict(torch.load(str(w_path), map_location="cpu"))
-    backbone.eval().to(device)
-    for p in backbone.parameters():
-        p.requires_grad_(False)
+    # --- hai backbone, nap OFFLINE tu dataset ---
+    backbones = {}
+    for arch, size in (("dinov2_vits14", 224), ("dinov2_vitb14", 336)):
+        w = w_path.parent / f"{arch}_pretrain.pth"
+        if not w.exists():
+            raise SystemExit(f"Thieu trong so {w.name}. Chay lai scripts/49 o may.")
+        m = torch.hub.load(str(repo), arch, source="local", pretrained=False)
+        m.load_state_dict(torch.load(str(w), map_location="cpu"))
+        m.eval().to(device)
+        for p in m.parameters():
+            p.requires_grad_(False)
+        backbones[arch] = m
+        print(f"backbone: {arch} @ {size}")
 
-    # --- head da train ---
-    blob = torch.load(str(head_path), map_location="cpu", weights_only=True)
-    if blob.get("labels") and blob["labels"] != LABELS:
-        raise SystemExit(f"Thu tu nhan trong checkpoint KHAC config:\n"
-                         f"  checkpoint: {blob['labels']}\n  o day     : {LABELS}\n"
-                         "  Nop tiep se ra submission sai toan bo ma khong bao loi.")
-    head = StudyHead(blob["dim"], pooling=blob.get("pooling", POOLING))
-    head.load_state_dict(blob["state_dict"])
-    head.eval().to(device)
-    print(f"head: {blob['dim']}d, pooling {blob.get('pooling')}, "
-          f"OOF macro AUC luc train {blob.get('oof_macro_auc')}")
+    # --- nam head cua bo gop ---
+    heads = []
+    for hp in sorted(head_path.parent.glob("head_*.pt")):
+        blob = torch.load(str(hp), map_location="cpu", weights_only=True)
+        if blob.get("labels") and blob["labels"] != LABELS:
+            raise SystemExit(f"{hp.name}: thu tu nhan KHAC config.\n"
+                             f"  checkpoint: {blob['labels']}\n  o day     : {LABELS}\n"
+                             "  Nop tiep se ra submission sai toan bo ma khong bao loi.")
+        h = StudyHead(blob["dim"], pooling=blob.get("pooling", POOLING))
+        h.load_state_dict(blob["state_dict"])
+        h.eval().to(device)
+        heads.append({"ten": blob.get("ten", hp.stem), "head": h,
+                      "backbone": blob["backbone"], "size": blob["size"],
+                      "plane": blob["plane"], "cv": blob.get("cv_macro_auc")})
+        print(f"head: {heads[-1]['ten']:<14} {blob['backbone']} @{blob['size']} | "
+              f"{blob['plane']:<8} | CV {blob.get('cv_macro_auc')}")
+    if len(heads) != 5:
+        raise SystemExit(f"Can du 5 head, tim thay {len(heads)}: "
+                         f"{[h['ten'] for h in heads]}")
+
+    # Cac kich thuoc anh can trich, suy tu chinh cac head - khong viet cung.
+    can_size = sorted({(h["backbone"], h["size"]) for h in heads})
+    print(f"se trich dac trung o {len(can_size)} cau hinh: {can_size}")
 
     # --- chon 1 series moi study test, giong luc train ---
     # dtype=str cho cot UID: pandas doc UID toan chu so thanh so nguyen, sau do
@@ -305,38 +331,54 @@ def main() -> None:
           + (f" | {len(thieu)} ca khong co mat phang nao trong {PLANES}" if thieu else ""))
 
     # --- suy luan ---
-    rows, loi, t_io, t_gpu, n_lat = [], [], 0.0, 0.0, 0
+    # Thu tu vong lap quan trong: doc DICOM MOT LAN cho moi series roi dung lai cho ca hai
+    # kich thuoc. Doc anh chiem 86% thoi gian (do duoc o lan nop truoc), nen doc hai lan la
+    # gap doi ca bai nop chu khong phai gap doi phan model.
+    #
+    # Luu LOGIT cua tung head, KHONG gop ngay: gop theo hang can biet thu hang tren TOAN BO
+    # tap test, ma thu hang do chi biet duoc sau khi chay het.
+    logit_tung_head = {h["ten"]: {} for h in heads}
+    loi, t_io, t_gpu, n_lat = [], 0.0, 0.0, 0
+
     for i, uid in enumerate(uids):
-        try:
-            phan = []
-            for _, r in theo_study[uid].iterrows():
-                sdir = root / "test_series" / uid / r["SeriesInstanceUID"]
-                try:
+        # dac trung theo (backbone, size, mat phang)
+        dt: dict[tuple, dict[str, torch.Tensor]] = {k: {} for k in can_size}
+        for _, r in theo_study[uid].iterrows():
+            sdir = root / "test_series" / uid / r["SeriesInstanceUID"]
+            plane = str(r["Anatomical_Plane"]).lower()
+            try:
+                t0 = time.time()
+                vol = normalize_series(load_series(sdir))      # doc MOT lan
+                t_io += time.time() - t0
+                for (arch, size) in can_size:
                     t0 = time.time()
-                    arr = resize_volume(normalize_series(load_series(sdir)), SIZE)
+                    arr = resize_volume(vol, size)
                     t_io += time.time() - t0
                     t0 = time.time()
-                    phan.append(encode(arr, backbone, device))
+                    dt[(arch, size)][plane] = encode(arr, backbones[arch], device)
                     t_gpu += time.time() - t0
-                except Exception as exc:
-                    # Hong MOT mat phang khong duoc lam hong ca study: hai mat phang kia
-                    # van du de du doan. Chi khi ca ba deu hong moi rot xuong 0.5.
-                    loi.append((uid, r["SeriesInstanceUID"], f"{type(exc).__name__}: {exc}"))
-            if not phan:
-                raise RuntimeError("khong doc duoc mat phang nao")
+            except Exception as exc:
+                # Hong MOT mat phang khong duoc lam hong ca study: cac head cua mat phang
+                # khac va cac head "all" van chay duoc voi phan con lai.
+                loi.append((uid, r["SeriesInstanceUID"], f"{type(exc).__name__}: {exc}"))
 
+        for h in heads:
+            kho = dt.get((h["backbone"], h["size"]), {})
+            if h["plane"] == "all":
+                phan = [kho[p] for p in ("sagittal", "axial", "coronal") if p in kho]
+            else:
+                phan = [kho[h["plane"]]] if h["plane"] in kho else []
+            if not phan:
+                continue                       # head nay khong chay duoc cho ca nay
             feat = torch.cat(phan).unsqueeze(0)
-            n_lat += feat.shape[1]
+            if h["ten"] == "chung_s224":
+                n_lat += feat.shape[1]
             mask = torch.ones(1, feat.shape[1], dtype=torch.bool)
             t0 = time.time()
             with torch.no_grad():
-                prob = torch.sigmoid(head(feat.to(device), mask.to(device)))[0].cpu().numpy()
+                z = h["head"](feat.to(device), mask.to(device))[0].cpu().numpy()
             t_gpu += time.time() - t0
-            rows.append([uid, *prob.astype(float)])
-        except Exception as exc:
-            # Ca nao loi thi dien 0.5 - KHONG duoc de mot ca lam vo ca bai nop.
-            loi.append((uid, "-", f"{type(exc).__name__}: {exc}"))
-            rows.append([uid, *([0.5] * len(LABELS))])
+            logit_tung_head[h["ten"]][uid] = z.astype(np.float64)
 
         if (i + 1) % 100 == 0:
             el = time.time() - t_start
@@ -344,7 +386,40 @@ def main() -> None:
                   f"con ~{el/(i+1)*(len(uids)-i-1)/60:.1f} phut | "
                   f"{n_lat/(i+1):.0f} lat/study | loi {len(loi)}", flush=True)
 
-    sub = pd.DataFrame(rows, columns=["StudyInstanceUID", *LABELS])
+    # --- gop THEO HANG ---
+    # Nam head train rieng nen thang do logit khong chung goc; trung binh logit se de head
+    # nao "tu tin" hon lan at, ma do tu tin do khong so duoc giua hai model khac nhau.
+    # AUC von chi quan tam thu hang.
+    n = len(uids)
+    tong = np.zeros((n, len(LABELS)))
+    dem = np.zeros((n, 1))
+    for ten, m in logit_tung_head.items():
+        co = [k for k, u in enumerate(uids) if u in m]
+        if len(co) < 2:
+            print(f"  head {ten}: chi chay duoc {len(co)} ca -> bo qua")
+            continue
+        z = np.stack([m[uids[k]] for k in co])
+        hang = np.empty_like(z)
+        for j in range(z.shape[1]):
+            # rankdata tu viet de khong phu thuoc scipy tren Kaggle
+            thu_tu = np.argsort(np.argsort(z[:, j]))
+            hang[:, j] = (thu_tu + 1) / len(co)
+        tong[co] += hang
+        dem[co] += 1
+        print(f"  head {ten:<14} chay duoc {len(co):,}/{n:,} ca")
+
+    prob = np.full((n, len(LABELS)), 0.5)
+    co_du = (dem[:, 0] > 0)
+    prob[co_du] = tong[co_du] / dem[co_du]
+    thieu_head = int((~co_du).sum())
+    if thieu_head:
+        print(f"  {thieu_head} ca khong head nao chay duoc -> dien 0.5")
+    print(f"  trung binh {float(dem.mean()):.2f} head moi ca")
+
+    sub = pd.DataFrame(np.column_stack([np.array(uids, dtype=object), prob]),
+                       columns=["StudyInstanceUID", *LABELS])
+    for c in LABELS:
+        sub[c] = sub[c].astype(float)
 
     # --- kiem truoc khi ghi: nhung loi nay neu lot ra se mat diem ma khong biet vi sao ---
     assert list(sub.columns) == ["StudyInstanceUID", *LABELS], "sai thu tu cot"

@@ -52,32 +52,34 @@ def main() -> None:
                     ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc"))
     print(f"  ma nguon DINOv2 -> {repo_dst.name}/")
 
-    # 2. Trong so backbone
-    w_src = HUB / "checkpoints" / "dinov2_vits14_pretrain.pth"
-    if not w_src.exists():
-        raise SystemExit(f"Khong thay trong so o {w_src}")
-    shutil.copy2(w_src, OUT / w_src.name)
-    print(f"  trong so backbone -> {w_src.name} ({w_src.stat().st_size/1024**2:.0f} MB)")
+    # 2. Trong so CA HAI backbone - bo gop cuoi dung ca ViT-S/14 va ViT-B/14.
+    for ten in ("dinov2_vits14_pretrain.pth", "dinov2_vitb14_pretrain.pth"):
+        w_src = HUB / "checkpoints" / ten
+        if not w_src.exists():
+            raise SystemExit(
+                f"Khong thay trong so o {w_src}.\n"
+                f'  Chay mot lan o may: python -c "import torch; '
+                f"torch.hub.load('facebookresearch/dinov2', '{ten.split('_pretrain')[0]}')\"")
+        shutil.copy2(w_src, OUT / ten)
+        print(f"  trong so backbone -> {ten} ({w_src.stat().st_size/1024**2:.0f} MB)")
 
-    # 3. Checkpoint head da train
-    heads = sorted(DATA_INTERIM.glob("head_*.pt"))
-    if not heads:
-        raise SystemExit("Khong thay head_*.pt trong data/interim.\n"
-                         "  Chay scripts/31_train_frozen_head.py truoc.")
-    # CHI dong goi MOT head. Truoc day goi het, va notebook nop bai lay file dau tien
-    # rglob tra ve - thu tu do khong xac dinh, nen co the nop bang head cu cua vong truoc
-    # ma khong co dau hieu nao bao. Chon theo OOF AUC de lua chon la tuong minh.
-    xep = sorted(((torch.load(h, map_location="cpu", weights_only=True), h) for h in heads),
-                 key=lambda t: t[0].get("oof_macro_auc") or -1, reverse=True)
-    for blob, h in xep:
-        print(f"  co: {h.name:<28} pooling {str(blob.get('pooling')):<5} "
-              f"OOF AUC {blob.get('oof_macro_auc')}")
-    blob, best = xep[0]
-    for cu in OUT.glob("head_*.pt"):      # don head cua lan dong goi truoc
+    # 3. Nam head cua bo gop. Khac han lan truoc: truoc day chon DUNG MOT head tot nhat,
+    # nay goi CA NAM vi bai nop la bo gop. Chot chan "nhieu hon mot head" trong scripts/50
+    # vi vay cung phai doi theo - no chuyen sang kiem dung danh sach ten mong doi.
+    ens = DATA_INTERIM / "ensemble"
+    heads = sorted(ens.glob("head_*.pt"))
+    if len(heads) != 5:
+        raise SystemExit(f"Can du 5 head trong {ens}, dang co {len(heads)}.\n"
+                         "  Chay scripts/45_train_final_ensemble.py truoc.")
+    for cu in OUT.glob("head_*.pt"):      # don goi cua lan truoc
         cu.unlink()
-    shutil.copy2(best, OUT / best.name)
-    print(f"  head -> {best.name} ({best.stat().st_size/1024:.0f} KB) | "
-          f"pooling {blob.get('pooling')} | OOF AUC {blob.get('oof_macro_auc')} <- CHON")
+    for h in heads:
+        blob = torch.load(h, map_location="cpu", weights_only=True)
+        shutil.copy2(h, OUT / h.name)
+        print(f"  head -> {h.name:<24} {blob['backbone']} @{blob['size']} | "
+              f"{blob['plane']:<8} | CV {blob['cv_macro_auc']:.4f}")
+    if (ens / "ensemble.json").exists():
+        shutil.copy2(ens / "ensemble.json", OUT / "ensemble.json")
 
     # 3b. Nhan may - notebook fine-tune ngay 9 (scripts/60) can file nay tren Kaggle.
     # Khong lien quan den viec nop bai, nhung di chung mot dataset thi do mot vong upload.
