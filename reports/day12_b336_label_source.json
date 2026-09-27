@@ -1,0 +1,5 @@
+{
+  "pooling": "per_label_attn",
+  "epochs": 80,
+  "D_llm": 0.7480893614546572
+}
