@@ -158,19 +158,24 @@ def main() -> None:
     # moi ti le bi keo ve gan 1.0 va bang so tro nen vo dung.
     print(f"\ndang doc {N_STUDY_THU} ca (doc MOT lan, dung lai cho moi cau hinh) ...",
           flush=True)
-    vols, t0 = [], time.time()
+    # Giu TUNG SERIES rieng, khong noi lai. Anh goc cua cac mat phang co kich thuoc khac
+    # nhau (512 vs 560...), nen noi truoc khi resize se nem ValueError. Duong trich that
+    # resize ve SIZE roi moi noi - nhung o day SIZE khac nhau theo tung cau hinh dang do,
+    # nen phai giu anh goc va resize ben trong vong do.
+    vols, t0, n_ca = [], time.time(), 0
     for uid in list(theo_ca)[:N_STUDY_THU]:
-        phan_ca = []
+        co = False
         for _, r in theo_ca[uid].iterrows():
             sdir = root / "train_series" / uid / r["SeriesInstanceUID"]
             try:
-                phan_ca.append(normalize_series(load_series(sdir)))
+                vols.append(normalize_series(load_series(sdir)))
+                co = True
             except Exception:
                 continue
-        if phan_ca:
-            vols.append(np.concatenate(phan_ca))
+        n_ca += int(co)
     n_lat = sum(len(v) for v in vols)
-    print(f"  {len(vols)} ca | {n_lat:,} lat | {time.time()-t0:.0f}s doc anh")
+    print(f"  {n_ca} ca | {len(vols)} series | {n_lat:,} lat | "
+          f"{time.time()-t0:.0f}s doc anh")
     if not vols:
         raise SystemExit("Khong doc duoc ca nao")
 
