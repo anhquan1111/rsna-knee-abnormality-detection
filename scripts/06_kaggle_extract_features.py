@@ -301,9 +301,16 @@ def chay_mot_mat_phang(plane: str, series: pd.DataFrame, labelled: set, device: 
     else:
         print("bat dau tu dau (khong tim thay ban ghi tam nao)")
 
-    ung_vien = [OUT / "dicom_headers.csv"]
+    # Ten file header PHAI khop voi ten luc ghi (`ghi_ket_qua`). Truoc day o day con ghi
+    # ten cu "dicom_headers.csv" trong khi ban ghi da doi sang co TEN + mat phang - hau
+    # qua: chay tiep thi doc lai duoc DAC TRUNG nhung khong doc lai duoc HEADER, va header
+    # cua nhung study da xong o lan truoc bi mat han. Khong co gi bao, chi la file CSV
+    # cuoi cung thieu mot phan - va phan thieu do chinh la thu dung de phan tich theo hang
+    # may o ngay 4/10.
+    ten_csv = f"dicom_headers_{TEN}_{plane.lower()}.csv"
+    ung_vien = [OUT / ten_csv]
     if nguon is not None:
-        ung_vien.append(nguon.parent / "dicom_headers.csv")
+        ung_vien.append(nguon.parent / ten_csv)
 
     headers: list[dict] = []
     for cand in ung_vien:
