@@ -1,0 +1,58 @@
+{
+  "pooling": "per_label_attn",
+  "epochs": 80,
+  "cach_gop": "trung binh theo hang (rank average)",
+  "cv_gop_ca_nam": 0.8113,
+  "thanh_phan": [
+    {
+      "ten": "mp_sagittal",
+      "backbone": "dinov2_vits14",
+      "size": 224,
+      "plane": "sagittal",
+      "dim": 384,
+      "cv": 0.7106,
+      "file": "head_mp_sagittal.pt",
+      "kb": 224
+    },
+    {
+      "ten": "mp_axial",
+      "backbone": "dinov2_vits14",
+      "size": 224,
+      "plane": "axial",
+      "dim": 384,
+      "cv": 0.7691,
+      "file": "head_mp_axial.pt",
+      "kb": 224
+    },
+    {
+      "ten": "mp_coronal",
+      "backbone": "dinov2_vits14",
+      "size": 224,
+      "plane": "coronal",
+      "dim": 384,
+      "cv": 0.7394,
+      "file": "head_mp_coronal.pt",
+      "kb": 224
+    },
+    {
+      "ten": "chung_s224",
+      "backbone": "dinov2_vits14",
+      "size": 224,
+      "plane": "all",
+      "dim": 384,
+      "cv": 0.7698,
+      "file": "head_chung_s224.pt",
+      "kb": 224
+    },
+    {
+      "ten": "chung_b336",
+      "backbone": "dinov2_vitb14",
+      "size": 336,
+      "plane": "all",
+      "dim": 768,
+      "cv": 0.7481,
+      "file": "head_chung_b336.pt",
+      "kb": 437
+    }
+  ]
+}

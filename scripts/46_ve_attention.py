@@ -138,10 +138,32 @@ def main() -> None:
         t = nhan[j]
         print(f"  {lab:<18}{prob[j]:>9.3f}{('-' if not np.isfinite(t) else int(t)):>6}"
               f"{k:>10}{w[k, j]:>8.4f}")
-    khac = float(np.abs(w[:, :, None] - w[:, None, :]).max())
-    print(f"\n  chenh lech lon nhat giua hai benh bat ky: {khac:.4f} "
-          + ("-> cac benh CHU Y KHAC NHAU" if khac > 2 * deu else
-             "-> gan nhu giong nhau, per_label_attn khong hoc duoc gi"))
+    # PHEP KIEM DAU TIEN O DAY QUA YEU va da cho ket luan SAI.
+    #
+    # No do "chenh lech lon nhat giua hai benh bat ky" roi bao la cac benh chu y khac
+    # nhau. Nhung chenh lech do bi chi phoi boi viec benh DUONG TINH va benh AM TINH nhin
+    # khac nhau - khong phai boi viec moi benh co vung giai phau rieng. No bao "dat" ngay
+    # ca khi ca 7 benh duong tinh dung chung dung MOT lat.
+    #
+    # Hai so do duoi moi tra loi dung cau hoi:
+    dinh = w.argmax(axis=0)
+    n_lat_rieng = len(set(dinh.tolist()))
+    # Entropy chuan hoa: 1.0 = trai deu moi lat, 0.0 = don het vao mot lat.
+    p = np.clip(w, 1e-12, 1)
+    ent = float((-(p * np.log(p)).sum(axis=0) / np.log(w.shape[0])).mean())
+    print(f"\n  so lat rieng biet duoc chon lam dinh: {n_lat_rieng}/{len(L)} benh")
+    print(f"  entropy chu y (1 = trai deu, 0 = don mot lat): {ent:.3f}")
+    from collections import Counter
+    pho = Counter(dinh.tolist()).most_common(1)[0]
+    print(f"  lat duoc nhieu benh chon nhat: lat {pho[0]} ({pho[1]}/{len(L)} benh)")
+    if n_lat_rieng <= len(L) // 3 or ent < 0.3:
+        print("  -> CHU Y BI SUY BIEN: cac benh dung chung qua it lat, va moi benh gan")
+        print("     nhu chi dung MOT lat. Day KHONG phai 'moi benh nhin giai phau cua no'")
+        print("     ma giong model tim mot lat noi 'ca nay bat thuong' roi tuon moi du")
+        print("     doan duong tinh qua do. Khop voi viec dac trung doan dung hang may")
+        print("     82,8% - tin hieu o day la CAP TOAN CA, khong phai cap ton thuong.")
+    else:
+        print("  -> cac benh chu y vao nhung vung khac nhau")
 
     # --- ve ---
     ve = chon[:6]

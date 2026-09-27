@@ -251,6 +251,8 @@ Bộ test bắt được **hai lỗi thật ngay lần chạy đầu**:
 
 ## Giới hạn
 
+- **Bản đồ chú ý bị suy biến.** `PerLabelAttnPool` cho mỗi bệnh một bộ trọng số riêng, và hình vẽ ra trông rất hợp lý. Nhưng đo kỹ thì trên một ca mẫu, 12 bệnh chỉ dùng **4 lát riêng biệt**, entropy chú ý **0,196** (1,0 = trải đều), và **7/12 bệnh dồn vào đúng một lát**. Đó không phải "mỗi bệnh nhìn giải phẫu của nó" — giống model tìm một lát nói *"ca này bất thường"* rồi tuồn mọi dự đoán dương tính qua đó. Khớp với việc đặc trưng đoán đúng hãng máy 82,8%: tín hiệu ở đây là **cấp toàn ca**, không phải cấp tổn thương.
+  > Phép kiểm đầu tiên tôi viết cho chính hình này **quá yếu và đã cho kết luận ngược** — nó đo "chênh lệch lớn nhất giữa hai bệnh bất kỳ", mà chênh lệch đó bị chi phối bởi dương tính vs âm tính chứ không phải bởi vùng giải phẫu. Đúng loại cảnh báo sai mà repo này liệt kê là bẫy.
 - **58 ca đánh giá là trần cứng.** Khoảng tin cậy rộng ~0,12; thêm ảnh hay nhãn máy đều không làm nó hẹp lại.
 - **Rò rỉ theo hãng máy chưa chặn** — biết là có, chưa đo được độ lớn.
 - **Chưa dò siêu tham số** — `lr` và số epoch cố định từ đầu.
