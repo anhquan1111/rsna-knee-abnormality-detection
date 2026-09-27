@@ -1,0 +1,15 @@
+{
+  "pooling": "per_label_attn",
+  "epochs": 80,
+  "tung_mat_phang": {
+    "sagittal": 0.7105607191485869,
+    "axial": 0.7690567686998547,
+    "coronal": 0.7394301834637265
+  },
+  "gop_ba_head_rieng": 0.7964295360257627,
+  "head_chung": 0.7697648383509578,
+  "ci95_rieng_tru_chung": [
+    -0.01460688494211553,
+    0.07669660638497512
+  ]
+}
