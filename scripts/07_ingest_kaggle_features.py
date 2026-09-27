@@ -78,6 +78,8 @@ def main() -> None:
     ap.add_argument("--planes", nargs="+", default=None,
                     help="mac dinh: tu tim moi features_dinov2_*.npz trong thu muc")
     ap.add_argument("--size", type=int, default=224)
+    ap.add_argument("--out-name", dest="out_name", default=None,
+                    help="ten file dich; mac dinh suy ra tu ten file nguon")
     args = ap.parse_args()
 
     src = Path(args.src_dir).expanduser()
@@ -113,7 +115,7 @@ def main() -> None:
     feats: dict[str, np.ndarray] = {}
     for f in nguon:
         plane = ("sagittal (cache)" if f == old_path
-                 else f.stem.replace("features_dinov2_", ""))
+                 else f.stem.split("_")[-1])
         n_lat, n_study = 0, 0
         with np.load(f) as z:
             for k in z.files:
@@ -129,10 +131,12 @@ def main() -> None:
 
     dims = {f.shape[1] for f in feats.values()}
     n_slices = sum(f.shape[0] for f in feats.values())
-    print(f"  GOP LAI           {len(feats):,} study | {n_slices:,} lat | so chieu {dims} | "
-          f"{n_slices * 384 * 2 / 1024**2:.0f} MB trong RAM (float16)")
     if len(dims) != 1:
-        raise SystemExit(f"Dac trung co nhieu so chieu khac nhau: {dims}")
+        raise SystemExit(f"Dac trung co nhieu so chieu khac nhau: {dims}\n"
+                         "  Gan nhu chac chan la dang tron hai backbone khac nhau.")
+    dim = next(iter(dims))
+    print(f"  GOP LAI           {len(feats):,} study | {n_slices:,} lat | {dim} chieu | "
+          f"{n_slices * dim * 2 / 1024**2:.0f} MB trong RAM (float16)")
 
     bad = [k for k, v in feats.items() if not np.isfinite(v).all()]
     print(f"  study co nan/inf: {len(bad)}" + (f" -> {bad[:5]}" if bad else ""))
@@ -153,8 +157,19 @@ def main() -> None:
     print("\n=== 2. Doi chieu voi dac trung da trich o may ===")
     # Doi chieu phai lam tren RIENG mat phang sagittal: dac trung cu o may chi co sagittal,
     # con `feats` gio la ba mat phang noi lai nen so lat khac nhau la dung, khong phai loi.
+    # Chi doi chieu khi so sanh CO NGHIA: cung backbone (cung so chieu) va cung cach gop.
+    # Cache cu la ban da GOP BA MAT PHANG, con `sag` chi la mot mat phang - so truc tiep
+    # thi moi study deu "lech so lat", va canh bao do khong noi len gi ngoai viec hai ben
+    # khong cung loai. Canh bao sai con te hon khong canh bao: lan sau gap canh bao that
+    # se bi bo qua.
     sag = next((f for f in files if "sagittal" in f.name.lower()), None)
+    cung_loai = False
     if sag is not None and old_path.exists():
+        with np.load(old_path) as z:
+            cung_loai = bool(z.files) and z[z.files[0]].shape[1] == dim
+        if not cung_loai:
+            print(f"  cache cu co so chieu khac ({dim} vs cu) - khac backbone, khong so duoc")
+    if sag is not None and old_path.exists() and cung_loai:
         with np.load(old_path) as z:
             old = {k: z[k] for k in z.files}
         with np.load(sag) as z:
@@ -215,8 +230,33 @@ def main() -> None:
     print("\n=== 4. Ghi vao repo ===")
     DATA_INTERIM.mkdir(parents=True, exist_ok=True)
     DATA_MANIFEST.mkdir(parents=True, exist_ok=True)
-    dst_npz = DATA_INTERIM / f"features_dinov2_vits14_{args.size}.npz"
+
+    # Ten file dich lay tu ten file NGUON, khong viet cung.
+    #
+    # Truoc day o day viet cung `features_dinov2_vits14_{size}.npz`. Nhap dac trung cua
+    # mot backbone khac vao se GHI DE len cache cu bang du lieu hoan toan khac, duoi mot
+    # cai ten noi doi. Ban .bak cuu duoc file nhung khong cuu duoc chuyen moi script sau
+    # do doc mot thu va tuong la thu khac.
+    if args.out_name:
+        ten_dich = args.out_name
+    else:
+        mau = files[0].stem                      # features_dinov2_vitb14_336_sagittal
+        bo = mau.replace("features_", "")
+        for pl in ("sagittal", "coronal", "axial"):
+            bo = bo.replace(f"_{pl}", "")
+        ten_dich = f"features_{bo}.npz" if bo else f"features_dinov2_vits14_{args.size}.npz"
+    dst_npz = DATA_INTERIM / ten_dich
+    print(f"  ten file dich: {ten_dich}  (suy ra tu ten file nguon)")
+
     if dst_npz.exists():
+        # Neu file cung ten ma KHAC so chieu thi gan nhu chac chan la nham. Dung han.
+        with np.load(dst_npz) as z:
+            dim_cu = z[z.files[0]].shape[1] if z.files else dim
+        if dim_cu != dim:
+            raise SystemExit(
+                f"{ten_dich} da ton tai voi {dim_cu} chieu, nhung dac trung moi la {dim} "
+                f"chieu.\n  Hai backbone khac nhau dung chung mot ten file - dung ten "
+                f"khac bang --out-name.")
         backup = dst_npz.with_suffix(".npz.bak")
         shutil.move(str(dst_npz), str(backup))
         print(f"  ban cu doi ten thanh {backup.name}")

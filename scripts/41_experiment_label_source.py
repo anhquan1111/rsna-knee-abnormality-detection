@@ -204,6 +204,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--backbone", default="dinov2_vits14")
     ap.add_argument("--size", type=int, default=224)
+    ap.add_argument("--cache", default=None,
+                    help="duong dan npz dac trung; mac dinh suy tu backbone+size")
     ap.add_argument("--epochs", type=int, default=80)
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--boot", type=int, default=300)
@@ -226,7 +228,8 @@ def main() -> None:
                        .map(lambda t: hashlib.md5(t.encode("utf-8")).hexdigest()))
     gold_all = gold_subset(man)
 
-    cache = DATA_INTERIM / f"features_{args.backbone}_{args.size}.npz"
+    cache = (Path(args.cache) if args.cache
+             else DATA_INTERIM / f"features_{args.backbone}_{args.size}.npz")
     have = usable_studies(cache, IMAGES, extract_missing=False)
     gold = gold_all[gold_all[STUDY_COL].isin(have)].reset_index(drop=True)
     extra = man[(~man[STUDY_COL].isin(gold_all[STUDY_COL]))
