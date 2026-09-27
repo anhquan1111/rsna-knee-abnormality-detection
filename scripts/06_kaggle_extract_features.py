@@ -411,7 +411,7 @@ def main() -> None:
         else:
             print(f"  {plane:<10} {t['n_studies']:,} study | {t['n_gold']}/58 gold | "
                   f"{t['n_slices']:,} lat | {t['npz_mb']:,.0f} MB | {t['minutes']:.0f} phut")
-    print("\nTai ve tu tab Output: features_dinov2_*.npz, dicom_headers_*.csv, "
+    print(f"\nTai ve tu tab Output: features_{TEN}_*.npz, dicom_headers_{TEN}_*.csv, "
           f"extract_summary_{TEN}.json")
 
 
