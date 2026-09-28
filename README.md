@@ -18,11 +18,32 @@ Toàn bộ pipeline tự dựng từ file DICOM thô tới bài nộp, không d�
 | **Nộp lần 2** | 0.6923 | **0.695** |
 | + nhãn LLM thay từ điển | 0.7467 | — |
 | + attention riêng từng bệnh | 0.7698 | — |
-| **+ gộp 5 model** | **0.8113** | *(chưa nộp)* |
+| **Nộp lần 3 — gộp 5 model** | 0.8113 | **0.771** |
 
-> **Con số đáng chú ý nhất không phải 0.8113, mà là 0.003.**
+### Con số đáng chú ý nhất không phải 0.771, mà là bảng này
+
+| Lần nộp | CV tự chấm | LB thật | Lệch |
+|---|---:|---:|---:|
+| 1 | 0.566 | 0.601 | **+0.035** |
+| 2 | 0.6923 | 0.695 | **+0.003** |
+| 3 | 0.8113 | 0.771 | **−0.040** |
+
+Hai lần đầu CV **thấp hơn** thực tế. Lần thứ ba **cao hơn**, và đổi dấu.
+
+Nguyên nhân không phải giao thức đánh giá hỏng — mà là **cách dùng nó**. Giữa lần 2 và lần 3, mọi lựa chọn đều được quyết bằng cách so điểm **trên cùng 58 ca đánh giá đó**:
+
+| Chọn gì | Số lựa chọn |
+|---|---:|
+| Nguồn nhãn | 3 |
+| Kiểu pooling | 4 |
+| Backbone | 2 |
+| Tổ hợp gộp | 26 |
+
+Phép đo phương sai seed *(Mục 4 bên dưới)* đã cảnh báo đúng hướng và đúng độ lớn: nhặt seed tốt nhất trong **5** làm điểm phồng `+0.005`. Nhặt qua **~35 lựa chọn** làm nó phồng `+0.040` là hoàn toàn nhất quán.
+
+> **Bài học:** đo một lần thì ước lượng không chệch; đo 35 lần rồi lấy cái cao nhất thì không còn. Hai lần nộp đầu khớp sát *vì lúc đó hầu như chưa chọn gì* — chỉ chạy một cấu hình rồi nộp.
 >
-> Đó là độ lệch giữa điểm CV tự chấm (0.6923) và điểm Kaggle thật (0.695) ở lần nộp thứ hai. Lần đầu lệch 0.035, vẫn nằm trong khoảng tin cậy tự tính. Với **chỉ 58 ca đánh giá**, dựng được một giao thức chấm khớp bảng xếp hạng tới mức đó khó hơn việc đẩy điểm lên — và nó có nghĩa là mọi thí nghiệm offline sau đó không cần tốn lượt nộp để kiểm chứng.
+> Cải thiện vẫn là thật: LB `0.695 → 0.771`, **+0.076** — bước nhảy lớn nhất của dự án. Chỉ là nó nhỏ hơn con số CV hứa hẹn.
 
 ---
 
