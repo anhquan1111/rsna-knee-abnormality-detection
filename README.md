@@ -59,6 +59,14 @@ Hai hệ quả định hình toàn bộ dự án:
 1. Phải **rút nhãn từ text** để dùng được 98,7% dữ liệu còn lại → một bài toán NLP đa ngôn ngữ nằm giữa bài toán CV.
 2. **58 ca đánh giá là trần cứng.** Mọi khoảng tin cậy đều rộng, và thêm ảnh hay thêm nhãn máy đều *không* làm nó hẹp lại — bootstrap lấy mẫu lại theo ca bệnh.
 
+| Phân bố 12 nhãn | 9 ngôn ngữ trong báo cáo |
+|---|---|
+| ![Phân bố 12 nhãn trên 58 ca có nhãn bác sĩ](reports/slides/01_nhan.png) | ![Phân bố ngôn ngữ của 4.407 báo cáo](reports/slides/02_ngonngu.png) |
+
+| Chia tập sai làm rò rỉ 100% | Vì sao không báo cáo accuracy |
+|---|---|
+| ![Chia ở cấp series làm mọi ca validation có series nằm bên train](reports/slides/03_rori.png) | ![Baseline hằng số đạt accuracy 67,2% nhưng AUC đúng 0.500](reports/slides/04_accuracy.png) |
+
 ---
 
 ## Kiến trúc cuối
@@ -85,6 +93,18 @@ DICOM (3 mat phang)
 Gộp **theo hạng** chứ không theo giá trị: năm head train riêng nên thang đo logit không chung gốc, trung bình logit sẽ để head "tự tin" hơn lấn át. AUC vốn chỉ quan tâm thứ hạng.
 
 Dùng **"gộp tất cả"**, không phải "gộp tổ hợp tốt nhất". Đã thử cả 26 tổ hợp; lấy cái điểm cao nhất trong 26 là **chọn trên tập đánh giá**, và phần điểm phồng lên đó không chuyển sang bảng xếp hạng được.
+
+### Model nhìn vào lát nào?
+
+`PerLabelAttnPool` cho mỗi bệnh một bộ trọng số chú ý riêng, nên vẽ ra được **lát nào được dùng để kết luận bệnh nào** — thứ duy nhất trong cả pipeline nhìn thấy được bằng mắt.
+
+![Bản đồ chú ý từng bệnh trên một ca gold: mỗi hàng một bệnh, cột đầu là đường cong chú ý theo lát, bốn cột sau là các lát MRI được chú ý nhất](reports/attention_633432197492.png)
+
+*Sinh bằng `python scripts/46_ve_attention.py`. Ca này có 7/12 bệnh dương tính và model đoán đúng cả 12 nhãn.*
+
+> ⚠️ **Nhưng hình này nói một điều không dễ chịu.** Đo kỹ thì 12 bệnh chỉ dùng **4 lát riêng biệt**, entropy chú ý **0,196** (1,0 = trải đều), và **7/12 bệnh dồn vào đúng một lát**. Rách sụn chêm trong và nang khoeo nằm hai chỗ khác hẳn trong khớp — không có lý do giải phẫu nào để dùng chung một lát.
+>
+> Giống model tìm một lát nói *"ca này bất thường"* rồi tuồn mọi dự đoán dương tính qua đó. Khớp với việc đặc trưng đoán đúng hãng máy 82,8%: tín hiệu ở đây là **cấp toàn ca**, không phải cấp tổn thương.
 
 ---
 
@@ -267,6 +287,16 @@ Bộ test bắt được **hai lỗi thật ngay lần chạy đầu**:
 - **Không báo cáo accuracy:** baseline hằng số đạt accuracy 67,2% trong khi AUC đúng bằng 0.500.
 - **Nhãn máy giữ 3 trạng thái** `1/0/NaN`; loss bỏ qua `NaN`. Ép `NaN`→0 làm macro F1 tụt `0.801 → 0.617`.
 - **Nhãn LLM thay nhãn từ điển:** `+0.054`, KTC `[+0.009, +0.091]`, tái lập ở cả hai kiểu head.
+
+---
+
+## Learning curve — khớp thuộc và cái bẫy early stopping
+
+![Learning curve của ba kiểu pooling: val loss tăng sau epoch ~20 trong khi val AUC vẫn tăng](reports/day5_curves_dinov2_vits14_224.png)
+
+**Val loss tăng sau epoch ~20 trong khi val AUC vẫn tăng.** Hai thứ này không đi cùng nhau: loss quan tâm **giá trị xác suất**, AUC chỉ quan tâm **thứ hạng**. Model ngày càng "quá tự tin" (loss xấu) nhưng vẫn xếp hạng tốt dần.
+
+> ⚠️ Early stopping theo **val loss** sẽ dừng ở khoảng epoch 10 và mất phần AUC tăng thêm. Phải dừng theo đúng thước đo sẽ được chấm.
 
 ---
 

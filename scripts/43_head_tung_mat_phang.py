@@ -59,7 +59,7 @@ REPORT_KEY = "report_key"
 REPO = Path(__file__).resolve().parents[1]
 LLM = REPO / "data" / "external" / "rsna-knee-llm-report-labels" / "llm_labels_v4_blend.csv"
 NGUON = {
-    "sagittal": DATA_INTERIM / "features_dinov2_vits14_224.npz.bak",
+    "sagittal": DATA_INTERIM / "features_dinov2_vits14_224_sagittal.npz",
     "axial": REPO / "data" / "kaggle_out" / "features_dinov2_axial.npz",
     "coronal": REPO / "data" / "kaggle_out" / "features_dinov2_coronal.npz",
 }

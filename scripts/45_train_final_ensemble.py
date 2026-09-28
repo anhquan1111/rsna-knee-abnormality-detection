@@ -63,7 +63,7 @@ LLM = REPO / "data" / "external" / "rsna-knee-llm-report-labels" / "llm_labels_v
 
 # (ten, duong dan dac trung, backbone, size, mat phang, diem CV da do)
 THANH_PHAN = [
-    ("mp_sagittal", DATA_INTERIM / "features_dinov2_vits14_224.npz.bak",
+    ("mp_sagittal", DATA_INTERIM / "features_dinov2_vits14_224_sagittal.npz",
      "dinov2_vits14", 224, "sagittal", 0.7106),
     ("mp_axial", REPO / "data" / "kaggle_out" / "features_dinov2_axial.npz",
      "dinov2_vits14", 224, "axial", 0.7691),
