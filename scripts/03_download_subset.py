@@ -4,7 +4,7 @@ Tải lại được: file đã có trên đĩa sẽ bỏ qua, nên ngắt giữ
 
 Chuẩn bị:
     uv pip install kaggle
-    # kaggle.json đã có sẵn ở C:\\Users\\Admin\\.kaggle\\kaggle.json
+    # kaggle.json để ở ~/.kaggle/kaggle.json (Windows: %USERPROFILE%\\.kaggle\\kaggle.json)
 
 Ví dụ:
     python scripts/03_download_subset.py --dry-run     # xem sẽ tải bao nhiêu, không tải thật

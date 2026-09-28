@@ -1,315 +1,320 @@
 # RSNA Knee Abnormality Detection
 
-Dự đoán 12 bất thường đầu gối từ MRI đa mặt phẳng, trong điều kiện **chỉ 1,3% dữ liệu có nhãn người gán**. [Trang cuộc thi](https://www.kaggle.com/competitions/rsna-knee-abnormality-detection) · 4.420 đội · hạn 2026-10-22.
+Predicting 12 knee abnormalities from multi-plane MRI when **only 1.3% of studies carry human labels**. [Competition](https://www.kaggle.com/competitions/rsna-knee-abnormality-detection) · 4,420 teams · deadline 2026-10-22.
 
-Toàn bộ pipeline tự dựng từ file DICOM thô tới bài nộp, không dùng lại checkpoint của thí sinh khác.
+Full pipeline built from raw DICOM to submission. No other competitor's fine-tuned checkpoints were used.
+
+*[Bản tiếng Việt →](README.vi.md)*
 
 ---
 
-## Kết quả
+## Results
 
-| | Macro AUC (CV) | Bảng công khai Kaggle |
+| | Macro AUC (CV) | Kaggle public LB |
 |---|---:|---:|
-| Baseline đoán mò | 0.500 | — |
-| DINOv2 đóng băng, 58 ca, 1 mặt phẳng | 0.5256 | — |
-| **Nộp lần 1** | 0.566 | **0.601** |
-| + 3 mặt phẳng (149k → 437k lát) | 0.6266 | — |
-| + nhãn máy từ từ điển luật | 0.6923 | — |
-| **Nộp lần 2** | 0.6923 | **0.695** |
-| + nhãn LLM thay từ điển | 0.7467 | — |
-| + attention riêng từng bệnh | 0.7698 | — |
-| **Nộp lần 3 — gộp 5 model** | 0.8113 | **0.771** |
+| Constant baseline | 0.500 | — |
+| Frozen DINOv2, 58 studies, 1 plane | 0.5256 | — |
+| **Submission 1** | 0.566 | **0.601** |
+| + 3 planes (149k → 437k slices) | 0.6266 | — |
+| + rule-based weak labels | 0.6923 | — |
+| **Submission 2** | 0.6923 | **0.695** |
+| + LLM labels replacing rule-based | 0.7467 | — |
+| + per-diagnosis attention pooling | 0.7698 | — |
+| **Submission 3 — 5-model ensemble** | **0.8113** | **0.771** |
 
-### Con số đáng chú ý nhất không phải 0.771, mà là bảng này
+### The number worth reading isn't 0.8113 — it's this table
 
-| Lần nộp | CV tự chấm | LB thật | Lệch |
+| Submission | Own CV | True LB | Gap |
 |---|---:|---:|---:|
 | 1 | 0.566 | 0.601 | **+0.035** |
 | 2 | 0.6923 | 0.695 | **+0.003** |
 | 3 | 0.8113 | 0.771 | **−0.040** |
 
-Hai lần đầu CV **thấp hơn** thực tế. Lần thứ ba **cao hơn**, và đổi dấu.
+The first two submissions had CV **below** the true score. The third came out **above**, and flipped sign.
 
-Nguyên nhân không phải giao thức đánh giá hỏng — mà là **cách dùng nó**. Giữa lần 2 và lần 3, mọi lựa chọn đều được quyết bằng cách so điểm **trên cùng 58 ca đánh giá đó**:
+The evaluation protocol didn't break — **the way it was used** did. Between submissions 2 and 3, every choice was made by comparing scores **on the same 58 evaluation studies**:
 
-| Chọn gì | Số lựa chọn |
+| Choice | Options compared |
 |---|---:|
-| Nguồn nhãn | 3 |
-| Kiểu pooling | 4 |
+| Label source | 3 |
+| Pooling type | 4 |
 | Backbone | 2 |
-| Tổ hợp gộp | 26 |
+| Ensemble subset | 26 |
+| | **~35** |
 
-Phép đo phương sai seed *(Mục 4 bên dưới)* đã cảnh báo đúng hướng và đúng độ lớn: nhặt seed tốt nhất trong **5** làm điểm phồng `+0.005`. Nhặt qua **~35 lựa chọn** làm nó phồng `+0.040` là hoàn toàn nhất quán.
+The seed-variance measurement *(section 4)* predicted both the direction and the magnitude: picking the best of **5** seeds inflates by `+0.005`. Picking across **~35** choices inflating by `+0.040` is entirely consistent.
 
-> **Bài học:** đo một lần thì ước lượng không chệch; đo 35 lần rồi lấy cái cao nhất thì không còn. Hai lần nộp đầu khớp sát *vì lúc đó hầu như chưa chọn gì* — chỉ chạy một cấu hình rồi nộp.
+> **Takeaway:** measure once and the estimate is unbiased; measure 35 times and take the maximum and it no longer is. The first two submissions tracked closely *precisely because almost nothing had been selected yet* — one configuration, then submit.
 >
-> Cải thiện vẫn là thật: LB `0.695 → 0.771`, **+0.076** — bước nhảy lớn nhất của dự án. Chỉ là nó nhỏ hơn con số CV hứa hẹn.
+> The improvement is real: LB `0.695 → 0.771`, **+0.076**, the largest jump of the project. It's just smaller than CV promised.
 
 ---
 
-## Bài toán khó ở đâu
+## Why the problem is hard
 
-- **Input:** một study MRI (trung bình 5,53 series: sagittal / coronal / axial, mỗi series ~26 lát DICOM). Toàn bộ dataset 569 GB.
-- **Output:** 12 xác suất mỗi study. Đa nhãn, không loại trừ nhau → 12 logit + `BCEWithLogitsLoss`.
-- **Metric:** macro AUC trên 12 nhãn.
-- **Chỉ 58/4.407 study (1,32%) có nhãn bác sĩ.** 4.349 study còn lại chỉ có `Report` — văn bản tự do, **9 ngôn ngữ**.
+- **Input:** one MRI study (5.53 series on average — sagittal / coronal / axial, ~26 DICOM slices each). 569 GB total.
+- **Output:** 12 probabilities per study. Multi-label, not mutually exclusive → 12 logits + `BCEWithLogitsLoss`.
+- **Metric:** macro AUC over 12 labels.
+- **Only 58 of 4,407 studies (1.32%) have radiologist labels.** The other 4,349 have only a free-text `Report` — in **9 languages**.
 
-Hai hệ quả định hình toàn bộ dự án:
+Two consequences shaped the whole project:
 
-1. Phải **rút nhãn từ text** để dùng được 98,7% dữ liệu còn lại → một bài toán NLP đa ngôn ngữ nằm giữa bài toán CV.
-2. **58 ca đánh giá là trần cứng.** Mọi khoảng tin cậy đều rộng, và thêm ảnh hay thêm nhãn máy đều *không* làm nó hẹp lại — bootstrap lấy mẫu lại theo ca bệnh.
+1. Labels must be **extracted from text** to use the remaining 98.7% → a multilingual NLP problem sitting inside a CV problem.
+2. **58 evaluation studies is a hard ceiling.** Every confidence interval is wide, and neither more images nor more weak labels narrow it — the bootstrap resamples by study.
 
-| Phân bố 12 nhãn | 9 ngôn ngữ trong báo cáo |
+| Label distribution | 9 languages in the reports |
 |---|---|
-| ![Phân bố 12 nhãn trên 58 ca có nhãn bác sĩ](reports/slides/01_nhan.png) | ![Phân bố ngôn ngữ của 4.407 báo cáo](reports/slides/02_ngonngu.png) |
+| ![Distribution of 12 labels across the 58 radiologist-labelled studies](reports/slides/01_nhan.png) | ![Language distribution across 4,407 reports](reports/slides/02_ngonngu.png) |
 
-| Chia tập sai làm rò rỉ 100% | Vì sao không báo cáo accuracy |
+| Series-level splitting leaks 100% | Why accuracy is not reported |
 |---|---|
-| ![Chia ở cấp series làm mọi ca validation có series nằm bên train](reports/slides/03_rori.png) | ![Baseline hằng số đạt accuracy 67,2% nhưng AUC đúng 0.500](reports/slides/04_accuracy.png) |
+| ![Splitting at series level puts a series from every validation study into training](reports/slides/03_rori.png) | ![A constant baseline reaches 67.2% accuracy while its AUC is exactly 0.500](reports/slides/04_accuracy.png) |
 
 ---
 
-## Kiến trúc cuối
+## Final architecture
 
 ```
-DICOM (3 mat phang)
-   -> chuan hoa percentile 1-99 THEO CA SERIES  -> resize
-   -> DINOv2 dong bang  -> dac trung tung lat
-   -> 5 head doc lap, moi head mot goc nhin
-   -> trung binh THEO HANG  -> 12 xac suat
+DICOM (3 planes)
+   -> percentile 1-99 normalisation ACROSS THE WHOLE SERIES  -> resize
+   -> frozen DINOv2  -> per-slice features
+   -> 5 independent heads, each a different view
+   -> RANK average  -> 12 probabilities
 ```
 
-| Thành phần | Nhìn gì | Backbone | CV riêng |
+| Component | Sees | Backbone | Own CV |
 |---|---|---|---:|
-| `mp_sagittal` | chỉ mặt phẳng Sagittal | ViT-S/14 @ 224 | 0.7106 |
-| `mp_axial` | chỉ mặt phẳng Axial | ViT-S/14 @ 224 | 0.7691 |
-| `mp_coronal` | chỉ mặt phẳng Coronal | ViT-S/14 @ 224 | 0.7394 |
-| `chung_s224` | nối lát cả ba mặt phẳng | ViT-S/14 @ 224 | 0.7698 |
-| `chung_b336` | nối lát cả ba mặt phẳng | ViT-B/14 @ 336 | 0.7481 |
-| **Gộp cả 5** | | | **0.8113** |
+| `mp_sagittal` | Sagittal only | ViT-S/14 @ 224 | 0.7106 |
+| `mp_axial` | Axial only | ViT-S/14 @ 224 | 0.7691 |
+| `mp_coronal` | Coronal only | ViT-S/14 @ 224 | 0.7394 |
+| `chung_s224` | all 3 planes concatenated | ViT-S/14 @ 224 | 0.7698 |
+| `chung_b336` | all 3 planes concatenated | ViT-B/14 @ 336 | 0.7481 |
+| **Ensemble of 5** | | | **0.8113** |
 
-**Không cái nào đạt 0.78 khi đứng một mình.** Gộp được 0.8113 vì chúng sai ở *những chỗ khác nhau* — ví dụ `chung_b336` hơn hẳn ở PF OA (+0.069) và Effusion (+0.047) nhưng kém hẳn ở MCL (−0.184).
+**Not one of them reaches 0.78 alone.** The ensemble reaches 0.8113 because they fail on *different cases* — for instance `chung_b336` is clearly better on PF OA (+0.069) and Effusion (+0.047) but clearly worse on MCL (−0.184).
 
-Gộp **theo hạng** chứ không theo giá trị: năm head train riêng nên thang đo logit không chung gốc, trung bình logit sẽ để head "tự tin" hơn lấn át. AUC vốn chỉ quan tâm thứ hạng.
+Averaging is done **over ranks, not values**: the five heads were trained separately, so their logit scales share no origin, and averaging logits would let the most "confident" head dominate. AUC only cares about ordering.
 
-Dùng **"gộp tất cả"**, không phải "gộp tổ hợp tốt nhất". Đã thử cả 26 tổ hợp; lấy cái điểm cao nhất trong 26 là **chọn trên tập đánh giá**, và phần điểm phồng lên đó không chuyển sang bảng xếp hạng được.
+The rule is **"average everything"**, not "average the best subset". All 26 subsets were tried; taking the highest of 26 is **selection on the evaluation set**, and that inflation does not transfer to the leaderboard.
 
-### Model nhìn vào lát nào?
+### What does the model look at?
 
-`PerLabelAttnPool` cho mỗi bệnh một bộ trọng số chú ý riêng, nên vẽ ra được **lát nào được dùng để kết luận bệnh nào** — thứ duy nhất trong cả pipeline nhìn thấy được bằng mắt.
+`PerLabelAttnPool` gives each diagnosis its own attention weights over slices, so it can be drawn — the only part of the pipeline that is visible to the eye.
 
-![Bản đồ chú ý từng bệnh trên một ca gold: mỗi hàng một bệnh, cột đầu là đường cong chú ý theo lát, bốn cột sau là các lát MRI được chú ý nhất](reports/attention_633432197492.png)
+![Per-diagnosis attention on a gold study: one row per diagnosis, first column the attention curve over slices, next four the most-attended MRI slices](reports/attention_633432197492.png)
 
-*Sinh bằng `python scripts/46_ve_attention.py`. Ca này có 7/12 bệnh dương tính và model đoán đúng cả 12 nhãn.*
+*Generated by `python scripts/46_ve_attention.py`. This study has 7 of 12 diagnoses positive and the model gets all 12 labels right.*
 
-> ⚠️ **Nhưng hình này nói một điều không dễ chịu.** Đo kỹ thì 12 bệnh chỉ dùng **4 lát riêng biệt**, entropy chú ý **0,196** (1,0 = trải đều), và **7/12 bệnh dồn vào đúng một lát**. Rách sụn chêm trong và nang khoeo nằm hai chỗ khác hẳn trong khớp — không có lý do giải phẫu nào để dùng chung một lát.
+> ⚠️ **But this figure says something uncomfortable.** Measured properly, the 12 diagnoses use only **4 distinct slices**, attention entropy is **0.196** (1.0 = uniform), and **7 of 12 diagnoses collapse onto the same slice**. A medial meniscus tear and a Baker's cyst sit in entirely different parts of the joint — there is no anatomical reason for them to share a slice.
 >
-> Giống model tìm một lát nói *"ca này bất thường"* rồi tuồn mọi dự đoán dương tính qua đó. Khớp với việc đặc trưng đoán đúng hãng máy 82,8%: tín hiệu ở đây là **cấp toàn ca**, không phải cấp tổn thương.
+> This looks less like "each diagnosis attends to its own anatomy" and more like the model finding one slice that says *"this knee is abnormal"* and routing every positive prediction through it. Consistent with features predicting the scanner manufacturer at 82.8%: the signal here is **study-level**, not lesion-level.
 
 ---
 
-## Năm thứ tìm ra được nhờ đo, không nhờ đoán
+## Five things found by measuring, not guessing
 
-### 1. Hai đường rò rỉ dữ liệu
+### 1. Two data leaks
 
-**Chia tập ở cấp series làm rò rỉ 100% tập validation.** Đo thật trên 336 series của 58 ca: mọi ca validation đều có ít nhất một series nằm bên train. Đơn vị dự đoán là study thì đơn vị split cũng phải là study.
+**Splitting at series level leaks 100% of the validation set.** Measured on 336 series across the 58 gold studies: every validation study had at least one of its series on the training side. If the prediction unit is the study, the split unit must be too.
 
-**Nhãn máy mang đáp án của ca validation vào train dưới một UID khác.** Nhãn máy suy ra từ báo cáo, nên một ca ngoài gold có báo cáo *trùng từng ký tự* với ca validation sẽ tuồn đáp án qua. Chỉ **1 ca trên 4.349** dính — nhưng bịt nó lại kéo cận dưới khoảng tin cậy từ `+0.006` xuống `−0.004`, tức **đổi luôn kết luận**. Bằng chứng khi đó đang nằm sát mép đúng bằng một dòng dữ liệu.
+**Weak labels carry validation answers into training under a different UID.** Weak labels are derived from the report, so a non-gold study whose report is *byte-identical* to a validation study's report smuggles its answers across. Only **1 study in 4,349** was affected — but closing it moved the lower bound of the confidence interval from `+0.006` to `−0.004`, **flipping the conclusion**. The evidence had been sitting exactly one row of data from the threshold.
 
-### 2. Một bộ nhãn công khai chép nhãn gold
+### 2. A public label set that copied the gold labels
 
 ```
-llm_labels_v4_blend | AUC tren gold 0.8927 | 0.1% gia tri la 0/1 tuyet doi
-report_labels_v5    | AUC tren gold 1.0000 | 100% tren gold, 0% ngoai gold
+llm_labels_v4_blend | AUC on gold 0.8927 | 0.1% of values exactly 0 or 1
+report_labels_v5    | AUC on gold 1.0000 | 100% on gold, 0% off gold
 ```
 
-Dấu hiệu không phải "AUC cao" — bộ nhãn tốt thật vẫn cao. Là **AUC cao đồng thời với việc giá trị trên gold toàn 0/1 tuyệt đối trong khi ngoài gold thì không**. Pipeline có chốt chặn tự động dừng khi gặp dấu hiệu này.
+The signal isn't "high AUC" — a genuinely good label set is also high. It's **high AUC together with values on gold being exactly 0 or 1 while values off gold are not**. The pipeline has an automatic guard that halts on this pattern.
 
-### 3. Một cải tiến đã chứng minh **không có tính vĩnh viễn**
+### 3. A proven improvement is not permanent
 
-Vòng 2 kết luận "nhãn máy giúp": `+0.152`, khoảng tin cậy `[+0.095, +0.216]`, sạch sẽ.
+Round 2 concluded "weak labels help": `+0.152`, CI `[+0.095, +0.216]`, clean.
 
-Vòng 3 thêm hai mặt phẳng ảnh → cùng phép so đó co còn `+0.066`, `[−0.004, +0.137]` — **trùm qua 0**. Không phải vì nhãn máy tệ đi, mà vì **đường nền khá lên**. Thêm ảnh và thêm nhãn phần lớn là *hàng thay thế của nhau*: cả hai cùng chữa một bệnh gốc là 58 ca quá ít.
+Round 3 added two imaging planes → the same comparison shrank to `+0.066`, CI `[−0.004, +0.137]` — **crossing zero**. Not because weak labels got worse, but because **the baseline got better**. More images and more labels are largely *substitutes*: both fix the same root problem of 58 labelled studies.
 
-Tương tự, phép tách "chất lượng nhãn vs độ phủ nhãn" **đảo chiều** khi đổi kiến trúc head — một thứ đáng lẽ không liên quan gì tới câu hỏi đang hỏi. Kết luận trung thực: chưa biết.
+Likewise, decomposing the gain into "label quality vs label coverage" **reverses** when the head architecture changes — something that should have nothing to do with the question being asked. The honest conclusion is: unknown.
 
-### 4. Phương sai chỉ do seed
+### 4. Variance from the seed alone
 
-Chạy lại **y hệt** một cấu hình với 5 seed khác nhau, cố định fold:
+Rerunning **the identical** configuration with 5 seeds, folds held fixed:
 
 ```
 0.7407  0.7447  0.7340  0.7468  0.7431
-trung binh 0.7419 | do lech chuan 0.0049 | BE RONG 0.0128
+mean 0.7419 | std 0.0049 | RANGE 0.0128
 ```
 
-Cây thước này dùng để đọc lại mọi kết luận cũ. Cả 5 kết luận chính đều vượt nhiễu — nhưng cái mỏng nhất (`+0.019`, chọn pooling ở ngày 5) chỉ vượt 1,5 lần, và nó **đã tự đảo ngược** ở vòng sau.
+This is the yardstick for rereading every earlier conclusion. All five main results clear the noise — but the thinnest (`+0.019`, the pooling choice on day 5) clears it by only 1.5×, and it **later reversed itself**.
 
-Và nó cho hai con số gần bằng nhau nhưng khác hẳn bản chất:
+It also produces two numbers that are close in size but opposite in nature:
 
 | | |
 |---|---|
-| Nhặt seed tốt nhất | `+0.0049` — **không** chuyển sang LB, vì đó là nhìn đáp án rồi nhặt |
-| Trung bình các seed | `+0.0048` — **hợp lệ**, vì không nhìn đáp án lúc nào |
+| Picking the best seed | `+0.0049` — does **not** transfer to the LB; it is looking at the answer and choosing |
+| Averaging over seeds | `+0.0048` — **legitimate**; the answer is never consulted |
 
-### 5. Kết quả âm được giữ nguyên trong tài liệu
+### 5. Negative results, kept
 
-- **Fine-tune backbone không đo được cải thiện** (`+0.009`, KTC `[−0.047, +0.067]`).
-- **Backbone to hơn và phân giải cao hơn còn tệ hơn** (`−0.022`). Chẩn đoán trước đó chỉ đúng rằng head không phải nút thắt; bước suy diễn "vậy backbone to hơn sẽ giúp" thì sai.
-- Cả hai vẫn có ích — chúng **khác** bộ cũ nên đóng góp vào phần gộp.
+- **Fine-tuning the backbone showed no measurable gain** (`+0.009`, CI `[−0.047, +0.067]`).
+- **A larger backbone at higher resolution was worse** (`−0.022`). The preceding diagnosis was right that the head was not the bottleneck; the inference that "therefore a bigger backbone will help" was wrong.
+- Both are still useful — they are **different** from the frozen baseline, so they contribute to the ensemble.
 
 ---
 
-## Rò rỉ theo máy chụp: đo được, chưa chặn
+## Scanner leakage: measured, not mitigated
 
-Đặc trưng đoán đúng **hãng máy** với độ chính xác **82,8%** (đoán bừa 37,9%), và split theo ca bệnh **không** chặn được tầng này — 17/17 cặp (fold, hãng) đều bị trộn.
+Features predict the **scanner manufacturer** with **82.8%** accuracy (chance: 37.9%), and splitting by study does **not** block this tier — 17 of 17 (fold, manufacturer) pairs are mixed.
 
-| Hãng | n ca | macro AUC | KTC 95% |
+| Manufacturer | n | Macro AUC | 95% CI |
 |---|---:|---:|---|
 | GE | 16 | 0.7818 | `[0.700, 0.874]` |
 | SIEMENS | 22 | 0.7598 | `[0.704, 0.817]` |
 | PHILIPS | 18 | 0.6985 | `[0.578, 0.789]` |
 
-Chênh cao–thấp `+0.083` nhưng khoảng tin cậy chồng lấn → **chưa đo được**. Với 16–22 ca mỗi hãng, phép đo gần như không có sức phân giải.
+The spread is `+0.083` but the intervals overlap → **not measurable**. With 16–22 studies per manufacturer this test has almost no resolving power.
 
-**Đánh đổi có ý thức:** nhóm theo hãng khi chia fold chỉ cho tối đa 4 fold, fold nhỏ nhất có 2 ca, và 2 cặp (fold, nhãn) không chấm được. Với cỡ mẫu này cái giá đắt hơn cái được — nhưng rủi ro *bảng riêng có tỉ lệ hãng khác đi thì điểm tụt* vẫn còn nguyên.
+**A deliberate trade-off:** grouping folds by manufacturer allows at most 4 folds, the smallest holding 2 studies, with 2 (fold, label) pairs unscoreable. At this sample size the cost exceeds the benefit — but the risk that *a private test set with a different manufacturer mix scores lower* remains untouched.
 
 ---
 
-## Cấu trúc code
+## Code layout
 
 ```text
 src/rsna_knee/
-├── config.py          # 12 nhãn (thứ tự cố định), đường dẫn, seed, short_uid cho MAX_PATH
-├── manifest.py        # manifest cấp study; cột provenance nhãn người / nhãn máy
-├── splits.py          # StratifiedGroupKFold theo study + gộp báo cáo trùng; đo rò rỉ
-├── metrics.py         # macro AUC tự viết — luôn trả kèm mẫu số và nhãn bị bỏ
-├── dicom_io.py        # đọc DICOM, chuẩn hoá percentile theo series, resize
-├── dataset.py         # StudyDataset (1 phần tử = 1 study) + FeatureDataset
-├── features.py        # backbone đóng băng → đặc trưng từng lát
-├── head.py            # pooling lát→study (mean/max/attn/per_label_attn) + masked BCE
+├── config.py          # 12 labels (fixed order), paths, seed, short_uid for MAX_PATH
+├── manifest.py        # study-level manifest; human/machine label provenance
+├── splits.py          # StratifiedGroupKFold by study + duplicate-report merging; leak checks
+├── metrics.py         # hand-written macro AUC — always reports its denominator
+├── dicom_io.py        # DICOM reading, per-series percentile normalisation, resize
+├── dataset.py         # StudyDataset (1 item = 1 study) + FeatureDataset
+├── features.py        # frozen backbone → per-slice features
+├── head.py            # slice→study pooling (mean/max/attn/per_label_attn) + masked BCE
 └── reports/
-    ├── lexicon.py     # từ điển 9 ngôn ngữ: concept / finding / phủ định
-    ├── extract.py     # bộ rút nhãn 3 trạng thái 1/0/unknown
-    └── evaluate.py    # chấm trên gold set, per-label, theo ngôn ngữ
+    ├── lexicon.py     # 9-language lexicon: concept / finding / negation
+    ├── extract.py     # 3-state label extractor: 1 / 0 / unknown
+    └── evaluate.py    # scoring on the gold set, per label, per language
 ```
 
-### Hai quyết định kiến trúc đáng nói
+### Two architectural decisions worth stating
 
-**`PerLabelAttnPool`** — mỗi bệnh một bộ trọng số chú ý riêng. Ba kiểu pooling thông thường gộp ra *một* vector dùng chung cho cả 12 bệnh, tức ngầm giả định "lát nào quan trọng với bệnh này thì cũng quan trọng với bệnh kia". Sai về bệnh học: đứt dây chằng chéo trước hiện ở vài lát sagittal giữa khớp, tràn dịch hiện ở lát khác hẳn.
+**`PerLabelAttnPool`** — one set of attention weights per diagnosis. The three standard pooling modes produce *one* vector shared across all 12 diagnoses, implicitly assuming "a slice that matters for one condition matters for another". That is wrong clinically: an ACL tear appears on a few mid-joint sagittal slices, an effusion on entirely different ones.
 
-Chỗ dễ sai: khi pooling trả về `(B, L, d)`, đặt `nn.Linear(d, L)` phía sau sẽ làm **mỗi logit ăn theo cả 12 vector gộp** — bệnh A nhìn vào chồng lát của bệnh B. Model vẫn chạy, loss vẫn giảm, điểm vẫn ra, chỉ là sai. Có test riêng cho đúng chỗ đó.
+The subtle failure mode: when pooling returns `(B, L, d)`, placing `nn.Linear(d, L)` after it makes **every logit depend on all 12 pooled vectors** — diagnosis A reading diagnosis B's slice stack. The model still runs, the loss still drops, a score still appears; it is simply wrong. There is a dedicated test for exactly this.
 
-**Gộp ba mặt phẳng bằng cách nối lát, không nối vector đặc trưng.** Nối vector sẽ đổi luôn số chiều đầu vào của head, biến thí nghiệm thành hai biến (nhiều ảnh hơn *và* model khác đi) — khi đó điểm có tăng cũng không quy được về nguyên nhân nào.
+**Planes are merged by concatenating slices, not feature vectors.** Concatenating vectors would change the head's input dimension, turning the experiment into a two-variable change (more images *and* a different model) — after which a score change cannot be attributed to either.
 
 ---
 
-## Chạy
+## Running it
 
 ```bash
 uv venv --python 3.12 .venv
 uv sync --extra data --extra dev
-uv run pytest                        # 92 test, ~30 giây
+uv run pytest                        # 100 tests, ~30 seconds
 ```
 
-Phiên bản **ghim trong `uv.lock`**. Nhiều con số trong tài liệu gắn chặt với hành vi của đúng phiên bản đó — ví dụ `roc_auc_score` trả `nan` thay vì ném lỗi là hành vi của `scikit-learn 1.9.x`.
+Versions are **pinned in `uv.lock`**. Several documented numbers depend on the exact version — for instance `roc_auc_score` returning `nan` rather than raising is `scikit-learn 1.9.x` behaviour.
 
-| Bước | Lệnh | Chạy ở đâu |
+| Step | Command | Runs on |
 |---|---|---|
-| Manifest + split | `python scripts/10_build_manifest.py` · `11_build_splits.py` | máy |
-| Nhãn yếu từ báo cáo | `python scripts/20_extract_weak_labels.py` | máy |
-| **Trích đặc trưng** | dán `scripts/06_kaggle_extract_features.py` | **Kaggle GPU** |
-| Nhập đặc trưng về | `python scripts/07_ingest_kaggle_features.py <thu muc>` | máy |
-| Frozen head | `python scripts/31_train_frozen_head.py` | máy |
-| Thí nghiệm nhãn máy | `python scripts/40_experiment_weak_labels.py` | máy |
-| Thí nghiệm nguồn nhãn | `python scripts/41_experiment_label_source.py` | máy |
-| Error analysis | `python scripts/42_error_analysis.py` | máy |
-| Head từng mặt phẳng | `python scripts/43_head_tung_mat_phang.py` | máy |
-| Phương sai seed | `python scripts/44_phuong_sai_seed.py` | máy |
-| **Train bộ gộp cuối** | `python scripts/45_train_final_ensemble.py` | máy |
-| Đóng gói bài nộp | `python scripts/49_pack_submission_assets.py` | máy |
-| **Bài nộp** | dán `scripts/50_kaggle_submit.py` | **Kaggle, Internet OFF** |
-| Fine-tune backbone | dán `scripts/60_kaggle_finetune.py` | **Kaggle GPU** |
-| Đo tốc độ backbone | dán `scripts/62_kaggle_do_toc_do.py` | **Kaggle GPU** |
+| Manifest + splits | `python scripts/10_build_manifest.py` · `11_build_splits.py` | local |
+| Weak labels from reports | `python scripts/20_extract_weak_labels.py` | local |
+| **Feature extraction** | paste `scripts/06_kaggle_extract_features.py` | **Kaggle GPU** |
+| Ingest features | `python scripts/07_ingest_kaggle_features.py <dir>` | local |
+| Frozen head | `python scripts/31_train_frozen_head.py` | local |
+| Weak-label experiment | `python scripts/40_experiment_weak_labels.py` | local |
+| Label-source experiment | `python scripts/41_experiment_label_source.py` | local |
+| Error analysis | `python scripts/42_error_analysis.py` | local |
+| Per-plane heads | `python scripts/43_head_tung_mat_phang.py` | local |
+| Seed variance | `python scripts/44_phuong_sai_seed.py` | local |
+| **Train final ensemble** | `python scripts/45_train_final_ensemble.py` | local |
+| Attention figure | `python scripts/46_ve_attention.py` | local |
+| Pack submission assets | `python scripts/49_pack_submission_assets.py` | local |
+| **Submission** | paste `scripts/50_kaggle_submit.py` | **Kaggle, internet OFF** |
+| Backbone fine-tune | paste `scripts/60_kaggle_finetune.py` | **Kaggle GPU** |
+| Backbone throughput probe | paste `scripts/62_kaggle_do_toc_do.py` | **Kaggle GPU** |
 
-### Vì sao trích đặc trưng phải chạy trên Kaggle
+### Why feature extraction runs on Kaggle
 
-Tải ~1.500 file `.dcm` cộng hơn 4.000 request liệt kê trong một buổi làm tài khoản bị chặn: HTTP `429`, header `retry-after: 179280` giây ≈ **50 giờ**. Trên Kaggle dataset mount sẵn ở `/kaggle/input` nên không tốn request API nào, lại có GPU T4 miễn phí. Chỉ tải kết quả về (vài trăm MB thay vì 569 GB).
+Downloading ~1,500 `.dcm` files plus 4,000+ listing requests in one session gets the account rate-limited: HTTP `429`, header `retry-after: 179280` seconds ≈ **50 hours**. On Kaggle the dataset is already mounted at `/kaggle/input`, costing no API requests, with a free T4. Only the results come back (a few hundred MB instead of 569 GB).
 
-**Trên Windows, đường dẫn gốc của Kaggle vượt giới hạn MAX_PATH 260 ký tự.** Lỗi báo ra là `FileNotFoundError` — rất dễ chẩn đoán nhầm thành lỗi mạng. Thư mục cục bộ dùng 12 ký tự cuối của UID; ánh xạ đầy đủ ở `data/manifest/local_images.csv`.
+**On Windows the competition's native paths exceed the 260-character MAX_PATH limit.** The resulting error is a `FileNotFoundError` — very easy to misdiagnose as a network problem. Local directories use the last 12 characters of the UID; the full mapping lives in `data/manifest/local_images.csv`.
 
 ---
 
-## Kiểm thử
+## Tests
 
-92 test, không cần dữ liệu ảnh. Test ở đây **không kiểm "hàm có chạy không"** mà kiểm đúng những hành vi **hỏng âm thầm** — loại lỗi cho ra một con số đẹp thay vì một dòng lỗi.
+100 tests, no image data required. They do **not** check "does the function run" — they check the behaviours that **fail silently**, the kind that produce a plausible number instead of an error.
 
-| File | Chặn điều gì |
+| File | What it blocks |
 |---|---|
-| `test_metrics.py` | macro AUC trả `nan`, nhãn một lớp bị bỏ khỏi mẫu số mà không báo |
-| `test_head.py` | pooling quên mask, `max` pad bằng 0 thay vì `-inf`, loss không bỏ qua `NaN` |
-| `test_splits.py` | rò rỉ giữa các fold, báo cáo trùng bị tách hai bên |
-| `test_reports.py` | phủ định lật nhầm vế sau của câu, `unknown` bị ép thành âm tính |
-| `test_dicom_io.py` | chuẩn hoá ra `inf`/`nan`, chuẩn hoá từng lát xoá mất độ sáng tương đối |
-| `test_per_label_attn.py` | logit của bệnh này ăn theo vector gộp của bệnh kia |
-| `test_submit_head_khop.py` | bản **sao chép** của model trong notebook nộp bài lệch khỏi bản repo |
-| `test_submit_selection.py` | chọn sai mặt phẳng lúc suy luận, bỏ sót study |
-| `test_finetune_cache.py` | cache ảnh ghi tiếp sai offset — mỗi ca đọc ra ảnh của ca khác |
+| `test_metrics.py` | macro AUC returning `nan`; single-class labels dropped from the denominator unannounced |
+| `test_head.py` | pooling forgetting the mask; `max` padding with 0 instead of `-inf`; loss not skipping `NaN` |
+| `test_splits.py` | leakage between folds; duplicate reports split across sides |
+| `test_reports.py` | negation flipping the wrong clause; `unknown` coerced to negative |
+| `test_dicom_io.py` | normalisation producing `inf`/`nan`; per-slice normalisation erasing relative brightness |
+| `test_per_label_attn.py` | one diagnosis's logit depending on another's pooled vector |
+| `test_submit_head_khop.py` | the **copy** of the model inside the submission notebook drifting from the repo version |
+| `test_submit_selection.py` | wrong plane chosen at inference; studies dropped |
+| `test_finetune_cache.py` | the image cache resuming at the wrong offset — every study reading another study's images |
+| `test_gop_theo_hang.py` | the notebook's hand-rolled ranking drifting from the `scipy` version used to measure 0.8113 |
 
-Bộ test bắt được **hai lỗi thật ngay lần chạy đầu**:
+The suite caught **two real bugs on its first run**:
 
-- `normalize_series` trả `float64` thay vì `float32` — scalar `float64` của `np.percentile` nâng kiểu cả mảng. Cache to gấp đôi mà hàm vẫn chạy đúng nên không ai thấy.
-- Từ điển tiếng Thổ bỏ lọt biến âm `k → ğ` (`yırtık → yırtığı`), bỏ lọt một phần nhóm **546 báo cáo tiếng Thổ** (12,4% dataset).
+- `normalize_series` returned `float64` instead of `float32` — `np.percentile`'s `float64` scalar promoted the whole array. The cache was twice the size and the function still behaved correctly, so nobody would have noticed.
+- The Turkish lexicon missed the `k → ğ` mutation (`yırtık → yırtığı`), silently under-covering part of the **546 Turkish reports** (12.4% of the dataset).
 
 ---
 
-## Bẫy hỏng âm thầm đã gặp thật
+## Silent-failure traps encountered
 
-Đây là nhóm lỗi tốn nhiều thời gian nhất, vì **không cái nào ném exception**.
+This is the class of bug that consumed the most time, because **none of them raises an exception**.
 
-| Bẫy | Biểu hiện | Cách chặn |
+| Trap | Symptom | Guard |
 |---|---|---|
-| **Cấu hình thắng không có checkpoint** *(gặp 2 lần)* | Đo một đằng nộp một nẻo | Vòng thí nghiệm train 5 fold rồi vứt cả 5 — đó là hành vi đúng của nó. Phải có bước train lại riêng để lấy trọng số |
-| **Phép kiểm checkpoint cũng sai** | "Lưu → nạp lại → so" báo khớp tuyệt đối mà vẫn để lọt head **chưa train** | Nó chỉ kiểm đọc/ghi. Chốt đúng là **độ lệch chuẩn dự đoán giữa các ca** |
-| **Chọn nhầm checkpoint** | `rglob` trả về thứ tự không xác định, 4 file trong thư mục | Chọn theo `oof_macro_auc`; notebook dừng nếu thấy >1 head |
-| **Suy luận lệch huấn luyện** | Head train trên 3 mặt phẳng, notebook chỉ đọc 1 | Tách `chon_series()` thành hàm test được |
-| **Trộn đặc trưng hai backbone** | Hai file `.npz` trông y hệt nhau | 3 lớp chặn: tên file mang backbone+size, suy tên đích từ tên nguồn, dừng khi số chiều khác |
-| **Phần báo cáo lỗi làm hỏng thứ nó báo cáo** | `submission.csv` ghi đúng rồi nhưng notebook FAILED → Kaggle từ chối | Bọc mọi thứ chạy **sau** khi kết quả đã ghi ra đĩa |
-| **Cảnh báo sai** | Bước đối chiếu so 3 mặt phẳng với 1 mặt phẳng → "lệch số lát" ở mọi ca | Cảnh báo sai tệ hơn không cảnh báo: lần sau gặp cảnh báo thật sẽ bị bỏ qua |
-| **`Compress-Archive` của PowerShell** | Kaggle giải nén ra file tên `dinov2_repo\hubconf.py` | Nén bằng Python với `as_posix()`; script tự đọc lại zip để kiểm |
+| **Winning config has no checkpoint** *(hit twice)* | Measure one thing, submit another | The experiment loop trains 5 folds and discards all 5 — correct behaviour for it. A separate final-training step is required |
+| **The checkpoint check was also wrong** | "Save → reload → compare" reported an exact match while still shipping an **untrained** head | It only tested I/O. The right check is the **standard deviation of predictions across studies** |
+| **Wrong checkpoint selected** | `rglob` returns an undefined order, 4 files in the directory | Select by `oof_macro_auc`; the notebook halts if the head list is unexpected |
+| **Inference diverging from training** | Head trained on 3 planes, notebook reading only 1 | `chon_series()` extracted into a testable function |
+| **Mixing two backbones' features** | Two `.npz` files look identical | 3 guards: filenames carry backbone+size, destination name derived from source, halt on dimension mismatch |
+| **Error reporting breaking what it reports on** | `submission.csv` written correctly but the notebook marked FAILED → Kaggle rejects it | Wrap everything that runs **after** results hit disk |
+| **A false warning** | The comparison step compared 3 planes against 1 → "slice count mismatch" on every study | A false warning is worse than none: the next real warning gets ignored |
+| **PowerShell's `Compress-Archive`** | Kaggle extracts a file literally named `dinov2_repo\hubconf.py` | Zip from Python with `as_posix()`; the script re-reads its own zip to verify |
 
 ---
 
-## Quyết định đã chốt
+## Decisions locked in
 
-- **Đơn vị dự đoán và đơn vị split:** `StudyInstanceUID`.
-- **Chuẩn hoá cường độ:** percentile 1–99 trên **cả series**. MRI không có đơn vị tuyệt đối; chia `/255` giữ nguyên bias máy chụp (hai máy lệch 3,00×), chuẩn hoá từng lát xoá mất độ sáng tương đối (std `0.0710 → 0.0002`).
-- **Metric:** macro AUC tự viết, luôn báo kèm mẫu số.
-- **Không báo cáo accuracy:** baseline hằng số đạt accuracy 67,2% trong khi AUC đúng bằng 0.500.
-- **Nhãn máy giữ 3 trạng thái** `1/0/NaN`; loss bỏ qua `NaN`. Ép `NaN`→0 làm macro F1 tụt `0.801 → 0.617`.
-- **Nhãn LLM thay nhãn từ điển:** `+0.054`, KTC `[+0.009, +0.091]`, tái lập ở cả hai kiểu head.
-
----
-
-## Learning curve — khớp thuộc và cái bẫy early stopping
-
-![Learning curve của ba kiểu pooling: val loss tăng sau epoch ~20 trong khi val AUC vẫn tăng](reports/day5_curves_dinov2_vits14_224.png)
-
-**Val loss tăng sau epoch ~20 trong khi val AUC vẫn tăng.** Hai thứ này không đi cùng nhau: loss quan tâm **giá trị xác suất**, AUC chỉ quan tâm **thứ hạng**. Model ngày càng "quá tự tin" (loss xấu) nhưng vẫn xếp hạng tốt dần.
-
-> ⚠️ Early stopping theo **val loss** sẽ dừng ở khoảng epoch 10 và mất phần AUC tăng thêm. Phải dừng theo đúng thước đo sẽ được chấm.
+- **Prediction unit and split unit:** `StudyInstanceUID`.
+- **Intensity normalisation:** percentile 1–99 across **the whole series**. MRI has no absolute units; dividing by 255 preserves scanner bias (two scanners differ 3.00×), and per-slice normalisation erases relative brightness between slices (std `0.0710 → 0.0002`).
+- **Metric:** hand-written macro AUC that always reports its denominator.
+- **Accuracy is never reported:** a constant baseline reaches 67.2% accuracy while its AUC is exactly 0.500.
+- **Weak labels keep 3 states** `1/0/NaN`; the loss skips `NaN`. Coercing `NaN`→0 drops macro F1 from `0.801` to `0.617`.
+- **LLM labels over rule-based labels:** `+0.054`, CI `[+0.009, +0.091]`, reproduced under both head architectures.
 
 ---
 
-## Giới hạn
+## Learning curve — overfitting and the early-stopping trap
 
-- **Bản đồ chú ý bị suy biến.** `PerLabelAttnPool` cho mỗi bệnh một bộ trọng số riêng, và hình vẽ ra trông rất hợp lý. Nhưng đo kỹ thì trên một ca mẫu, 12 bệnh chỉ dùng **4 lát riêng biệt**, entropy chú ý **0,196** (1,0 = trải đều), và **7/12 bệnh dồn vào đúng một lát**. Đó không phải "mỗi bệnh nhìn giải phẫu của nó" — giống model tìm một lát nói *"ca này bất thường"* rồi tuồn mọi dự đoán dương tính qua đó. Khớp với việc đặc trưng đoán đúng hãng máy 82,8%: tín hiệu ở đây là **cấp toàn ca**, không phải cấp tổn thương.
-  > Phép kiểm đầu tiên tôi viết cho chính hình này **quá yếu và đã cho kết luận ngược** — nó đo "chênh lệch lớn nhất giữa hai bệnh bất kỳ", mà chênh lệch đó bị chi phối bởi dương tính vs âm tính chứ không phải bởi vùng giải phẫu. Đúng loại cảnh báo sai mà repo này liệt kê là bẫy.
-- **58 ca đánh giá là trần cứng.** Khoảng tin cậy rộng ~0,12; thêm ảnh hay nhãn máy đều không làm nó hẹp lại.
-- **Rò rỉ theo hãng máy chưa chặn** — biết là có, chưa đo được độ lớn.
-- **Chưa dò siêu tham số** — `lr` và số epoch cố định từ đầu.
-- **Nhãn LLM là của người khác công bố.** Bộ rút nhãn bằng từ điển 9 ngôn ngữ là tự viết, và có so sánh có kiểm soát giữa hai nguồn; nhưng bộ nhãn dùng trong model cuối thì không phải tự sinh.
-- **Top bảng xếp hạng ở 0.955–0.959**, đạt được chủ yếu bằng cách trộn checkpoint công khai do thí sinh khác train. Repo này không đi đường đó.
+![Learning curves for three pooling modes: validation loss rises after ~epoch 20 while validation AUC keeps rising](reports/day5_curves_dinov2_vits14_224.png)
 
-## Môi trường
+**Validation loss rises after ~epoch 20 while validation AUC keeps rising.** The two do not move together: loss cares about **probability values**, AUC only about **ordering**. The model grows overconfident (worse loss) while still ranking better (better AUC).
 
-Python 3.12 + uv. Đọc DICOM cần cả `pydicom` lẫn bộ giải nén (`pylibjpeg`, `pylibjpeg-libjpeg`, `pylibjpeg-openjpeg`, `gdcm`) — dataset dùng nhiều transfer syntax, trong đó có JPEG Lossless và JPEG 2000.
+> ⚠️ Early stopping on **validation loss** would stop around epoch 10 and forfeit the remaining AUC. Stop on the metric you will actually be scored on.
+
+---
+
+## Limitations
+
+- **The attention map is degenerate.** `PerLabelAttnPool` gives each diagnosis its own weights and the figure looks convincing — but on a sample study the 12 diagnoses use only **4 distinct slices**, attention entropy is **0.196**, and **7 of 12 collapse onto one slice**. The signal appears to be **study-level**, not lesion-level.
+  > The first check written for this figure was **too weak and reported the opposite conclusion** — it measured "largest difference between any two diagnoses", which is dominated by positive-vs-negative rather than by anatomy. Exactly the false-warning trap this repo catalogues, this time hit by its own author.
+- **58 evaluation studies is a hard ceiling.** Confidence intervals are ~0.12 wide; neither more images nor more weak labels narrow them.
+- **Scanner leakage is unmitigated** — known to exist, magnitude not measurable at this sample size.
+- **No hyper-parameter search** — learning rate and epoch count were fixed early.
+- **The LLM labels are someone else's published artifact.** The 9-language rule-based extractor is original work and the two sources were compared under a controlled protocol, but the labels used in the final model were not self-generated.
+- **The leaderboard top sits at 0.955–0.959**, reached largely by blending public checkpoints trained by other competitors. This repository does not take that route.
+
+## Environment
+
+Python 3.12 + uv. Reading DICOM requires `pydicom` plus decoders (`pylibjpeg`, `pylibjpeg-libjpeg`, `pylibjpeg-openjpeg`, `gdcm`) — the dataset uses several transfer syntaxes including JPEG Lossless and JPEG 2000.
