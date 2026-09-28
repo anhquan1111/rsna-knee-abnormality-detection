@@ -65,3 +65,6 @@ data/kaggle_ft/
 
 # Dac trung ViT-B/14 @ 336 tai tu Kaggle (1.2 GB, sinh lai duoc)
 data/kaggle_b336/
+
+# Output notebook nop bai tai ve (sinh lai duoc)
+data/kernel_sub/
