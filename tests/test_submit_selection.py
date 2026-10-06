@@ -88,3 +88,56 @@ def test_planes_khop_voi_luc_train(chon_series):
     la cho duy nhat bat duoc chuyen do truoc khi ton mot luot nop.
     """
     assert _load().PLANES == PLANES
+
+
+# ---------------------------------------------------------------- SERIES_RULE "fluid"
+def _ts_fs(rows):
+    return pd.DataFrame(rows, columns=["StudyInstanceUID", "SeriesInstanceUID",
+                                       "Anatomical_Plane", "Fluid_Sensitive"])
+
+
+def test_fluid_uu_tien_xung_nhay_dich(chon_series):
+    """Series T1 dung truoc trong CSV: 'first' lay T1, 'fluid' phai lay series nhay dich."""
+    ts = _ts_fs([("S1", "t1", "Sagittal", 0), ("S1", "fs", "Sagittal", 1),
+                 ("S1", "ax", "Axial", 1), ("S1", "co", "Coronal", 0)])
+    cu, _ = chon_series(ts, PLANES)
+    moi, _ = chon_series(ts, PLANES, "fluid")
+
+    sag = lambda w: w.loc[w["Anatomical_Plane"] == "Sagittal", "SeriesInstanceUID"].item()
+    assert sag(cu) == "t1"
+    assert sag(moi) == "fs"
+    # Coronal chi co T1 - van phai giu, khong duoc bo trang mat phang
+    assert set(moi["Anatomical_Plane"]) == set(PLANES)
+
+
+def test_fluid_giu_thu_tu_csv_giua_cac_series_cung_loai(chon_series):
+    """Hai series cung nhay dich: lay cai dung truoc, giong cach cu - khong doi ngau nhien."""
+    ts = _ts_fs([("S1", "t1", "Sagittal", 0), ("S1", "fs_a", "Sagittal", 1),
+                 ("S1", "fs_b", "Sagittal", 1)])
+    moi, _ = chon_series(ts, PLANES, "fluid")
+    assert moi["SeriesInstanceUID"].tolist() == ["fs_a"]
+
+
+def test_mac_dinh_van_la_first_cho_head_hien_tai():
+    """5 head dang nop train tren 'first'. Doi mac dinh truoc khi co head moi = diem sai am tham."""
+    assert _load().SERIES_RULE == "first"
+
+
+def test_script_06_va_50_chon_cung_series_tren_du_lieu_that(chon_series):
+    """Train (06) va du doan (50) la hai ban sao rieng cua phep chon. Lech mot dong la head
+    doc anh khac han luc train ma khong co gi bao."""
+    csv = Path(__file__).resolve().parents[1] / "data" / "raw" / "train_series.csv"
+    if not csv.exists():
+        pytest.skip("chua co train_series.csv")
+    spec = importlib.util.spec_from_file_location(
+        "kaggle_extract", SCRIPT.parent / "06_kaggle_extract_features.py")
+    m06 = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m06)
+    assert m06.SERIES_RULE == "fluid"
+
+    ts = pd.read_csv(csv, dtype={"StudyInstanceUID": str, "SeriesInstanceUID": str})
+    want50, _ = chon_series(ts, PLANES, "fluid")
+    for pl in PLANES:
+        a = set(m06.chon_mot_series(ts[ts["Anatomical_Plane"] == pl], "fluid")["SeriesInstanceUID"])
+        b = set(want50.loc[want50["Anatomical_Plane"] == pl, "SeriesInstanceUID"])
+        assert a == b, pl

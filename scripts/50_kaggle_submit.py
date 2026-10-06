@@ -35,6 +35,10 @@ POOLING = "mean"           # phai khop checkpoint; doc lai tu file nen day chi l
 # quan trong (masked pooling mean/max/attn deu bat bien voi hoan vi) nhung van giu dung
 # thu tu luc train cho de doi chieu khi co su co.
 PLANES = ["Sagittal", "Axial", "Coronal"]
+# Cach chon series - PHAI khop SERIES_RULE cua lan trich dac trung da dung de train head.
+# 5 head hien tai train tren "first"; chi doi sang "fluid" khi da co head train tren dac
+# trung `_fs` (xem 06_kaggle_extract_features.py).
+SERIES_RULE = "first"
 DEBUG_N = 0                # >0 = chi chay N study dau, de thu nhanh truoc khi nop
 # ====================================================================
 
@@ -126,15 +130,19 @@ def find_assets() -> tuple[Path, Path, Path]:
 
 
 # ---------------------------------------------------------------- tien xu ly
-def chon_series(ts: "pd.DataFrame", planes: list[str]):
+def chon_series(ts: "pd.DataFrame", planes: list[str], rule: str = "first"):
     """Moi study lay MOT series moi mat phang - phai khop y het luc train.
 
     Tra ve (bang series duoc chon, tap study khong co mat phang nao trong `planes`).
+    `rule="fluid"` uu tien series Fluid_Sensitive=1, giong `chon_mot_series` o script 06.
 
     Tach rieng ra khoi `main()` de test duoc o may: day la doan de hong mot cach am
     tham nhat. Chon sai mat phang thi model van chay, van ra file nop hop le, chi co
     diem la thap - va khong co gi bao la vi sao.
     """
+    if rule == "fluid" and "Fluid_Sensitive" in ts.columns:
+        # mergesort on dinh: giua cac series cung loai van giu thu tu CSV
+        ts = ts.sort_values("Fluid_Sensitive", ascending=False, kind="mergesort")
     chon = []
     for pl in planes:
         g = ts[ts["Anatomical_Plane"] == pl]
@@ -320,7 +328,10 @@ def main() -> None:
     # phep noi duong dan nem TypeError - hoac te hon, mat so 0 dau ma khong bao gi.
     ts = pd.read_csv(root / "test_series.csv",
                      dtype={"StudyInstanceUID": str, "SeriesInstanceUID": str})
-    want, thieu = chon_series(ts, PLANES)
+    if SERIES_RULE == "fluid" and "Fluid_Sensitive" not in ts.columns:
+        raise SystemExit("SERIES_RULE='fluid' nhung test_series.csv khong co cot "
+                         "Fluid_Sensitive - head train tren series khac han se cho diem sai.")
+    want, thieu = chon_series(ts, PLANES, SERIES_RULE)
     uids = sorted(set(want["StudyInstanceUID"]))
     if DEBUG_N:
         uids = uids[:DEBUG_N]

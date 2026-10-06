@@ -40,12 +40,24 @@ from __future__ import annotations
 # Chay nhieu mat phang trong MOT lan, moi cai ghi mot file rieng. Mat phang nao da co
 # file day du thi bo qua, nen chay lai khong lam lai tu dau.
 PLANES = ["Sagittal", "Coronal", "Axial"]
-BACKBONE = "dinov2_vitb14"   # do o scripts/62 tren T4: B@336 chi dat hon S@224 ~40 phut
-SIZE = 336                   # boi cua 14. 336 -> 24x24 = 576 patch moi lat (224 -> 256)
-BATCH = 32                   # B@336 nang hon S@224, giam batch cho chac VRAM (T4 co 16 GB)
-# Ten file mang theo backbone + size. Tron dac trung cua hai backbone vao mot file la
-# loi khong nhin thay duoc; dat ten ro rang la cach re nhat de no khong xay ra.
-TEN = f"{BACKBONE}_{SIZE}"
+BACKBONE = "dinov2_vits14"   # B@336 (vong truoc) khong hon S@224 ma cham hon ~40 phut
+SIZE = 224                   # boi cua 14. 224 -> 16x16 = 256 patch moi lat
+BATCH = 64
+# Cach chon MOT series moi mat phang - PHAI khop SERIES_RULE trong 50_kaggle_submit.py.
+#   "first" : series dung truoc trong CSV (cach cu). Sagittal khi do chi 48.7% la xung
+#             nhay dich, du 94.2% study co san mot series nhay dich - model nhan lan lon
+#             T1 va PD-FS, dich sang o ca nay toi o ca kia.
+#   "fluid" : uu tien Fluid_Sensitive=1, khong co moi lay series khac.
+SERIES_RULE = "fluid"
+# True: moi lat luu [CLS | trung binh patch token] -> 2 x dim chieu. Nua dau giong het
+# dac trung cu (model(x) chinh la x_norm_clstoken), nen van tach duoc tac dung cua rieng
+# viec doi series va rieng viec them patch.
+LUU_PATCH_MEAN = True
+# Ten file mang theo backbone + size + cach chon series + noi dung. Tron hai loai dac
+# trung vao mot file la loi khong nhin thay duoc; dat ten ro rang la cach re nhat de no
+# khong xay ra.
+TEN = (f"{BACKBONE}_{SIZE}" + ("_fs" if SERIES_RULE == "fluid" else "")
+       + ("_pm" if LUU_PATCH_MEAN else ""))
 ONLY_LABELLED = False     # True = chi 58 study co nhan nguoi gan (chay ~2 phut de thu)
 MAX_STUDIES = 0           # 0 = khong gioi han. CHAY THU LAN DAU: dat 60 (~3 phut)
                           # de chac chan moi thu chay duoc, roi doi ve 0 va Run All lai.
@@ -225,16 +237,32 @@ def build_backbone(device: str):
     return model
 
 
+def chon_mot_series(df: pd.DataFrame, rule: str) -> pd.DataFrame:
+    """Moi study giu MOT dong. Ban sao y het `chon_series` trong 50_kaggle_submit.py -
+    tests/test_submit_selection.py kiem hai ban chon cung series tren du lieu that."""
+    if rule == "fluid" and "Fluid_Sensitive" in df.columns:
+        # mergesort on dinh: giua cac series cung loai van giu thu tu CSV nhu cach cu
+        df = df.sort_values("Fluid_Sensitive", ascending=False, kind="mergesort")
+    return df.groupby("StudyInstanceUID", as_index=False).first()
+
+
 @torch.no_grad()
 def extract(slices: np.ndarray, model, device: str, batch: int) -> np.ndarray:
-    """(N,H,W) trong [0,1] -> (N,384). Lap 1 kenh thanh 3 de giu trong so pretrained."""
+    """(N,H,W) trong [0,1] -> (N,dim) hoac (N,2*dim) neu LUU_PATCH_MEAN.
+
+    Lap 1 kenh thanh 3 de giu trong so pretrained.
+    """
     x = torch.from_numpy(slices).float().unsqueeze(1).repeat(1, 3, 1, 1)
     x = (x - IMAGENET_MEAN) / IMAGENET_STD
     outs = []
     for i in range(0, len(x), batch):
         chunk = x[i:i + batch].to(device, non_blocking=True)
         with torch.autocast(device_type="cuda", dtype=torch.float16, enabled=device == "cuda"):
-            outs.append(model(chunk).float().cpu())
+            f = model.forward_features(chunk)
+            v = f["x_norm_clstoken"]
+            if LUU_PATCH_MEAN:
+                v = torch.cat([v, f["x_norm_patchtokens"].mean(dim=1)], dim=1)
+            outs.append(v.float().cpu())
     return torch.cat(outs).numpy().astype(np.float32)
 
 
@@ -263,7 +291,10 @@ def chay_mot_mat_phang(plane: str, series: pd.DataFrame, labelled: set, device: 
     if ONLY_LABELLED:
         want = want[want["StudyInstanceUID"].isin(labelled)]
     # Moi study lay dung MOT series cua mat phang do
-    want = want.groupby("StudyInstanceUID", as_index=False).first()
+    want = chon_mot_series(want, SERIES_RULE)
+    if "Fluid_Sensitive" in want.columns:
+        print(f"series rule '{SERIES_RULE}': {want['Fluid_Sensitive'].mean():.1%} "
+              f"series duoc chon la xung nhay dich")
     # Study co nhan nguoi gan len dau: neu het gio thi phan quan trong nhat da xong
     want["is_gold"] = want["StudyInstanceUID"].isin(labelled)
     want = want.sort_values("is_gold", ascending=False).reset_index(drop=True)
