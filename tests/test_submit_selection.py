@@ -129,11 +129,8 @@ def test_script_06_va_50_chon_cung_series_tren_du_lieu_that(chon_series):
     csv = Path(__file__).resolve().parents[1] / "data" / "raw" / "train_series.csv"
     if not csv.exists():
         pytest.skip("chua co train_series.csv")
-    spec = importlib.util.spec_from_file_location(
-        "kaggle_extract", SCRIPT.parent / "06_kaggle_extract_features.py")
-    m06 = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(m06)
-    assert m06.SERIES_RULE == "fluid"
+    m06 = _load_06()
+    assert {pl for pl, rule in m06.JOBS if rule == "fluid"} == set(PLANES)
 
     ts = pd.read_csv(csv, dtype={"StudyInstanceUID": str, "SeriesInstanceUID": str})
     want50, _ = chon_series(ts, PLANES, "fluid")
@@ -141,3 +138,20 @@ def test_script_06_va_50_chon_cung_series_tren_du_lieu_that(chon_series):
         a = set(m06.chon_mot_series(ts[ts["Anatomical_Plane"] == pl], "fluid")["SeriesInstanceUID"])
         b = set(want50.loc[want50["Anatomical_Plane"] == pl, "SeriesInstanceUID"])
         assert a == b, pl
+
+
+def _load_06():
+    spec = importlib.util.spec_from_file_location(
+        "kaggle_extract", SCRIPT.parent / "06_kaggle_extract_features.py")
+    m06 = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m06)
+    return m06
+
+
+def test_t1_chi_lay_series_khong_nhay_dich_va_khong_lay_thay():
+    """Goc nhin T1 ma lay series nhay dich thay vao khi thieu thi chi la ban sao cua 'fluid'."""
+    m06 = _load_06()
+    ts = _ts_fs([("S1", "t1", "Sagittal", 0), ("S1", "fs", "Sagittal", 1),
+                 ("S2", "fs2", "Sagittal", 1)])
+    w = m06.chon_mot_series(ts, "t1")
+    assert w["SeriesInstanceUID"].tolist() == ["t1"]

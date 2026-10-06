@@ -1,10 +1,14 @@
 """CHAY TREN KAGGLE NOTEBOOK - khong chay o may local.
 
-Trich dac trung DINOv2 cho nhieu mat phang trong MOT lan chay. Moi mat phang ghi mot
-file rieng:
-    /kaggle/working/features_<backbone>_<size>_<plane>.npz   dac trung tung lat
-    /kaggle/working/dicom_headers_<backbone>_<size>_<plane>.csv  metadata may chup
-    /kaggle/working/extract_summary_<backbone>_<size>.json       tom tat
+Trich dac trung DINOv2 cho nhieu VIEC trong MOT lan chay. Moi viec = (mat phang, loai
+series), ghi mot file rieng:
+    /kaggle/working/features_<TEN>_<rule>_<plane>.npz        dac trung tung lat
+    /kaggle/working/dicom_headers_<TEN>_<rule>_<plane>.csv   metadata may chup
+    /kaggle/working/extract_summary_<TEN>.json               tom tat
+
+Ban nay gom moi thu can cho vong cai tien vao MOT lan chay GPU (~4.3 tieng) de khong
+phai trich lai: series nhay dich cho ca 3 mat phang, series T1 lam goc nhin phu, va moi
+lat luu [CLS | trung binh patch | max patch]. Muon bo phan nao thi cat cot o may.
 
 Vi sao chay o day: tai anh qua Kaggle API bi gioi han toc do (HTTP 429). Tren Kaggle,
 dataset mount san o /kaggle/input nen khong ton request API nao, lai co GPU T4 mien phi.
@@ -13,13 +17,14 @@ CACH DUNG
 ---------
 1. Mo trang competition -> New Notebook (hoac mo lai notebook cu).
 2. Settings: Accelerator = GPU T4 x2, Internet = ON (de tai trong so DINOv2).
-3. Dan file nay vao MOT cell. Sua PLANES o CONFIG cho dung thu can chay.
+3. Dan file nay vao MOT cell. Sua JOBS o CONFIG cho dung thu can chay.
 4. **Save Version -> Save & Run All (Commit)**, KHONG phai Run All.
    Ban Commit chay tren may chu Kaggle, khong can giu tab mo, va ket qua duoc luu vao
    version nen tai ve bang API duoc - khong phai bam tai tung file tren trinh duyet.
 5. Chay xong bao lai; ket qua se duoc tai ve bang `kaggle kernels output`.
 
-THOI GIAN: ~52 phut moi mat phang cho 4,407 study (do that: 149,496 lat, 0 ca loi).
+THOI GIAN: ~52 phut moi 4,407 study (do that: 149,496 lat, 0 ca loi). JOBS hien tai:
+3 x 4,407 (nhay dich) + 4,266 + 3,406 + 857 (T1) study -> uoc ~4.3 tieng.
 
 CHAY LAI DUOC
 -------------
@@ -31,33 +36,33 @@ CHAY LAI DUOC
   tai ve len lam Dataset roi Add Input - script tu tim trong /kaggle/input.
 * Tai trong so DINOv2 tu thu lai 6 lan khi gap loi tam thoi (5xx/429/mat ket noi).
 
-GIOI HAN KAGGLE: 12 tieng moi phien, 20 GB o /kaggle/working. Ba mat phang uoc tinh
-~600 MB, nam thoai mai trong gioi han.
+GIOI HAN KAGGLE: 12 tieng moi phien, 20 GB o /kaggle/working. ~660k lat x 1152 chieu
+o float16 ~1.5 GB, nam thoai mai trong gioi han.
 """
 from __future__ import annotations
 
 # ============================== CONFIG ==============================
-# Chay nhieu mat phang trong MOT lan, moi cai ghi mot file rieng. Mat phang nao da co
-# file day du thi bo qua, nen chay lai khong lam lai tu dau.
-PLANES = ["Sagittal", "Coronal", "Axial"]
-BACKBONE = "dinov2_vits14"   # B@336 (vong truoc) khong hon S@224 ma cham hon ~40 phut
-SIZE = 224                   # boi cua 14. 224 -> 16x16 = 256 patch moi lat
-BATCH = 64
-# Cach chon MOT series moi mat phang - PHAI khop SERIES_RULE trong 50_kaggle_submit.py.
+# Moi viec = (mat phang, cach chon MOT series moi study), ghi mot file rieng. Viec nao da
+# co file day du thi bo qua, nen chay lai khong lam lai tu dau. Viec quan trong xep truoc.
 #   "first" : series dung truoc trong CSV (cach cu). Sagittal khi do chi 48.7% la xung
 #             nhay dich, du 94.2% study co san mot series nhay dich - model nhan lan lon
 #             T1 va PD-FS, dich sang o ca nay toi o ca kia.
-#   "fluid" : uu tien Fluid_Sensitive=1, khong co moi lay series khac.
-SERIES_RULE = "fluid"
-# True: moi lat luu [CLS | trung binh patch token] -> 2 x dim chieu. Nua dau giong het
-# dac trung cu (model(x) chinh la x_norm_clstoken), nen van tach duoc tac dung cua rieng
-# viec doi series va rieng viec them patch.
-LUU_PATCH_MEAN = True
-# Ten file mang theo backbone + size + cach chon series + noi dung. Tron hai loai dac
+#   "fluid" : uu tien Fluid_Sensitive=1, khong co moi lay series khac. PHAI khop
+#             SERIES_RULE trong 50_kaggle_submit.py khi dung head train tren no.
+#   "t1"    : CHI series Fluid_Sensitive=0; study khong co thi bo qua (khong lay series
+#             nhay dich thay vao - neu khong goc nhin phu chi la ban sao cua "fluid").
+JOBS = [("Sagittal", "fluid"), ("Coronal", "fluid"), ("Axial", "fluid"),
+        ("Sagittal", "t1"), ("Coronal", "t1"), ("Axial", "t1")]
+BACKBONE = "dinov2_vits14"   # B@336 (vong truoc) khong hon S@224 ma cham hon ~40 phut
+SIZE = 224                   # boi cua 14. 224 -> 16x16 = 256 patch moi lat
+BATCH = 64
+# Moi lat luu [CLS | trung binh patch | max patch] = 3 x 384 chieu, float16.
+# 384 chieu dau giong het dac trung cu (model(x) chinh la x_norm_clstoken), nen van tach
+# duoc tac dung cua rieng viec doi series va rieng viec them patch.
+# Ten file mang theo backbone + size + noi dung ("cmx" = cls|mean|max). Tron hai loai dac
 # trung vao mot file la loi khong nhin thay duoc; dat ten ro rang la cach re nhat de no
 # khong xay ra.
-TEN = (f"{BACKBONE}_{SIZE}" + ("_fs" if SERIES_RULE == "fluid" else "")
-       + ("_pm" if LUU_PATCH_MEAN else ""))
+TEN = f"{BACKBONE}_{SIZE}_cmx"
 ONLY_LABELLED = False     # True = chi 58 study co nhan nguoi gan (chay ~2 phut de thu)
 MAX_STUDIES = 0           # 0 = khong gioi han. CHAY THU LAN DAU: dat 60 (~3 phut)
                           # de chac chan moi thu chay duoc, roi doi ve 0 va Run All lai.
@@ -240,7 +245,9 @@ def build_backbone(device: str):
 def chon_mot_series(df: pd.DataFrame, rule: str) -> pd.DataFrame:
     """Moi study giu MOT dong. Ban sao y het `chon_series` trong 50_kaggle_submit.py -
     tests/test_submit_selection.py kiem hai ban chon cung series tren du lieu that."""
-    if rule == "fluid" and "Fluid_Sensitive" in df.columns:
+    if rule == "t1":
+        df = df[df["Fluid_Sensitive"] == 0]
+    elif rule == "fluid" and "Fluid_Sensitive" in df.columns:
         # mergesort on dinh: giua cac series cung loai van giu thu tu CSV nhu cach cu
         df = df.sort_values("Fluid_Sensitive", ascending=False, kind="mergesort")
     return df.groupby("StudyInstanceUID", as_index=False).first()
@@ -248,7 +255,7 @@ def chon_mot_series(df: pd.DataFrame, rule: str) -> pd.DataFrame:
 
 @torch.no_grad()
 def extract(slices: np.ndarray, model, device: str, batch: int) -> np.ndarray:
-    """(N,H,W) trong [0,1] -> (N,dim) hoac (N,2*dim) neu LUU_PATCH_MEAN.
+    """(N,H,W) trong [0,1] -> (N, 3*dim) float16 = [CLS | trung binh patch | max patch].
 
     Lap 1 kenh thanh 3 de giu trong so pretrained.
     """
@@ -259,41 +266,42 @@ def extract(slices: np.ndarray, model, device: str, batch: int) -> np.ndarray:
         chunk = x[i:i + batch].to(device, non_blocking=True)
         with torch.autocast(device_type="cuda", dtype=torch.float16, enabled=device == "cuda"):
             f = model.forward_features(chunk)
-            v = f["x_norm_clstoken"]
-            if LUU_PATCH_MEAN:
-                v = torch.cat([v, f["x_norm_patchtokens"].mean(dim=1)], dim=1)
+            p = f["x_norm_patchtokens"]
+            v = torch.cat([f["x_norm_clstoken"], p.mean(dim=1), p.amax(dim=1)], dim=1)
             outs.append(v.float().cpu())
-    return torch.cat(outs).numpy().astype(np.float32)
+    return torch.cat(outs).numpy().astype(np.float16)
 
 
 # ---------------------------------------------------------------- ghi ket qua
-def ghi_ket_qua(feats: dict, headers: list[dict], plane: str) -> None:
+def ghi_ket_qua(feats: dict, headers: list[dict], tag: str) -> None:
     """Ghi dac trung va header ra /kaggle/working.
 
     Goi ca o checkpoint lan o cuoi, nen phai khu trung header: chay lai nhieu lan se doc
     lai file cu roi noi them, de sinh ra dong lap.
     """
-    np.savez_compressed(OUT / f"features_{TEN}_{plane.lower()}.npz", **feats)
+    np.savez_compressed(OUT / f"features_{TEN}_{tag}.npz", **feats)
     if headers:
         hdf = pd.DataFrame(headers)
         keys = [c for c in ("SeriesInstanceUID", "InstanceNumber") if c in hdf.columns]
         if keys:
             hdf = hdf.drop_duplicates(subset=keys, keep="last")
-        hdf.to_csv(OUT / f"dicom_headers_{TEN}_{plane.lower()}.csv", index=False)
+        hdf.to_csv(OUT / f"dicom_headers_{TEN}_{tag}.csv", index=False)
 
 
 # ---------------------------------------------------------------- chay
-def chay_mot_mat_phang(plane: str, series: pd.DataFrame, labelled: set, device: str) -> dict:
-    """Trich dac trung cho MOT mat phang. Tra ve tom tat de gop lai o cuoi."""
+def chay_mot_mat_phang(plane: str, rule: str, series: pd.DataFrame, labelled: set,
+                       device: str) -> dict:
+    """Trich dac trung cho MOT viec (mat phang, loai series). Tra ve tom tat."""
+    tag = f"{rule}_{plane.lower()}"
     gach = "=" * 70
-    print(f"\n{gach}\n=== MAT PHANG: {plane} ===\n{gach}", flush=True)
+    print(f"\n{gach}\n=== VIEC: {tag} ===\n{gach}", flush=True)
     want = series[series["Anatomical_Plane"] == plane].copy()
     if ONLY_LABELLED:
         want = want[want["StudyInstanceUID"].isin(labelled)]
     # Moi study lay dung MOT series cua mat phang do
-    want = chon_mot_series(want, SERIES_RULE)
+    want = chon_mot_series(want, rule)
     if "Fluid_Sensitive" in want.columns:
-        print(f"series rule '{SERIES_RULE}': {want['Fluid_Sensitive'].mean():.1%} "
+        print(f"series rule '{rule}': {want['Fluid_Sensitive'].mean():.1%} "
               f"series duoc chon la xung nhay dich")
     # Study co nhan nguoi gan len dau: neu het gio thi phan quan trong nhat da xong
     want["is_gold"] = want["StudyInstanceUID"].isin(labelled)
@@ -309,7 +317,7 @@ def chay_mot_mat_phang(plane: str, series: pd.DataFrame, labelled: set, device: 
     #   2. Phien MOI (da tat may, hoac ban Save Version): /kaggle/working TRONG TRON.
     #      Luc do phai lay ban da tai ve, upload nguoc len lam Dataset roi Add Input.
     #      Khong co buoc nay thi moi lan mo phien moi la chay lai tu dau.
-    ten_npz = f"features_{TEN}_{plane.lower()}.npz"
+    ten_npz = f"features_{TEN}_{tag}.npz"
     npz_path = OUT / ten_npz
 
     nguon = None
@@ -338,7 +346,7 @@ def chay_mot_mat_phang(plane: str, series: pd.DataFrame, labelled: set, device: 
     # cua nhung study da xong o lan truoc bi mat han. Khong co gi bao, chi la file CSV
     # cuoi cung thieu mot phan - va phan thieu do chinh la thu dung de phan tich theo hang
     # may o ngay 4/10.
-    ten_csv = f"dicom_headers_{TEN}_{plane.lower()}.csv"
+    ten_csv = f"dicom_headers_{TEN}_{tag}.csv"
     ung_vien = [OUT / ten_csv]
     if nguon is not None:
         ung_vien.append(nguon.parent / ten_csv)
@@ -382,15 +390,15 @@ def chay_mot_mat_phang(plane: str, series: pd.DataFrame, labelled: set, device: 
             # Ghi tam moi 300 study. Ghi CA hai file, neu khong thi khi chay lai se doc
             # duoc dac trung nhung mat header cua dung nhung study do.
             if (i + 1) % 300 == 0:
-                ghi_ket_qua(feats, headers, plane)
+                ghi_ket_qua(feats, headers, tag)
                 print(f"    (da ghi tam {len(feats):,} study)", flush=True)
 
-    ghi_ket_qua(feats, headers, plane)
+    ghi_ket_qua(feats, headers, tag)
 
     n_slices = sum(f.shape[0] for f in feats.values())
-    size_mb = (OUT / f"features_{TEN}_{plane.lower()}.npz").stat().st_size / 1024**2
+    size_mb = (OUT / f"features_{TEN}_{tag}.npz").stat().st_size / 1024**2
     summary = {
-        "plane": plane, "size": SIZE, "n_studies": len(feats),
+        "plane": plane, "rule": rule, "size": SIZE, "n_studies": len(feats),
         "n_gold": len(set(feats) & labelled), "n_slices": n_slices,
         "dim": int(next(iter(feats.values())).shape[1]) if feats else 0,
         "npz_mb": round(size_mb, 1), "minutes": round((time.time() - t0) / 60, 1),
@@ -398,7 +406,7 @@ def chay_mot_mat_phang(plane: str, series: pd.DataFrame, labelled: set, device: 
     }
     (OUT / f"extract_summary_{TEN}.json").write_text(json.dumps(summary, indent=2))
 
-    print(f"\n=== XONG {plane} ===")
+    print(f"\n=== XONG {tag} ===")
     print(json.dumps({k: v for k, v in summary.items() if k != "failed"}, indent=2))
     if failed:
         print(f"{len(failed)} study loi, vi du dau tien:")
@@ -422,25 +430,26 @@ def main() -> None:
     labelled = set(train[train[LABELS].notna().all(axis=1)]["StudyInstanceUID"])
     print(f"train.csv {train.shape} | train_series.csv {series.shape} "
           f"| study co nhan nguoi gan: {len(labelled)}")
-    print(f"se chay {len(PLANES)} mat phang: {PLANES}")
+    print(f"se chay {len(JOBS)} viec: {JOBS}")
 
     tom_tat: dict[str, dict] = {}
-    for plane in PLANES:
-        # Mot mat phang hong KHONG duoc lam mat ket qua cua mat phang da xong truoc do.
+    for plane, rule in JOBS:
+        tag = f"{rule}_{plane.lower()}"
+        # Mot viec hong KHONG duoc lam mat ket qua cua viec da xong truoc do.
         try:
-            tom_tat[plane] = chay_mot_mat_phang(plane, series, labelled, device)
+            tom_tat[tag] = chay_mot_mat_phang(plane, rule, series, labelled, device)
         except Exception as exc:
-            print(f"\n!!! MAT PHANG {plane} LOI: {type(exc).__name__}: {exc}", flush=True)
-            tom_tat[plane] = {"loi": f"{type(exc).__name__}: {exc}"}
+            print(f"\n!!! VIEC {tag} LOI: {type(exc).__name__}: {exc}", flush=True)
+            tom_tat[tag] = {"loi": f"{type(exc).__name__}: {exc}"}
         (OUT / f"extract_summary_{TEN}.json").write_text(json.dumps(tom_tat, indent=2))
 
     gach = "=" * 70
     print(f"\n{gach}\n=== TAT CA XONG ===\n{gach}")
-    for plane, t in tom_tat.items():
+    for tag, t in tom_tat.items():
         if "loi" in t:
-            print(f"  {plane:<10} LOI: {t['loi'][:70]}")
+            print(f"  {tag:<16} LOI: {t['loi'][:70]}")
         else:
-            print(f"  {plane:<10} {t['n_studies']:,} study | {t['n_gold']}/58 gold | "
+            print(f"  {tag:<16} {t['n_studies']:,} study | {t['n_gold']}/58 gold | "
                   f"{t['n_slices']:,} lat | {t['npz_mb']:,.0f} MB | {t['minutes']:.0f} phut")
     print(f"\nTai ve tu tab Output: features_{TEN}_*.npz, dicom_headers_{TEN}_*.csv, "
           f"extract_summary_{TEN}.json")
