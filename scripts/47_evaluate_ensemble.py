@@ -65,7 +65,7 @@ def main() -> None:
             boot.append(r.macro_auc)
     lo, hi = np.percentile(boot, [2.5, 97.5])
     print(f"\n  Khoang tin cay 95% (bootstrap theo ca): [{lo:.3f}, {hi:.3f}]")
-    print("  Diem that tren Kaggle public LB        : 0.771")
+    print("  Diem tren tap test doc lap (an nhan)   : 0.771")
 
     print("\nAUC tung benh cua model cuoi:")
     for nhan, auc in sorted(kq.per_label.items(), key=lambda kv: -kv[1]):
