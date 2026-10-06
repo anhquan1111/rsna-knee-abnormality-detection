@@ -20,15 +20,15 @@ Full pipeline built from raw DICOM to submission. No other competitor's fine-tun
 | **Submission 2** | 0.6923 | **0.695** |
 | + LLM labels replacing rule-based | 0.7467 | — |
 | + per-diagnosis attention pooling | 0.7698 | — |
-| **Submission 3 — 5-model ensemble** | **0.8113** | **0.771** |
+| **Submission 3 — 5-model ensemble** | **0.8112** | **0.771** |
 
-### The number worth reading isn't 0.8113 — it's this table
+### The number worth reading isn't 0.8112 — it's this table
 
 | Submission | Own CV | True LB | Gap |
 |---|---:|---:|---:|
 | 1 | 0.566 | 0.601 | **+0.035** |
 | 2 | 0.6923 | 0.695 | **+0.003** |
-| 3 | 0.8113 | 0.771 | **−0.040** |
+| 3 | 0.8112 | 0.771 | **−0.040** |
 
 The first two submissions had CV **below** the true score. The third came out **above**, and flipped sign.
 
@@ -89,9 +89,9 @@ DICOM (3 planes)
 | `mp_coronal` | Coronal only | ViT-S/14 @ 224 | 0.7394 |
 | `chung_s224` | all 3 planes concatenated | ViT-S/14 @ 224 | 0.7698 |
 | `chung_b336` | all 3 planes concatenated | ViT-B/14 @ 336 | 0.7481 |
-| **Ensemble of 5** | | | **0.8113** |
+| **Ensemble of 5** | | | **0.8112** |
 
-**Not one of them reaches 0.78 alone.** The ensemble reaches 0.8113 because they fail on *different cases* — for instance `chung_b336` is clearly better on PF OA (+0.069) and Effusion (+0.047) but clearly worse on MCL (−0.184).
+**Not one of them reaches 0.78 alone.** The ensemble reaches 0.8112 because they fail on *different cases* — for instance `chung_b336` is clearly better on PF OA (+0.069) and Effusion (+0.047) but clearly worse on MCL (−0.184).
 
 Averaging is done **over ranks, not values**: the five heads were trained separately, so their logit scales share no origin, and averaging logits would let the most "confident" head dominate. AUC only cares about ordering.
 
@@ -230,6 +230,7 @@ Versions are **pinned in `uv.lock`**. Several documented numbers depend on the e
 | Seed variance | `python scripts/44_phuong_sai_seed.py` | local |
 | **Train final ensemble** | `python scripts/45_train_final_ensemble.py` | local |
 | Attention figure | `python scripts/46_ve_attention.py` | local |
+| Score the ensemble (~20 s, no retraining) | `python scripts/47_evaluate_ensemble.py` | local |
 | Pack submission assets | `python scripts/49_pack_submission_assets.py` | local |
 | **Submission** | paste `scripts/50_kaggle_submit.py` | **Kaggle, internet OFF** |
 | Backbone fine-tune | paste `scripts/60_kaggle_finetune.py` | **Kaggle GPU** |
@@ -258,7 +259,7 @@ Downloading ~1,500 `.dcm` files plus 4,000+ listing requests in one session gets
 | `test_submit_head_khop.py` | the **copy** of the model inside the submission notebook drifting from the repo version |
 | `test_submit_selection.py` | wrong plane chosen at inference; studies dropped |
 | `test_finetune_cache.py` | the image cache resuming at the wrong offset — every study reading another study's images |
-| `test_gop_theo_hang.py` | the notebook's hand-rolled ranking drifting from the `scipy` version used to measure 0.8113 |
+| `test_gop_theo_hang.py` | the notebook's hand-rolled ranking drifting from the `scipy` version used to measure 0.8112 |
 
 The suite caught **two real bugs on its first run**:
 

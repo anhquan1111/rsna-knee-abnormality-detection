@@ -10,9 +10,9 @@ NAM MODEL, VA VI SAO DUNG NAM CAI NAY
     chung_s224     head chung, noi lat ca ba mat phang       (S@224)  0.7698
     chung_b336     head chung, noi lat ca ba mat phang       (B@336)  0.7481
     ------------------------------------------------------------------------
-    GOP CA NAM (trung binh theo hang)                                 0.8113
+    GOP CA NAM (trung binh theo hang)                                 0.8112
 
-Khong cai nao trong nam dat 0.78 khi dung mot minh. Gop lai duoc 0.8113 vi chung sai o
+Khong cai nao trong nam dat 0.78 khi dung mot minh. Gop lai duoc 0.8112 vi chung sai o
 NHUNG CHO KHAC NHAU - dung dieu kien ngay 9 do duoc. Vi du B@336 hon han o PF OA (+0.069)
 va Effusion (+0.047) nhung kem han o MCL (-0.184) va Medial Meniscus (-0.117).
 
@@ -145,7 +145,7 @@ def main() -> None:
     (OUT / "ensemble.json").write_text(json.dumps({
         "pooling": args.pooling, "epochs": args.epochs,
         "cach_gop": "trung binh theo hang (rank average)",
-        "cv_gop_ca_nam": 0.8113,
+        "cv_gop_ca_nam": 0.8112,
         "thanh_phan": ghi,
     }, indent=2))
     print(f"\nDa ghi {len(ghi)} head vao {OUT}")

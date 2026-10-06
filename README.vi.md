@@ -20,7 +20,7 @@ Toàn bộ pipeline tự dựng từ file DICOM thô tới bài nộp, không d�
 | **Nộp lần 2** | 0.6923 | **0.695** |
 | + nhãn LLM thay từ điển | 0.7467 | — |
 | + attention riêng từng bệnh | 0.7698 | — |
-| **Nộp lần 3 — gộp 5 model** | 0.8113 | **0.771** |
+| **Nộp lần 3 — gộp 5 model** | 0.8112 | **0.771** |
 
 ### Con số đáng chú ý nhất không phải 0.771, mà là bảng này
 
@@ -28,7 +28,7 @@ Toàn bộ pipeline tự dựng từ file DICOM thô tới bài nộp, không d�
 |---|---:|---:|---:|
 | 1 | 0.566 | 0.601 | **+0.035** |
 | 2 | 0.6923 | 0.695 | **+0.003** |
-| 3 | 0.8113 | 0.771 | **−0.040** |
+| 3 | 0.8112 | 0.771 | **−0.040** |
 
 Hai lần đầu CV **thấp hơn** thực tế. Lần thứ ba **cao hơn**, và đổi dấu.
 
@@ -88,9 +88,9 @@ DICOM (3 mat phang)
 | `mp_coronal` | chỉ mặt phẳng Coronal | ViT-S/14 @ 224 | 0.7394 |
 | `chung_s224` | nối lát cả ba mặt phẳng | ViT-S/14 @ 224 | 0.7698 |
 | `chung_b336` | nối lát cả ba mặt phẳng | ViT-B/14 @ 336 | 0.7481 |
-| **Gộp cả 5** | | | **0.8113** |
+| **Gộp cả 5** | | | **0.8112** |
 
-**Không cái nào đạt 0.78 khi đứng một mình.** Gộp được 0.8113 vì chúng sai ở *những chỗ khác nhau* — ví dụ `chung_b336` hơn hẳn ở PF OA (+0.069) và Effusion (+0.047) nhưng kém hẳn ở MCL (−0.184).
+**Không cái nào đạt 0.78 khi đứng một mình.** Gộp được 0.8112 vì chúng sai ở *những chỗ khác nhau* — ví dụ `chung_b336` hơn hẳn ở PF OA (+0.069) và Effusion (+0.047) nhưng kém hẳn ở MCL (−0.184).
 
 Gộp **theo hạng** chứ không theo giá trị: năm head train riêng nên thang đo logit không chung gốc, trung bình logit sẽ để head "tự tin" hơn lấn át. AUC vốn chỉ quan tâm thứ hạng.
 
@@ -228,6 +228,7 @@ Phiên bản **ghim trong `uv.lock`**. Nhiều con số trong tài liệu gắn 
 | Head từng mặt phẳng | `python scripts/43_head_tung_mat_phang.py` | máy |
 | Phương sai seed | `python scripts/44_phuong_sai_seed.py` | máy |
 | **Train bộ gộp cuối** | `python scripts/45_train_final_ensemble.py` | máy |
+| Chấm bộ gộp (~20 giây, không train lại) | `python scripts/47_evaluate_ensemble.py` | máy |
 | Đóng gói bài nộp | `python scripts/49_pack_submission_assets.py` | máy |
 | **Bài nộp** | dán `scripts/50_kaggle_submit.py` | **Kaggle, Internet OFF** |
 | Fine-tune backbone | dán `scripts/60_kaggle_finetune.py` | **Kaggle GPU** |

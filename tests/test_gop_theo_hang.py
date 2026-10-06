@@ -1,6 +1,6 @@
-"""Phep gop theo hang trong notebook nop bai co GIONG phep da dung de do 0.8113 khong?
+"""Phep gop theo hang trong notebook nop bai co GIONG phep da dung de do 0.8112 khong?
 
-Diem 0.8113 duoc do o may bang `scipy.stats.rankdata`. Notebook nop bai tu viet lai phep
+Diem 0.8112 duoc do o may bang `scipy.stats.rankdata`. Notebook nop bai tu viet lai phep
 xep hang bang `np.argsort` hai lan - vi khong muon phu thuoc scipy tren Kaggle.
 
 Hai ban do neu lech nhau thi: notebook van chay, submission.csv van hop le, chi la diem
@@ -35,7 +35,7 @@ def xep_hang_nhu_notebook(z: np.ndarray) -> np.ndarray:
 
 
 def xep_hang_nhu_luc_do(z: np.ndarray) -> np.ndarray:
-    """Sao y doan da dung de do 0.8113 (scripts/43, 45)."""
+    """Sao y doan da dung de do 0.8112 (scripts/43, 45)."""
     out = np.empty_like(z)
     for j in range(z.shape[1]):
         out[:, j] = rankdata(z[:, j]) / len(z)
