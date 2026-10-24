@@ -151,9 +151,25 @@ def train_head(
     weight_decay: float = 1e-4,
     device: str = "cpu",
     log_every: int = 10,
+    select: str = "val_auc",
 ) -> dict:
-    """Vong train toi thieu nhung day du: co eval moi epoch va luu lai learning curve."""
+    """Vong train toi thieu nhung day du: co eval moi epoch va luu lai learning curve.
+
+    `select` quyet dinh `best["state"]` la trong so cua epoch nao:
+      * "val_auc" - epoch co AUC val cao nhat (cach cu).
+      * "last"    - epoch cuoi cung, KHONG nhin val.
+
+    Vi sao can "last" (ngay 13): trong CV, `val_loader` chinh la fold gold dang cham, nen
+    "val_auc" chon epoch TREN TAP DANH GIA. Voi 11-12 ca moi fold, no chon epoch 2-22 va
+    thoi phong diem them +0.015-0.03. Te hon, luc train ban cuoi (khong co val that) nhan
+    LLM la nhan mem nen AUC = nan moi epoch, duong lui chon theo loss -> ra gan epoch cuoi,
+    tuc la NOP mot model khac han model da DO. Dung "last" voi so epoch chot truoc thi CV
+    va bai nop la cung mot thu.
+    """
     from .metrics import macro_auc
+
+    if select not in {"val_auc", "last"}:
+        raise ValueError(f"select khong hop le: {select}")
 
     model.to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
@@ -190,7 +206,10 @@ def train_head(
         # the cho AUC = nan (moi nhan trong fold chi con mot lop) - luc do phai co duong lui
         # theo val_loss, neu khong `best["state"]` la None va load_state_dict nem TypeError
         # o mot cho khong lien quan gi toi nguyen nhan that.
-        if auc == auc and auc > best["val_auc"]:
+        if select == "last":
+            if ep == epochs:
+                best = {"val_auc": auc, "val_loss": val_loss, "epoch": ep, "state": snapshot()}
+        elif auc == auc and auc > best["val_auc"]:
             best = {"val_auc": auc, "val_loss": val_loss, "epoch": ep, "state": snapshot()}
         elif best["state"] is None or (best["val_auc"] == float("-inf")
                                        and val_loss < best["val_loss"]):

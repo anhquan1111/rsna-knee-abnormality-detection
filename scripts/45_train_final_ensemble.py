@@ -1,26 +1,40 @@
 """Train va luu DU 5 head cua bo gop cuoi cung.
 
-    python scripts/45_train_final_ensemble.py --epochs 80
+    python scripts/45_train_final_ensemble.py            # 9 epoch, lay epoch cuoi
+
+SO EPOCH CHOT TRUOC, KHONG CHON THEO DIEM (ngay 13)
+===================================================
+Ban cu train 80 epoch. Nhan LLM la nhan mem nen AUC tren tap train = nan moi epoch, va
+`train_head` am tham chon checkpoint theo loss -> gan epoch 80. Trong khi diem CV lai do
+o epoch 2-22 (chon theo AUC tren chinh fold val). Tuc la DO mot model, NOP mot model khac,
+va model nop te hon: chung_s224 o epoch 80 chi con 0.674 OOF.
+
+9 epoch chon KHONG nhin 58 ca gold: giu 10% ca nhan LLM lam val, AUC so voi nhan LLM dat
+dinh o epoch 9 roi giam (scripts/48_do_theo_epoch.py --khong-gold).
 
 NAM MODEL, VA VI SAO DUNG NAM CAI NAY
 =====================================
-    mp_sagittal    head rieng, chi thay mat phang Sagittal   (S@224)  0.7106
-    mp_axial       head rieng, chi thay mat phang Axial      (S@224)  0.7691
-    mp_coronal     head rieng, chi thay mat phang Coronal    (S@224)  0.7394
-    chung_s224     head chung, noi lat ca ba mat phang       (S@224)  0.7698
-    chung_b336     head chung, noi lat ca ba mat phang       (B@336)  0.7481
-    ------------------------------------------------------------------------
-    GOP CA NAM (trung binh theo hang)                                 0.8112
+                                                          best epoch | epoch 9
+                                                          (cach cu)  | (dung)
+    mp_sagittal    head rieng, chi thay mat phang Sagittal   (S@224)  0.7106  0.6795
+    mp_axial       head rieng, chi thay mat phang Axial      (S@224)  0.7691  0.7476
+    mp_coronal     head rieng, chi thay mat phang Coronal    (S@224)  0.7394  0.7220
+    chung_s224     head chung, noi lat ca ba mat phang       (S@224)  0.7698  0.7329
+    chung_b336     head chung, noi lat ca ba mat phang       (B@336)  0.7481  0.7316
+    --------------------------------------------------------------------------------
+    GOP CA NAM (trung binh theo hang)                                 0.8112  0.7593
 
-Khong cai nao trong nam dat 0.78 khi dung mot minh. Gop lai duoc 0.8112 vi chung sai o
-NHUNG CHO KHAC NHAU - dung dieu kien ngay 9 do duoc. Vi du B@336 hon han o PF OA (+0.069)
+Cot "best epoch" chon epoch tren chinh fold dang cham nen lac quan - xem 48_do_theo_epoch.py.
+
+Khong cai nao trong nam dat 0.75 khi dung mot minh (epoch 9). Gop lai duoc 0.7593 vi chung sai o
+NHUNG CHO KHAC NHAU - dung dieu kien ngay 9 do duoc. Vi du (so do theo cach cu) B@336 hon han o PF OA (+0.069)
 va Effusion (+0.047) nhung kem han o MCL (-0.184) va Medial Meniscus (-0.117).
 
 DUNG "GOP TAT CA", KHONG PHAI "GOP TO HOP TOT NHAT"
 ===================================================
 Da thu ca 26 to hop con co the co. Lay cai diem cao nhat trong 26 la CHON TREN TAP DANH
-GIA - cung loi voi viec chon seed tot nhat, va phan diem phong len do khong chuyen sang
-bang xep hang duoc.
+GIA - cung loi voi viec chon seed tot nhat, va phan diem phong len do khong giu duoc
+tren du lieu moi.
 
 "Gop tat ca model da train" la mot quy tac dat truoc, khong nhin diem. No tinh co cung
 la to hop tot nhat trong 26, nhung day la he qua chu khong phai ly do chon.
@@ -61,25 +75,26 @@ REPORT_KEY = "report_key"
 REPO = Path(__file__).resolve().parents[1]
 LLM = REPO / "data" / "external" / "rsna-knee-llm-report-labels" / "llm_labels_v4_blend.csv"
 
-# (ten, duong dan dac trung, backbone, size, mat phang, diem CV da do)
+# (ten, duong dan dac trung, backbone, size, mat phang, diem CV o epoch co dinh 9 -
+#  scripts/48_do_theo_epoch.py; so cu 0.71-0.77 la best epoch chon tren chinh fold val)
 THANH_PHAN = [
     ("mp_sagittal", DATA_INTERIM / "features_dinov2_vits14_224_sagittal.npz",
-     "dinov2_vits14", 224, "sagittal", 0.7106),
+     "dinov2_vits14", 224, "sagittal", 0.6795),
     ("mp_axial", REPO / "data" / "kaggle_out" / "features_dinov2_axial.npz",
-     "dinov2_vits14", 224, "axial", 0.7691),
+     "dinov2_vits14", 224, "axial", 0.7476),
     ("mp_coronal", REPO / "data" / "kaggle_out" / "features_dinov2_coronal.npz",
-     "dinov2_vits14", 224, "coronal", 0.7394),
+     "dinov2_vits14", 224, "coronal", 0.7220),
     ("chung_s224", DATA_INTERIM / "features_dinov2_vits14_224.npz",
-     "dinov2_vits14", 224, "all", 0.7698),
+     "dinov2_vits14", 224, "all", 0.7329),
     ("chung_b336", DATA_INTERIM / "features_dinov2_vitb14_336.npz",
-     "dinov2_vitb14", 336, "all", 0.7481),
+     "dinov2_vitb14", 336, "all", 0.7316),
 ]
 OUT = DATA_INTERIM / "ensemble"
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--epochs", type=int, default=80)
+    ap.add_argument("--epochs", type=int, default=9)
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--pooling", default="per_label_attn")
     args = ap.parse_args()
@@ -118,7 +133,7 @@ def main() -> None:
         loader = DataLoader(ds, batch_size=4, shuffle=True, collate_fn=collate_features)
         model = StudyHead(dim, pooling=args.pooling)
         out = train_head(model, loader, loader, epochs=args.epochs, lr=args.lr,
-                         device=device, log_every=0)
+                         device=device, log_every=0, select="last")
         model.load_state_dict(out["best"]["state"])
 
         # Chot chan "head chua train" cua ngay 5: phep kiem luu/nap lai KHONG bat duoc
@@ -130,7 +145,10 @@ def main() -> None:
             raise SystemExit(f"{ten}: head hinh nhu CHUA TRAIN (do lech {do_lech:.5f})")
 
         f = OUT / f"head_{ten}.pt"
-        torch.save({"state_dict": model.state_dict(), "dim": dim,
+        # Luu tren cpu: snapshot cua train_head nam tren GPU, file mang tensor cuda thi may
+        # khong co GPU chi doc duoc khi nho map_location.
+        torch.save({"state_dict": {k: v.cpu() for k, v in model.state_dict().items()},
+                    "dim": dim,
                     "pooling": args.pooling, "labels": L,
                     "ten": ten, "backbone": backbone, "size": size, "plane": plane,
                     "cv_macro_auc": cv, "n_train_studies": len(pool),
@@ -145,7 +163,8 @@ def main() -> None:
     (OUT / "ensemble.json").write_text(json.dumps({
         "pooling": args.pooling, "epochs": args.epochs,
         "cach_gop": "trung binh theo hang (rank average)",
-        "cv_gop_ca_nam": 0.8112,
+        "cv_gop_ca_nam": 0.7593,
+        "cv_ghi_chu": "OOF epoch co dinh 9, tu reports/day13_epoch_*.npz",
         "thanh_phan": ghi,
     }, indent=2))
     print(f"\nDa ghi {len(ghi)} head vao {OUT}")

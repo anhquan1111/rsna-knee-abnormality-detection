@@ -116,3 +116,48 @@ def test_head_tra_ve_logit_chu_khong_phai_xac_suat():
     out = head(x, mask)
     assert out.shape == (3, 12)
     assert out.min() < 0, "dau ra phai la logit, co the am"
+
+
+def _loader_nho(n=8, nhan_mem=False):
+    """8 ca gia, nhan 0/1 hoac nhan mem (giong nhan LLM)."""
+    from torch.utils.data import DataLoader
+
+    g = torch.Generator().manual_seed(0)
+    y = torch.rand(n, 12, generator=g)
+    if not nhan_mem:
+        y = (y > 0.5).float()
+    data = [(torch.randn(3, 8, generator=g), y[i], f"ca{i}") for i in range(n)]
+    return DataLoader(data, batch_size=4, collate_fn=collate_features)
+
+
+def test_select_last_tra_ve_dung_trong_so_epoch_cuoi():
+    """`select="last"` la cach train ban nop: khong duoc len chon epoch khac."""
+    from rsna_knee.head import train_head
+
+    torch.manual_seed(0)
+    head = StudyHead(dim=8, pooling="mean")
+    dl = _loader_nho()
+    out = train_head(head, dl, dl, epochs=4, log_every=0, select="last")
+    assert out["best"]["epoch"] == 4
+    for k, v in head.state_dict().items():
+        assert torch.equal(out["best"]["state"][k], v), k
+
+
+def test_nhan_mem_lam_auc_nan_nen_val_auc_lui_ve_loss():
+    """Day la duong da lam ban nop khac ban do: nhan mem -> AUC nan moi epoch -> 'val_auc'
+    am tham chon theo loss. Neu sau nay hanh vi doi, test nay bao de xem lai script 45."""
+    from rsna_knee.head import train_head
+
+    torch.manual_seed(0)
+    dl = _loader_nho(nhan_mem=True)
+    out = train_head(StudyHead(dim=8, pooling="mean"), dl, dl, epochs=3, log_every=0)
+    assert all(a != a for a in out["history"]["val_auc"]), "AUC tren nhan mem phai la nan"
+    assert out["best"]["val_auc"] == float("-inf")
+
+
+def test_select_khong_hop_le_bi_chan():
+    from rsna_knee.head import train_head
+
+    dl = _loader_nho()
+    with pytest.raises(ValueError):
+        train_head(StudyHead(dim=8, pooling="mean"), dl, dl, epochs=1, select="best")
