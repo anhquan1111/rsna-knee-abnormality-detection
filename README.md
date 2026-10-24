@@ -1,38 +1,33 @@
 # RSNA Knee Abnormality Detection
 
-Predicting 12 knee abnormalities from multi-plane MRI when **only 1.3% of studies carry human labels**. [Competition](https://www.kaggle.com/competitions/rsna-knee-abnormality-detection) · 4,420 teams · deadline 2026-10-22.
+Predicting 12 knee abnormalities from multi-plane MRI when **only 1.3% of studies carry human labels**. Data from the [RSNA Knee Abnormality Detection competition on Kaggle](https://www.kaggle.com/competitions/rsna-knee-abnormality-detection).
 
-Full pipeline built from raw DICOM to submission. No other competitor's fine-tuned checkpoints were used.
+Full pipeline built from raw DICOM to predictions. No one else's fine-tuned checkpoints were used. Built as a PBL (project-based learning) project.
 
-*[Bản tiếng Việt →](README.vi.md)*
+*[Bản tiếng Việt →](README.vi.md)* · **Visual report:** `reports/bao_cao_pbl.html` · **Slides:** `reports/slide/bao_cao_pbl.pptx`
 
 ---
 
 ## Results
 
-| | Macro AUC (CV) | Kaggle public LB |
-|---|---:|---:|
-| Constant baseline | 0.500 | — |
-| Frozen DINOv2, 58 studies, 1 plane | 0.5256 | — |
-| **Submission 1** | 0.566 | **0.601** |
-| + 3 planes (149k → 437k slices) | 0.6266 | — |
-| + rule-based weak labels | 0.6923 | — |
-| **Submission 2** | 0.6923 | **0.695** |
-| + LLM labels replacing rule-based | 0.7467 | — |
-| + per-diagnosis attention pooling | 0.7698 | — |
-| **Submission 3 — 5-model ensemble** | **0.8112** | **0.771** |
+**Macro AUC `0.7645`**, 95% CI `[0.715, 0.805]`: out-of-fold AUC on the 58 radiologist-labelled studies, for an ensemble of 5 heads × 3 seeds, each head trained for 9 epochs. The epoch count was fixed in advance without looking at those 58 studies.
 
-### The number worth reading isn't 0.8112 — it's this table
+Improvement steps, measured under the old protocol (useful for comparing steps, not as the final score):
 
-| Submission | Own CV | True LB | Gap |
-|---|---:|---:|---:|
-| 1 | 0.566 | 0.601 | **+0.035** |
-| 2 | 0.6923 | 0.695 | **+0.003** |
-| 3 | 0.8112 | 0.771 | **−0.040** |
+| Step | Macro AUC (CV) |
+|---|---:|
+| Constant baseline | 0.500 |
+| Frozen DINOv2, 58 studies, 1 plane | 0.5256 |
+| + 3 planes (149k → 437k slices) | 0.6266 |
+| + rule-based weak labels | 0.6923 |
+| + LLM labels replacing rule-based | 0.7467 |
+| + per-diagnosis attention pooling | 0.7698 |
+| 5-model ensemble (old protocol) | 0.8112 |
+| **5 models × 3 seeds, corrected protocol** | **0.7645** |
 
-The first two submissions had CV **below** the true score. The third came out **above**, and flipped sign.
+### Re-measured: why 0.8112 was optimistic
 
-The evaluation protocol didn't break — **the way it was used** did. Between submissions 2 and 3, every choice was made by comparing scores **on the same 58 evaluation studies**:
+**Reason one: many choices made on the same 58 studies.** From weak labels to the ensemble, every choice was made by comparing scores on exactly those 58 evaluation studies:
 
 | Choice | Options compared |
 |---|---:|
@@ -40,13 +35,30 @@ The evaluation protocol didn't break — **the way it was used** did. Between su
 | Pooling type | 4 |
 | Backbone | 2 |
 | Ensemble subset | 26 |
-| | **~35** |
 
-The seed-variance measurement *(section 4)* predicted both the direction and the magnitude: picking the best of **5** seeds inflates by `+0.005`. Picking across **~35** choices inflating by `+0.040` is entirely consistent.
+The seed-variance measurement *(section 4)* shows that picking the best of 5 seeds already inflates the score by `+0.005`. Picking across ~35 choices inflates it more.
 
-> **Takeaway:** measure once and the estimate is unbiased; measure 35 times and take the maximum and it no longer is. The first two submissions tracked closely *precisely because almost nothing had been selected yet* — one configuration, then submit.
->
-> The improvement is real: LB `0.695 → 0.771`, **+0.076**, the largest jump of the project. It's just smaller than CV promised.
+**Reason two, more specific and fixable: CV scored one model, the final model was another** (day 13, `scripts/48_do_theo_epoch.py`).
+
+- **During CV**, every experiment called `train_head(model, train, val)` with `val` being the very gold fold being scored, and kept the epoch with the best val AUC. With 11–12 studies per fold it picked epochs **2–22** (2–17 for `chung_s224`): selection on the evaluation set, repeated five times per run.
+- **When training the final model** (`45_train_final_ensemble.py`, old version): 80 epochs. LLM labels are soft, so `roc_auc_score` raises, AUC is `nan` every epoch, and `train_head` silently falls back to selecting by loss, which lands near **epoch 80**.
+- And heads get **worse the longer they train** on gold: `chung_s224` scores 0.735 at epoch 5 and **0.674 at epoch 80**.
+
+Validation logits were recorded at **every** epoch within a single training run, then the 5-model ensemble (seed 42) was scored under each selection rule:
+
+| Epoch selection | Ensemble CV |
+|---|---:|
+| Best epoch per fold (old protocol, rerun) | 0.7933 |
+| **Fixed 9 epochs, chosen without looking at gold** | **0.7593** `[0.711, 0.798]` |
+| Fixed 25 epochs (the old final model used ~80, i.e. even longer) | 0.7426 |
+
+What follows from this:
+
+1. Rerunning the old protocol gives 0.7933, not 0.8112: picking epochs on 12-study folds also makes the score jump between runs (GPU non-determinism).
+2. **The epoch count is chosen without touching the 58 gold studies:** hold out 10% of the LLM-labelled studies as validation. AUC against the LLM labels peaks at **epoch 9** (0.766) and then declines. The ensemble is flat across epochs 5–20 (0.75–0.77), so the exact number matters less than **not training for 80**.
+3. **Multiple seeds** (same folds, only the training seed changes, `--seed`): the epoch-9 ensemble scores `0.7593 / 0.7690 / 0.7461` for seeds 42 / 7 / 2026, std `0.0115`. Averaging 3 seeds × 5 heads: **`0.7645`**, CI `[0.715, 0.805]`. The 5 heads retrained in the repo are the seed-42 ones.
+
+> **Not proven:** epoch 9 vs epoch 25 differs by `+0.017`, CI `[−0.009, +0.041]`, which still crosses zero. With 58 studies that is the limit; settling it needs a larger labelled evaluation set.
 
 ---
 
@@ -82,20 +94,22 @@ DICOM (3 planes)
    -> RANK average  -> 12 probabilities
 ```
 
-| Component | Sees | Backbone | Own CV |
-|---|---|---|---:|
-| `mp_sagittal` | Sagittal only | ViT-S/14 @ 224 | 0.7106 |
-| `mp_axial` | Axial only | ViT-S/14 @ 224 | 0.7691 |
-| `mp_coronal` | Coronal only | ViT-S/14 @ 224 | 0.7394 |
-| `chung_s224` | all 3 planes concatenated | ViT-S/14 @ 224 | 0.7698 |
-| `chung_b336` | all 3 planes concatenated | ViT-B/14 @ 336 | 0.7481 |
-| **Ensemble of 5** | | | **0.8112** |
+| Component | Sees | Backbone | CV, old protocol | CV, epoch 9 |
+|---|---|---|---:|---:|
+| `mp_sagittal` | Sagittal only | ViT-S/14 @ 224 | 0.7106 | 0.6795 |
+| `mp_axial` | Axial only | ViT-S/14 @ 224 | 0.7691 | 0.7476 |
+| `mp_coronal` | Coronal only | ViT-S/14 @ 224 | 0.7394 | 0.7220 |
+| `chung_s224` | all 3 planes concatenated | ViT-S/14 @ 224 | 0.7698 | 0.7329 |
+| `chung_b336` | all 3 planes concatenated | ViT-B/14 @ 336 | 0.7481 | 0.7316 |
+| **Ensemble of 5** | | | **0.8112** | **0.7593** |
 
-**Not one of them reaches 0.78 alone.** The ensemble reaches 0.8112 because they fail on *different cases* — for instance `chung_b336` is clearly better on PF OA (+0.069) and Effusion (+0.047) but clearly worse on MCL (−0.184).
+"Old protocol" picks the epoch on the fold being scored and is optimistic (see *Re-measured after the deadline*).
+
+**Not one of them reaches 0.75 alone.** The ensemble gains a lot because they fail on *different cases* — for instance (old-protocol numbers) `chung_b336` is clearly better on PF OA (+0.069) and Effusion (+0.047) but clearly worse on MCL (−0.184).
 
 Averaging is done **over ranks, not values**: the five heads were trained separately, so their logit scales share no origin, and averaging logits would let the most "confident" head dominate. AUC only cares about ordering.
 
-The rule is **"average everything"**, not "average the best subset". All 26 subsets were tried; taking the highest of 26 is **selection on the evaluation set**, and that inflation does not transfer to the leaderboard.
+The rule is **"average everything"**, not "average the best subset". All 26 subsets were tried; taking the highest of 26 is **selection on the evaluation set**, and that inflation does not hold on new data.
 
 ### What does the model look at?
 
@@ -151,7 +165,7 @@ It also produces two numbers that are close in size but opposite in nature:
 
 | | |
 |---|---|
-| Picking the best seed | `+0.0049` — does **not** transfer to the LB; it is looking at the answer and choosing |
+| Picking the best seed | `+0.0049` — does **not** carry over to new data; it is looking at the answer and choosing |
 | Averaging over seeds | `+0.0048` — **legitimate**; the answer is never consulted |
 
 ### 5. Negative results, kept
@@ -174,7 +188,7 @@ Features predict the **scanner manufacturer** with **82.8%** accuracy (chance: 3
 
 The spread is `+0.083` but the intervals overlap → **not measurable**. With 16–22 studies per manufacturer this test has almost no resolving power.
 
-**A deliberate trade-off:** grouping folds by manufacturer allows at most 4 folds, the smallest holding 2 studies, with 2 (fold, label) pairs unscoreable. At this sample size the cost exceeds the benefit — but the risk that *a private test set with a different manufacturer mix scores lower* remains untouched.
+**A deliberate trade-off:** grouping folds by manufacturer allows at most 4 folds, the smallest holding 2 studies, with 2 (fold, label) pairs unscoreable. At this sample size the cost exceeds the benefit — but the risk that *new data with a different manufacturer mix scores lower* remains untouched.
 
 ---
 
@@ -210,8 +224,8 @@ The subtle failure mode: when pooling returns `(B, L, d)`, placing `nn.Linear(d,
 
 ```bash
 uv venv --python 3.12 .venv
-uv sync --extra data --extra dev
-uv run pytest                        # 100 tests, ~30 seconds
+uv sync --extra data --extra dev --extra bao-cao   # bao-cao: python-pptx for the slide deck
+uv run pytest                        # 110 tests, ~20 seconds
 ```
 
 Versions are **pinned in `uv.lock`**. Several documented numbers depend on the exact version — for instance `roc_auc_score` returning `nan` rather than raising is `scikit-learn 1.9.x` behaviour.
@@ -228,11 +242,16 @@ Versions are **pinned in `uv.lock`**. Several documented numbers depend on the e
 | Error analysis | `python scripts/42_error_analysis.py` | local |
 | Per-plane heads | `python scripts/43_head_tung_mat_phang.py` | local |
 | Seed variance | `python scripts/44_phuong_sai_seed.py` | local |
-| **Train final ensemble** | `python scripts/45_train_final_ensemble.py` | local |
+| **Train final ensemble** (9 epochs, ~6 min) | `python scripts/45_train_final_ensemble.py` | local |
+| Per-epoch OOF / epoch choice without gold | `python scripts/48_do_theo_epoch.py --ten <component> [--khong-gold]` | local |
+| Score the ensemble at a fixed epoch, plus seeds (~1 min) | `python scripts/48_do_theo_epoch.py --cham` | local |
+| Add a seed | `python scripts/48_do_theo_epoch.py --ten <component> --epochs 9 --seed 7` | local |
+| **Export the visual report** | `python scripts/70_xuat_bao_cao.py` → `reports/bao_cao_pbl.html` | local |
+| **Export the slides** (15 PNG at 4K + PPTX with speaker notes + PDF) | `python scripts/70_xuat_bao_cao.py --slide` → `reports/slide/` | local, needs Chrome/Edge |
 | Attention figure | `python scripts/46_ve_attention.py` | local |
-| Score the ensemble (~20 s, no retraining) | `python scripts/47_evaluate_ensemble.py` | local |
-| Pack submission assets | `python scripts/49_pack_submission_assets.py` | local |
-| **Submission** | paste `scripts/50_kaggle_submit.py` | **Kaggle, internet OFF** |
+| Score the old-protocol ensemble (~20 s) | `python scripts/47_evaluate_ensemble.py` | local |
+| Pack offline inference assets | `python scripts/49_pack_submission_assets.py` | local |
+| Offline inference notebook | paste `scripts/50_kaggle_submit.py` | **Kaggle, internet OFF** |
 | Backbone fine-tune | paste `scripts/60_kaggle_finetune.py` | **Kaggle GPU** |
 | Backbone throughput probe | paste `scripts/62_kaggle_do_toc_do.py` | **Kaggle GPU** |
 
@@ -246,17 +265,18 @@ Downloading ~1,500 `.dcm` files plus 4,000+ listing requests in one session gets
 
 ## Tests
 
-100 tests, no image data required. They do **not** check "does the function run" — they check the behaviours that **fail silently**, the kind that produce a plausible number instead of an error.
+110 tests, no image data required. They do **not** check "does the function run" — they check the behaviours that **fail silently**, the kind that produce a plausible number instead of an error.
 
 | File | What it blocks |
 |---|---|
 | `test_metrics.py` | macro AUC returning `nan`; single-class labels dropped from the denominator unannounced |
-| `test_head.py` | pooling forgetting the mask; `max` padding with 0 instead of `-inf`; loss not skipping `NaN` |
+| `test_oof.py` | public OOF files (label-free) being scored against a shifted study order |
+| `test_head.py` | pooling forgetting the mask; `max` padding with 0 instead of `-inf`; loss not skipping `NaN`; checkpoint silently picked by loss when soft labels make AUC `nan` |
 | `test_splits.py` | leakage between folds; duplicate reports split across sides |
 | `test_reports.py` | negation flipping the wrong clause; `unknown` coerced to negative |
 | `test_dicom_io.py` | normalisation producing `inf`/`nan`; per-slice normalisation erasing relative brightness |
 | `test_per_label_attn.py` | one diagnosis's logit depending on another's pooled vector |
-| `test_submit_head_khop.py` | the **copy** of the model inside the submission notebook drifting from the repo version |
+| `test_submit_head_khop.py` | the **copy** of the model inside the inference notebook drifting from the repo version |
 | `test_submit_selection.py` | wrong plane chosen at inference; studies dropped |
 | `test_finetune_cache.py` | the image cache resuming at the wrong offset — every study reading another study's images |
 | `test_gop_theo_hang.py` | the notebook's hand-rolled ranking drifting from the `scipy` version used to measure 0.8112 |
@@ -274,13 +294,14 @@ This is the class of bug that consumed the most time, because **none of them rai
 
 | Trap | Symptom | Guard |
 |---|---|---|
-| **Winning config has no checkpoint** *(hit twice)* | Measure one thing, submit another | The experiment loop trains 5 folds and discards all 5 — correct behaviour for it. A separate final-training step is required |
+| **Winning config has no checkpoint** *(hit twice)* | Measure one thing, ship another | The experiment loop trains 5 folds and discards all 5 — correct behaviour for it. A separate final-training step is required |
 | **The checkpoint check was also wrong** | "Save → reload → compare" reported an exact match while still shipping an **untrained** head | It only tested I/O. The right check is the **standard deviation of predictions across studies** |
 | **Wrong checkpoint selected** | `rglob` returns an undefined order, 4 files in the directory | Select by `oof_macro_auc`; the notebook halts if the head list is unexpected |
 | **Inference diverging from training** | Head trained on 3 planes, notebook reading only 1 | `chon_series()` extracted into a testable function |
 | **Mixing two backbones' features** | Two `.npz` files look identical | 3 guards: filenames carry backbone+size, destination name derived from source, halt on dimension mismatch |
-| **Error reporting breaking what it reports on** | `submission.csv` written correctly but the notebook marked FAILED → Kaggle rejects it | Wrap everything that runs **after** results hit disk |
+| **Error reporting breaking what it reports on** | `submission.csv` written correctly but the notebook marked FAILED, so the run counts as failed | Wrap everything that runs **after** results hit disk |
 | **A false warning** | The comparison step compared 3 planes against 1 → "slice count mismatch" on every study | A false warning is worse than none: the next real warning gets ignored |
+| **Scoring one epoch, shipping another** | CV picked epochs 2–22 on the val fold; the final model ended near epoch 80 because AUC on soft labels is `nan`, so selection fell back to loss | `train_head(select="last")` with a pre-set epoch count; a test locks in the fallback behaviour |
 | **PowerShell's `Compress-Archive`** | Kaggle extracts a file literally named `dinov2_repo\hubconf.py` | Zip from Python with `as_posix()`; the script re-reads its own zip to verify |
 
 ---
@@ -304,6 +325,8 @@ This is the class of bug that consumed the most time, because **none of them rai
 
 > ⚠️ Early stopping on **validation loss** would stop around epoch 10 and forfeit the remaining AUC. Stop on the metric you will actually be scored on.
 
+> **Day-13 note:** this curve comes from a head trained on the 58 gold studies, a few dozen steps per epoch. Trained on 4,407 LLM-labelled studies, one epoch is ~75× longer, and AUC peaks early (epoch ~9) and then **declines**. "Stop on AUC" still holds, but that AUC must be measured on a set **other than the one being scored** (here, a 10% held-out slice of LLM-labelled studies).
+
 ---
 
 ## Limitations
@@ -312,9 +335,8 @@ This is the class of bug that consumed the most time, because **none of them rai
   > The first check written for this figure was **too weak and reported the opposite conclusion** — it measured "largest difference between any two diagnoses", which is dominated by positive-vs-negative rather than by anatomy. Exactly the false-warning trap this repo catalogues, this time hit by its own author.
 - **58 evaluation studies is a hard ceiling.** Confidence intervals are ~0.12 wide; neither more images nor more weak labels narrow them.
 - **Scanner leakage is unmitigated** — known to exist, magnitude not measurable at this sample size.
-- **No hyper-parameter search** — learning rate and epoch count were fixed early.
+- **No hyper-parameter search** — learning rate was fixed early; the epoch count was only re-set on day 13 (9), chosen with LLM labels rather than gold.
 - **The LLM labels are someone else's published artifact.** The 9-language rule-based extractor is original work and the two sources were compared under a controlled protocol, but the labels used in the final model were not self-generated.
-- **The leaderboard top sits at 0.955–0.959**, reached largely by blending public checkpoints trained by other competitors. This repository does not take that route.
 
 ## Environment
 

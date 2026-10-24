@@ -5,6 +5,9 @@
 Doc du doan out-of-fold cua 5 head (do 43_head_tung_mat_phang.py va cac thi nghiem ngay
 11-12 ghi ra), gop theo hang dung nhu notebook nop bai, roi cham macro AUC + KTC 95%.
 Khong train lai - 45_train_final_ensemble.py mat hon 10 phut.
+
+LUU Y (ngay 13): cac OOF nay chon epoch tren chinh fold val nen 0.8112 la so LAC QUAN, va
+khong phai model da nop (ban nop train ~80 epoch). So trung thuc: 48_do_theo_epoch.py --cham.
 """
 from __future__ import annotations
 
@@ -65,7 +68,6 @@ def main() -> None:
             boot.append(r.macro_auc)
     lo, hi = np.percentile(boot, [2.5, 97.5])
     print(f"\n  Khoang tin cay 95% (bootstrap theo ca): [{lo:.3f}, {hi:.3f}]")
-    print("  Diem tren tap test doc lap (an nhan)   : 0.771")
 
     print("\nAUC tung benh cua model cuoi:")
     for nhan, auc in sorted(kq.per_label.items(), key=lambda kv: -kv[1]):

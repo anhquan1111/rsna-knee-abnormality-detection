@@ -1,11 +1,12 @@
-"""Phep gop theo hang trong notebook nop bai co GIONG phep da dung de do 0.8112 khong?
+"""Phep gop theo hang trong notebook suy luan co GIONG phep da dung de do diem CV khong?
 
-Diem 0.8112 duoc do o may bang `scipy.stats.rankdata`. Notebook nop bai tu viet lai phep
-xep hang bang `np.argsort` hai lan - vi khong muon phu thuoc scipy tren Kaggle.
+Diem CV duoc do o may bang `scipy.stats.rankdata`. Notebook suy luan (chay tren Kaggle,
+khong Internet) tu viet lai phep xep hang bang `np.argsort` hai lan - vi khong muon phu
+thuoc scipy o do.
 
-Hai ban do neu lech nhau thi: notebook van chay, submission.csv van hop le, chi la diem
-that KHAC diem da do. Va vi CV cua du an nay bam LB toi 0.003, mot sai lech nhu vay se
-bi doc nham thanh "bang rieng khac bang cong khai" thay vi "code nop bai sai".
+Hai ban do neu lech nhau thi: notebook van chay, submission.csv van hop le, chi la du
+doan KHAC voi thu da do. Sai lech nhu vay rat de doc nham thanh "du lieu moi khac" thay
+vi "code suy luan sai".
 
 Test nay khoa hai ban lai voi nhau.
 """

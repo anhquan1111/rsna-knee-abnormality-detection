@@ -22,7 +22,7 @@ Day la cay thuoc, KHONG phai cai nut de van.
 
 KHONG DUOC CHON SEED TOT NHAT
 =============================
-Chon seed co diem cao nhat la chon tren TAP DANH GIA. Diem CV se dep len va LB thi khong,
+Chon seed co diem cao nhat la chon tren TAP DANH GIA. Diem CV se dep len con du lieu moi thi khong,
 vi cai dep do chi la nhat dung lan tung may. Script nay tinh san con so "neu nhat seed tot
 nhat thi diem phong len bao nhieu" de thay ro cai gia cua viec do.
 
@@ -180,7 +180,7 @@ def main() -> None:
     print(f"  trung binh cac seed : {d.mean():.4f}")
     print(f"  seed tot nhat       : {d.max():.4f}")
     print(f"  PHONG LEN           : {d.max()-d.mean():+.4f}")
-    print("  Do la phan diem KHONG chuyen sang LB duoc: no den tu viec nhin dap an")
+    print("  Do la phan diem KHONG giu duoc tren du lieu moi: no den tu viec nhin dap an")
     print("  roi nhat, chu khong tu model tot hon.")
 
     gop = sum(theo_hang(o[keep]) for o in oofs) / len(oofs)

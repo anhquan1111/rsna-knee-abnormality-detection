@@ -1,38 +1,33 @@
 # RSNA Knee Abnormality Detection
 
-Dự đoán 12 bất thường đầu gối từ MRI đa mặt phẳng, trong điều kiện **chỉ 1,3% dữ liệu có nhãn người gán**. [Trang cuộc thi](https://www.kaggle.com/competitions/rsna-knee-abnormality-detection) · 4.420 đội · hạn 2026-10-22.
+Dự đoán 12 bất thường đầu gối từ MRI đa mặt phẳng, trong điều kiện **chỉ 1,3% dữ liệu có nhãn người gán**. Dữ liệu lấy từ [cuộc thi RSNA Knee Abnormality Detection trên Kaggle](https://www.kaggle.com/competitions/rsna-knee-abnormality-detection).
 
-Toàn bộ pipeline tự dựng từ file DICOM thô tới bài nộp, không dùng lại checkpoint của thí sinh khác.
+Toàn bộ pipeline tự dựng từ file DICOM thô tới dự đoán, không dùng lại checkpoint của người khác. Dự án làm trong khuôn khổ PBL.
 
-*[English version →](README.md)*
+*[English version →](README.md)* · **Báo cáo trực quan:** `reports/bao_cao_pbl.html` · **Slide:** `reports/slide/bao_cao_pbl.pptx`
 
 ---
 
 ## Kết quả
 
-| | Macro AUC (CV) | Bảng công khai Kaggle |
-|---|---:|---:|
-| Baseline đoán mò | 0.500 | — |
-| DINOv2 đóng băng, 58 ca, 1 mặt phẳng | 0.5256 | — |
-| **Nộp lần 1** | 0.566 | **0.601** |
-| + 3 mặt phẳng (149k → 437k lát) | 0.6266 | — |
-| + nhãn máy từ từ điển luật | 0.6923 | — |
-| **Nộp lần 2** | 0.6923 | **0.695** |
-| + nhãn LLM thay từ điển | 0.7467 | — |
-| + attention riêng từng bệnh | 0.7698 | — |
-| **Nộp lần 3 — gộp 5 model** | 0.8112 | **0.771** |
+**Macro AUC `0.7645`**, khoảng tin cậy 95% `[0.715, 0.805]`. Đây là AUC out-of-fold trên 58 ca bác sĩ gán nhãn, của bộ gộp 5 head × 3 seed, mỗi head train 9 epoch. Số epoch được chốt trước mà không nhìn tới 58 ca này.
 
-### Con số đáng chú ý nhất không phải 0.771, mà là bảng này
+Các bước cải tiến, đo theo giao thức cũ (dùng để so các bước với nhau, không phải điểm cuối):
 
-| Lần nộp | CV tự chấm | LB thật | Lệch |
-|---|---:|---:|---:|
-| 1 | 0.566 | 0.601 | **+0.035** |
-| 2 | 0.6923 | 0.695 | **+0.003** |
-| 3 | 0.8112 | 0.771 | **−0.040** |
+| Bước | Macro AUC (CV) |
+|---|---:|
+| Baseline đoán mò | 0.500 |
+| DINOv2 đóng băng, 58 ca, 1 mặt phẳng | 0.5256 |
+| + 3 mặt phẳng (149k → 437k lát) | 0.6266 |
+| + nhãn máy từ từ điển luật | 0.6923 |
+| + nhãn LLM thay từ điển | 0.7467 |
+| + attention riêng từng bệnh | 0.7698 |
+| Gộp 5 model (giao thức cũ) | 0.8112 |
+| **Gộp 5 model × 3 seed, giao thức đã sửa** | **0.7645** |
 
-Hai lần đầu CV **thấp hơn** thực tế. Lần thứ ba **cao hơn**, và đổi dấu.
+### Đo lại: con số 0.8112 lạc quan vì hai lý do
 
-Nguyên nhân không phải giao thức đánh giá hỏng — mà là **cách dùng nó**. Giữa lần 2 và lần 3, mọi lựa chọn đều được quyết bằng cách so điểm **trên cùng 58 ca đánh giá đó**:
+**Lý do thứ nhất: chọn nhiều lần trên cùng 58 ca.** Từ lúc có nhãn từ điển tới bộ gộp, mọi lựa chọn đều được quyết bằng cách so điểm trên đúng 58 ca đánh giá:
 
 | Chọn gì | Số lựa chọn |
 |---|---:|
@@ -41,11 +36,29 @@ Nguyên nhân không phải giao thức đánh giá hỏng — mà là **cách d
 | Backbone | 2 |
 | Tổ hợp gộp | 26 |
 
-Phép đo phương sai seed *(Mục 4 bên dưới)* đã cảnh báo đúng hướng và đúng độ lớn: nhặt seed tốt nhất trong **5** làm điểm phồng `+0.005`. Nhặt qua **~35 lựa chọn** làm nó phồng `+0.040` là hoàn toàn nhất quán.
+Phép đo phương sai seed *(Mục 4)* cho thấy nhặt seed tốt nhất trong 5 đã làm điểm phồng `+0.005`. Nhặt qua ~35 lựa chọn thì phồng nhiều hơn thế.
 
-> **Bài học:** đo một lần thì ước lượng không chệch; đo 35 lần rồi lấy cái cao nhất thì không còn. Hai lần nộp đầu khớp sát *vì lúc đó hầu như chưa chọn gì* — chỉ chạy một cấu hình rồi nộp.
->
-> Cải thiện vẫn là thật: LB `0.695 → 0.771`, **+0.076** — bước nhảy lớn nhất của dự án. Chỉ là nó nhỏ hơn con số CV hứa hẹn.
+**Lý do thứ hai, cụ thể hơn và sửa được: CV đo một model, model cuối là model khác** (ngày 13, `scripts/48_do_theo_epoch.py`).
+
+- **Lúc đo CV:** mọi thí nghiệm gọi `train_head(model, train, val)` với `val` chính là fold gold đang chấm, rồi lấy epoch có AUC val cao nhất. Fold chỉ có 11–12 ca, và nó chọn epoch **2–22** (riêng `chung_s224` là 2–17). Đây cũng là chọn trên tập đánh giá, chỉ khác là lặp lại 5 lần trong mỗi lần chạy.
+- **Lúc train model cuối** (`45_train_final_ensemble.py`, bản cũ): train 80 epoch. Nhãn LLM là nhãn mềm nên `roc_auc_score` ném lỗi, AUC = `nan` ở mọi epoch, và `train_head` âm thầm lùi về chọn theo loss, tức gần **epoch 80**.
+- Mà head **càng train lâu càng tệ** trên gold: `chung_s224` đạt 0.735 ở epoch 5 nhưng chỉ còn **0.674 ở epoch 80**.
+
+Ghi logit val ở **mọi** epoch trong cùng một lần train, rồi chấm bộ gộp 5 model (seed 42) theo từng cách chọn:
+
+| Cách chọn epoch | CV bộ gộp |
+|---|---:|
+| Best epoch từng fold (cách cũ, chạy lại) | 0.7933 |
+| **Cố định 9 epoch, chọn không nhìn gold** | **0.7593** `[0.711, 0.798]` |
+| Cố định 25 epoch (model cuối cũ là ~80, còn train lâu hơn) | 0.7426 |
+
+Rút ra được ba điều:
+
+1. Chạy lại đúng cách cũ chỉ ra 0.7933, không phải 0.8112: chọn epoch trên fold 12 ca còn khiến điểm nhảy theo từng lần chạy (GPU không tất định).
+2. **Số epoch chọn mà không đụng tới 58 ca gold:** giữ lại 10% ca nhãn LLM làm val. AUC so với nhãn LLM đạt đỉnh ở **epoch 9** (0.766) rồi giảm dần. Bộ gộp khá phẳng trong khoảng epoch 5–20 (0.75–0.77), nên con số chính xác không quan trọng bằng việc **không train 80 epoch**.
+3. **Nhiều seed** (cùng fold, chỉ đổi seed train, `--seed`): bộ gộp epoch 9 ra `0.7593 / 0.7690 / 0.7461` với seed 42 / 7 / 2026, độ lệch chuẩn `0.0115`. Gộp 3 seed × 5 head: **`0.7645`**, KTC `[0.715, 0.805]`. 5 head đã train lại trong repo là bản seed 42.
+
+> **Chưa chứng minh được:** epoch 9 so với epoch 25 chênh `+0.017`, KTC `[−0.009, +0.041]`, vẫn cắt qua 0. Với 58 ca thì đây là giới hạn; muốn phân xử cần một tập kiểm tra có nhãn lớn hơn.
 
 ---
 
@@ -81,20 +94,22 @@ DICOM (3 mat phang)
    -> trung binh THEO HANG  -> 12 xac suat
 ```
 
-| Thành phần | Nhìn gì | Backbone | CV riêng |
-|---|---|---|---:|
-| `mp_sagittal` | chỉ mặt phẳng Sagittal | ViT-S/14 @ 224 | 0.7106 |
-| `mp_axial` | chỉ mặt phẳng Axial | ViT-S/14 @ 224 | 0.7691 |
-| `mp_coronal` | chỉ mặt phẳng Coronal | ViT-S/14 @ 224 | 0.7394 |
-| `chung_s224` | nối lát cả ba mặt phẳng | ViT-S/14 @ 224 | 0.7698 |
-| `chung_b336` | nối lát cả ba mặt phẳng | ViT-B/14 @ 336 | 0.7481 |
-| **Gộp cả 5** | | | **0.8112** |
+| Thành phần | Nhìn gì | Backbone | CV cách cũ | CV epoch 9 |
+|---|---|---|---:|---:|
+| `mp_sagittal` | chỉ mặt phẳng Sagittal | ViT-S/14 @ 224 | 0.7106 | 0.6795 |
+| `mp_axial` | chỉ mặt phẳng Axial | ViT-S/14 @ 224 | 0.7691 | 0.7476 |
+| `mp_coronal` | chỉ mặt phẳng Coronal | ViT-S/14 @ 224 | 0.7394 | 0.7220 |
+| `chung_s224` | nối lát cả ba mặt phẳng | ViT-S/14 @ 224 | 0.7698 | 0.7329 |
+| `chung_b336` | nối lát cả ba mặt phẳng | ViT-B/14 @ 336 | 0.7481 | 0.7316 |
+| **Gộp cả 5** | | | **0.8112** | **0.7593** |
 
-**Không cái nào đạt 0.78 khi đứng một mình.** Gộp được 0.8112 vì chúng sai ở *những chỗ khác nhau* — ví dụ `chung_b336` hơn hẳn ở PF OA (+0.069) và Effusion (+0.047) nhưng kém hẳn ở MCL (−0.184).
+"CV cách cũ" chọn epoch trên chính fold đang chấm nên lạc quan (xem mục *Đo lại sau hạn chót*).
+
+**Không cái nào đạt 0.75 khi đứng một mình.** Gộp lại được nhiều hơn hẳn vì chúng sai ở *những chỗ khác nhau* — ví dụ (số đo theo cách cũ) `chung_b336` hơn hẳn ở PF OA (+0.069) và Effusion (+0.047) nhưng kém hẳn ở MCL (−0.184).
 
 Gộp **theo hạng** chứ không theo giá trị: năm head train riêng nên thang đo logit không chung gốc, trung bình logit sẽ để head "tự tin" hơn lấn át. AUC vốn chỉ quan tâm thứ hạng.
 
-Dùng **"gộp tất cả"**, không phải "gộp tổ hợp tốt nhất". Đã thử cả 26 tổ hợp; lấy cái điểm cao nhất trong 26 là **chọn trên tập đánh giá**, và phần điểm phồng lên đó không chuyển sang bảng xếp hạng được.
+Dùng **"gộp tất cả"**, không phải "gộp tổ hợp tốt nhất". Đã thử cả 26 tổ hợp; lấy cái điểm cao nhất trong 26 là **chọn trên tập đánh giá**, và phần điểm phồng lên đó không giữ được trên dữ liệu mới.
 
 ### Model nhìn vào lát nào?
 
@@ -150,7 +165,7 @@ Và nó cho hai con số gần bằng nhau nhưng khác hẳn bản chất:
 
 | | |
 |---|---|
-| Nhặt seed tốt nhất | `+0.0049` — **không** chuyển sang LB, vì đó là nhìn đáp án rồi nhặt |
+| Nhặt seed tốt nhất | `+0.0049` — **không** giữ được trên dữ liệu mới, vì đó là nhìn đáp án rồi nhặt |
 | Trung bình các seed | `+0.0048` — **hợp lệ**, vì không nhìn đáp án lúc nào |
 
 ### 5. Kết quả âm được giữ nguyên trong tài liệu
@@ -173,7 +188,7 @@ Và nó cho hai con số gần bằng nhau nhưng khác hẳn bản chất:
 
 Chênh cao–thấp `+0.083` nhưng khoảng tin cậy chồng lấn → **chưa đo được**. Với 16–22 ca mỗi hãng, phép đo gần như không có sức phân giải.
 
-**Đánh đổi có ý thức:** nhóm theo hãng khi chia fold chỉ cho tối đa 4 fold, fold nhỏ nhất có 2 ca, và 2 cặp (fold, nhãn) không chấm được. Với cỡ mẫu này cái giá đắt hơn cái được — nhưng rủi ro *bảng riêng có tỉ lệ hãng khác đi thì điểm tụt* vẫn còn nguyên.
+**Đánh đổi có ý thức:** nhóm theo hãng khi chia fold chỉ cho tối đa 4 fold, fold nhỏ nhất có 2 ca, và 2 cặp (fold, nhãn) không chấm được. Với cỡ mẫu này cái giá đắt hơn cái được — nhưng rủi ro *dữ liệu mới có tỉ lệ hãng khác đi thì điểm tụt* vẫn còn nguyên.
 
 ---
 
@@ -209,8 +224,8 @@ Chỗ dễ sai: khi pooling trả về `(B, L, d)`, đặt `nn.Linear(d, L)` ph�
 
 ```bash
 uv venv --python 3.12 .venv
-uv sync --extra data --extra dev
-uv run pytest                        # 92 test, ~30 giây
+uv sync --extra data --extra dev --extra bao-cao   # bao-cao: python-pptx để xuất slide
+uv run pytest                        # 110 test, ~20 giây
 ```
 
 Phiên bản **ghim trong `uv.lock`**. Nhiều con số trong tài liệu gắn chặt với hành vi của đúng phiên bản đó — ví dụ `roc_auc_score` trả `nan` thay vì ném lỗi là hành vi của `scikit-learn 1.9.x`.
@@ -227,10 +242,15 @@ Phiên bản **ghim trong `uv.lock`**. Nhiều con số trong tài liệu gắn 
 | Error analysis | `python scripts/42_error_analysis.py` | máy |
 | Head từng mặt phẳng | `python scripts/43_head_tung_mat_phang.py` | máy |
 | Phương sai seed | `python scripts/44_phuong_sai_seed.py` | máy |
-| **Train bộ gộp cuối** | `python scripts/45_train_final_ensemble.py` | máy |
-| Chấm bộ gộp (~20 giây, không train lại) | `python scripts/47_evaluate_ensemble.py` | máy |
-| Đóng gói bài nộp | `python scripts/49_pack_submission_assets.py` | máy |
-| **Bài nộp** | dán `scripts/50_kaggle_submit.py` | **Kaggle, Internet OFF** |
+| **Train bộ gộp cuối** (9 epoch, ~6 phút) | `python scripts/45_train_final_ensemble.py` | máy |
+| OOF theo từng epoch / chọn epoch không nhìn gold | `python scripts/48_do_theo_epoch.py --ten <thanh phan> [--khong-gold]` | máy |
+| Chấm bộ gộp theo epoch cố định, kèm nhiều seed (~1 phút) | `python scripts/48_do_theo_epoch.py --cham` | máy |
+| Thêm một seed | `python scripts/48_do_theo_epoch.py --ten <thanh phan> --epochs 9 --seed 7` | máy |
+| **Xuất báo cáo trực quan** | `python scripts/70_xuat_bao_cao.py` → `reports/bao_cao_pbl.html` | máy |
+| **Xuất slide** (15 slide PNG 4K + PPTX có ghi chú thuyết trình + PDF) | `python scripts/70_xuat_bao_cao.py --slide` → `reports/slide/` | máy, cần Chrome/Edge |
+| Chấm bộ gộp theo giao thức cũ (~20 giây) | `python scripts/47_evaluate_ensemble.py` | máy |
+| Đóng gói asset cho suy luận offline | `python scripts/49_pack_submission_assets.py` | máy |
+| Notebook suy luận offline | dán `scripts/50_kaggle_submit.py` | **Kaggle, Internet OFF** |
 | Fine-tune backbone | dán `scripts/60_kaggle_finetune.py` | **Kaggle GPU** |
 | Đo tốc độ backbone | dán `scripts/62_kaggle_do_toc_do.py` | **Kaggle GPU** |
 
@@ -244,17 +264,18 @@ Tải ~1.500 file `.dcm` cộng hơn 4.000 request liệt kê trong một buổi
 
 ## Kiểm thử
 
-92 test, không cần dữ liệu ảnh. Test ở đây **không kiểm "hàm có chạy không"** mà kiểm đúng những hành vi **hỏng âm thầm** — loại lỗi cho ra một con số đẹp thay vì một dòng lỗi.
+110 test, không cần dữ liệu ảnh. Test ở đây **không kiểm "hàm có chạy không"** mà kiểm đúng những hành vi **hỏng âm thầm** — loại lỗi cho ra một con số đẹp thay vì một dòng lỗi.
 
 | File | Chặn điều gì |
 |---|---|
 | `test_metrics.py` | macro AUC trả `nan`, nhãn một lớp bị bỏ khỏi mẫu số mà không báo |
-| `test_head.py` | pooling quên mask, `max` pad bằng 0 thay vì `-inf`, loss không bỏ qua `NaN` |
+| `test_oof.py` | file OOF công khai (không mang nhãn) bị chấm với thứ tự ca lệch |
+| `test_head.py` | pooling quên mask, `max` pad bằng 0 thay vì `-inf`, loss không bỏ qua `NaN`, checkpoint bị chọn lén theo loss khi nhãn mềm làm AUC thành `nan` |
 | `test_splits.py` | rò rỉ giữa các fold, báo cáo trùng bị tách hai bên |
 | `test_reports.py` | phủ định lật nhầm vế sau của câu, `unknown` bị ép thành âm tính |
 | `test_dicom_io.py` | chuẩn hoá ra `inf`/`nan`, chuẩn hoá từng lát xoá mất độ sáng tương đối |
 | `test_per_label_attn.py` | logit của bệnh này ăn theo vector gộp của bệnh kia |
-| `test_submit_head_khop.py` | bản **sao chép** của model trong notebook nộp bài lệch khỏi bản repo |
+| `test_submit_head_khop.py` | bản **sao chép** của model trong notebook suy luận lệch khỏi bản repo |
 | `test_submit_selection.py` | chọn sai mặt phẳng lúc suy luận, bỏ sót study |
 | `test_finetune_cache.py` | cache ảnh ghi tiếp sai offset — mỗi ca đọc ra ảnh của ca khác |
 
@@ -271,13 +292,14 @@ Bộ test bắt được **hai lỗi thật ngay lần chạy đầu**:
 
 | Bẫy | Biểu hiện | Cách chặn |
 |---|---|---|
-| **Cấu hình thắng không có checkpoint** *(gặp 2 lần)* | Đo một đằng nộp một nẻo | Vòng thí nghiệm train 5 fold rồi vứt cả 5 — đó là hành vi đúng của nó. Phải có bước train lại riêng để lấy trọng số |
+| **Cấu hình thắng không có checkpoint** *(gặp 2 lần)* | Đo một đằng dùng một nẻo | Vòng thí nghiệm train 5 fold rồi vứt cả 5 — đó là hành vi đúng của nó. Phải có bước train lại riêng để lấy trọng số |
 | **Phép kiểm checkpoint cũng sai** | "Lưu → nạp lại → so" báo khớp tuyệt đối mà vẫn để lọt head **chưa train** | Nó chỉ kiểm đọc/ghi. Chốt đúng là **độ lệch chuẩn dự đoán giữa các ca** |
 | **Chọn nhầm checkpoint** | `rglob` trả về thứ tự không xác định, 4 file trong thư mục | Chọn theo `oof_macro_auc`; notebook dừng nếu thấy >1 head |
 | **Suy luận lệch huấn luyện** | Head train trên 3 mặt phẳng, notebook chỉ đọc 1 | Tách `chon_series()` thành hàm test được |
 | **Trộn đặc trưng hai backbone** | Hai file `.npz` trông y hệt nhau | 3 lớp chặn: tên file mang backbone+size, suy tên đích từ tên nguồn, dừng khi số chiều khác |
-| **Phần báo cáo lỗi làm hỏng thứ nó báo cáo** | `submission.csv` ghi đúng rồi nhưng notebook FAILED → Kaggle từ chối | Bọc mọi thứ chạy **sau** khi kết quả đã ghi ra đĩa |
+| **Phần báo cáo lỗi làm hỏng thứ nó báo cáo** | `submission.csv` ghi đúng rồi nhưng notebook FAILED, nên cả lượt chạy bị tính là hỏng | Bọc mọi thứ chạy **sau** khi kết quả đã ghi ra đĩa |
 | **Cảnh báo sai** | Bước đối chiếu so 3 mặt phẳng với 1 mặt phẳng → "lệch số lát" ở mọi ca | Cảnh báo sai tệ hơn không cảnh báo: lần sau gặp cảnh báo thật sẽ bị bỏ qua |
+| **Đo một epoch, dùng một epoch khác** | CV chọn epoch 2–22 trên fold val; model cuối lấy gần epoch 80 vì AUC trên nhãn mềm = `nan` nên lùi về chọn theo loss | `train_head(select="last")` với số epoch chốt trước; test khoá đường lùi này |
 | **`Compress-Archive` của PowerShell** | Kaggle giải nén ra file tên `dinov2_repo\hubconf.py` | Nén bằng Python với `as_posix()`; script tự đọc lại zip để kiểm |
 
 ---
@@ -301,6 +323,8 @@ Bộ test bắt được **hai lỗi thật ngay lần chạy đầu**:
 
 > ⚠️ Early stopping theo **val loss** sẽ dừng ở khoảng epoch 10 và mất phần AUC tăng thêm. Phải dừng theo đúng thước đo sẽ được chấm.
 
+> **Ghi chú ngày 13:** đường cong này là của head train trên 58 ca gold, mỗi epoch chỉ vài chục bước. Khi train trên 4.407 ca nhãn LLM thì một epoch dài gấp ~75 lần, và AUC đạt đỉnh rất sớm (epoch ~9) rồi **giảm**. "Dừng theo AUC" vẫn đúng, nhưng AUC phải đo trên một tập **không phải tập đang chấm** (ở đây là 10% ca nhãn LLM giữ lại).
+
 ---
 
 ## Giới hạn
@@ -309,9 +333,8 @@ Bộ test bắt được **hai lỗi thật ngay lần chạy đầu**:
   > Phép kiểm đầu tiên tôi viết cho chính hình này **quá yếu và đã cho kết luận ngược** — nó đo "chênh lệch lớn nhất giữa hai bệnh bất kỳ", mà chênh lệch đó bị chi phối bởi dương tính vs âm tính chứ không phải bởi vùng giải phẫu. Đúng loại cảnh báo sai mà repo này liệt kê là bẫy.
 - **58 ca đánh giá là trần cứng.** Khoảng tin cậy rộng ~0,12; thêm ảnh hay nhãn máy đều không làm nó hẹp lại.
 - **Rò rỉ theo hãng máy chưa chặn** — biết là có, chưa đo được độ lớn.
-- **Chưa dò siêu tham số** — `lr` và số epoch cố định từ đầu.
+- **Chưa dò siêu tham số** — `lr` cố định từ đầu; số epoch đến ngày 13 mới chốt lại (9), và chọn bằng nhãn LLM chứ không bằng gold.
 - **Nhãn LLM là của người khác công bố.** Bộ rút nhãn bằng từ điển 9 ngôn ngữ là tự viết, và có so sánh có kiểm soát giữa hai nguồn; nhưng bộ nhãn dùng trong model cuối thì không phải tự sinh.
-- **Top bảng xếp hạng ở 0.955–0.959**, đạt được chủ yếu bằng cách trộn checkpoint công khai do thí sinh khác train. Repo này không đi đường đó.
 
 ## Môi trường
 
