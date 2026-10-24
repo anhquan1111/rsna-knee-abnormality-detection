@@ -1,0 +1,614 @@
+<title>Đọc MRI gối với 58 nhãn</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap">
+<style>
+/* Bố cục: một cột đọc ~68 ký tự, biểu đồ được tràn rộng hơn cột chữ; mở đầu là một "màn hình đọc phim" có chữ thông số ở bốn góc như DICOM overlay. */
+:root {
+  --nen: #eef1f4;      /* nền trang, xám lạnh */
+  --mat: #fbfcfd;      /* mặt biểu đồ / thẻ */
+  --muc: #0f1a24;      /* chữ chính */
+  --muc-2: #475563;    /* chữ phụ */
+  --muc-3: #7d8a97;    /* trục, chú thích */
+  --ke: #dbe1e7;       /* kẻ mảnh */
+  --truc: #b9c3cc;     /* đường gốc */
+  --chinh: #2a78d6;    /* giao thức đúng / kết quả cuối */
+  --cu: #eb6834;       /* cách đo cũ / model cũ */
+  --phu: #1baf7a;      /* tín hiệu không nhìn gold */
+  --chinh-nhat: rgba(42,120,214,0.12);
+  --cu-nhat: rgba(235,104,52,0.12);
+  --phim-nen: #0a0f14;  /* màn hình đọc phim: cố ý tối ở cả hai giao diện */
+  --phim-chu: #d6e2ec;
+  --phim-mo: #7f93a5;
+  --f-tieu-de: "Newsreader", "Iowan Old Style", Georgia, serif;
+  --f-chu: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-so: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --nen: #0c1117; --mat: #131a22; --muc: #e7edf2; --muc-2: #a6b2be; --muc-3: #6e7b88;
+    --ke: #232e38; --truc: #34414d; --chinh: #3987e5; --cu: #e06a3a; --phu: #22b383;
+    --chinh-nhat: rgba(57,135,229,0.18); --cu-nhat: rgba(224,106,58,0.18);
+    --phim-nen: #05080b; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --nen: #0c1117; --mat: #131a22; --muc: #e7edf2; --muc-2: #a6b2be; --muc-3: #6e7b88;
+  --ke: #232e38; --truc: #34414d; --chinh: #3987e5; --cu: #e06a3a; --phu: #22b383;
+  --chinh-nhat: rgba(57,135,229,0.18); --cu-nhat: rgba(224,106,58,0.18);
+  --phim-nen: #05080b; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--nen); color: var(--muc);
+  font: 400 16px/1.65 var(--f-chu);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-font-smoothing: antialiased;
+}
+.trang { max-width: 1040px; margin: 0 auto; padding-block: 28px 80px; display: grid; gap: 72px; }
+.cot { max-width: 68ch; }
+h1, h2, h3 { font-family: var(--f-tieu-de); font-weight: 600; text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h2 { font-size: clamp(28px, 4vw, 38px); line-height: 1.15; }
+h3 { font-size: 21px; line-height: 1.3; }
+p { margin: 0; }
+.nhom { display: grid; gap: 18px; }
+.nhan-muc { font: 500 12px/1 var(--f-so); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muc-3); }
+.phu-de { color: var(--muc-2); font-size: 17px; }
+.so { font-family: var(--f-so); font-variant-numeric: tabular-nums; }
+a { color: var(--chinh); }
+code { font: 0.9em var(--f-so); background: var(--mat); border: 1px solid var(--ke); border-radius: 4px; padding: 1px 5px; overflow-wrap: anywhere; }
+:focus-visible { outline: 2px solid var(--chinh); outline-offset: 2px; }
+
+/* ---------- màn hình đọc phim ---------- */
+.phim {
+  background: var(--phim-nen); color: var(--phim-chu); border-radius: 6px;
+  padding: clamp(20px, 4vw, 40px); display: grid; gap: 32px; position: relative; overflow: hidden;
+}
+.phim::before { /* lưới mờ như màn hình đọc phim */
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.35;
+  background-image: linear-gradient(rgba(127,147,165,0.10) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(127,147,165,0.10) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+.goc { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  font: 400 11.5px/1.6 var(--f-so); color: var(--phim-mo); letter-spacing: 0.04em; position: relative; }
+.goc > div:last-child { text-align: right; }
+.phim h1 { font-size: clamp(34px, 6vw, 60px); line-height: 1.05; color: #f3f7fa; max-width: 17ch; position: relative; }
+.phim .loi-dan { color: var(--phim-chu); opacity: 0.85; max-width: 60ch; font-size: 17px; position: relative; }
+.ba-so { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: rgba(127,147,165,0.25);
+  border: 1px solid rgba(127,147,165,0.25); border-radius: 4px; overflow: hidden; position: relative; }
+.ba-so > div { background: var(--phim-nen); padding: 18px 18px 16px; display: grid; gap: 6px; align-content: start; }
+.ba-so .gt { font: 500 clamp(30px, 5vw, 44px)/1 var(--f-so); color: #f3f7fa; }
+.ba-so .gt.cu { color: #f19066; }
+.ba-so .gt.chinh { color: #7fb6f5; }
+.ba-so .mo-ta { font-size: 13.5px; color: var(--phim-mo); line-height: 1.45; }
+@media (max-width: 640px) { .ba-so { grid-template-columns: 1fr; } }
+
+/* ---------- số liệu nhanh ---------- */
+.dai-so { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0; border-top: 1px solid var(--ke); border-bottom: 1px solid var(--ke); }
+.dai-so > div { padding: 16px 14px 14px 0; display: grid; gap: 4px; }
+.dai-so .gt { font: 500 26px/1.1 var(--f-so); }
+.dai-so .mo-ta { font-size: 13.5px; color: var(--muc-2); line-height: 1.4; }
+
+/* ---------- khung biểu đồ ---------- */
+.hai-cot { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.ba-cot { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 820px) { .hai-cot, .ba-cot { grid-template-columns: 1fr; } }
+.hinh { background: var(--mat); border: 1px solid var(--ke); border-radius: 6px; padding: 18px 18px 14px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.hinh .ten-hinh { font-weight: 600; font-size: 15px; line-height: 1.35; }
+.hinh .chu-thich { font-size: 13.5px; color: var(--muc-2); line-height: 1.5; }
+.hinh svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chu-giai { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muc-2); }
+.chu-giai span { display: inline-flex; align-items: center; gap: 6px; }
+.chu-giai i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.chu-giai i.cham { width: 9px; height: 9px; border-radius: 50%; }
+.chu-giai i.mo { opacity: 0.45; }
+details.bang-so { font-size: 13.5px; color: var(--muc-2); }
+details.bang-so summary { cursor: pointer; color: var(--muc-3); font-size: 13px; width: fit-content; }
+details.bang-so .cuon { overflow-x: auto; margin-top: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--ke); vertical-align: top; }
+th { font-weight: 600; color: var(--muc-2); font-size: 12.5px; letter-spacing: 0.02em; }
+td.so, th.so { text-align: right; font-family: var(--f-so); font-variant-numeric: tabular-nums; }
+.bang-chinh { overflow-x: auto; }
+
+/* thanh ngang bằng HTML */
+.thanh { display: grid; gap: 6px; }
+.thanh .dong { display: grid; grid-template-columns: minmax(96px, 9.5em) minmax(0, 1fr) 3.4em; gap: 10px; align-items: center; font-size: 13.5px; }
+.thanh .dong .ten { color: var(--muc-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.thanh .ray { height: 14px; position: relative; }
+.thanh .dac { position: absolute; left: 0; top: 0; bottom: 0; background: var(--chinh); border-radius: 0 4px 4px 0; }
+.thanh .dong .gt { font-family: var(--f-so); font-variant-numeric: tabular-nums; text-align: right; color: var(--muc); }
+.thanh .dong:hover .dac { filter: brightness(1.12); }
+
+/* ---------- pipeline ---------- */
+.ong { display: grid; gap: 14px; }
+.ong .hang { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; }
+.ong .buoc { background: var(--mat); border: 1px solid var(--ke); border-radius: 6px; padding: 12px 14px; flex: 1 1 150px; min-width: 0; display: grid; gap: 4px; align-content: start; }
+.ong .buoc b { font-weight: 600; font-size: 14.5px; line-height: 1.3; }
+.ong .buoc span { font-size: 13px; color: var(--muc-2); line-height: 1.45; }
+.ong .buoc .so { font-size: 12px; color: var(--muc-3); }
+.ong .mui { align-self: center; color: var(--muc-3); font: 16px var(--f-so); flex: 0 0 auto; }
+.ong .buoc.nhan-may { border-style: dashed; }
+.ong .buoc.dich { border-color: var(--chinh); box-shadow: inset 3px 0 0 var(--chinh); }
+.ong .nhan-hang { font: 500 11.5px/1 var(--f-so); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muc-3); }
+@media (max-width: 720px) { .ong .mui { transform: rotate(90deg); width: 100%; text-align: center; } .ong .buoc { flex-basis: 100%; } }
+
+/* ---------- so sánh hai lúc ---------- */
+.doi-chieu { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; border: 1px solid var(--ke); border-radius: 6px; overflow: hidden; background: var(--mat); }
+.doi-chieu > div { padding: 18px 20px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.doi-chieu > div + div { border-left: 1px solid var(--ke); }
+.doi-chieu .the { font: 500 11.5px/1 var(--f-so); letter-spacing: 0.1em; text-transform: uppercase; }
+.doi-chieu .gt { font: 500 30px/1.1 var(--f-so); }
+.doi-chieu p { font-size: 14.5px; color: var(--muc-2); }
+@media (max-width: 720px) { .doi-chieu { grid-template-columns: 1fr; } .doi-chieu > div + div { border-left: 0; border-top: 1px solid var(--ke); } }
+
+.luu-y { border-left: 3px solid var(--cu); padding: 4px 0 4px 16px; display: grid; gap: 6px; max-width: 72ch; }
+.luu-y b { font-weight: 600; }
+.luu-y p { color: var(--muc-2); font-size: 15px; }
+
+/* ---------- thẻ phát hiện ---------- */
+.luoi-the { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; }
+.the-pd { background: var(--mat); border: 1px solid var(--ke); border-radius: 6px; padding: 18px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.the-pd .gt { font: 500 30px/1 var(--f-so); }
+.the-pd h3 { font-family: var(--f-chu); font-size: 15.5px; font-weight: 600; letter-spacing: 0; }
+.the-pd p { font-size: 14px; color: var(--muc-2); line-height: 1.55; }
+.the-pd .ma { font: 12.5px/1.6 var(--f-so); background: var(--nen); border-radius: 4px; padding: 8px 10px; color: var(--muc-2); overflow-x: auto; white-space: pre; }
+
+ul.gon { margin: 0; padding-left: 1.1em; display: grid; gap: 8px; }
+ul.gon li { padding-left: 2px; }
+ul.gon li::marker { color: var(--muc-3); }
+
+.chan { border-top: 1px solid var(--ke); padding-top: 18px; font-size: 13px; color: var(--muc-3); display: grid; gap: 6px; }
+
+/* tooltip */
+#goi-y { position: fixed; z-index: 10; pointer-events: none; background: var(--muc); color: var(--nen);
+  font: 12.5px/1.5 var(--f-chu); padding: 8px 10px; border-radius: 5px; max-width: 260px; box-shadow: 0 4px 16px rgba(0,0,0,0.18); }
+#goi-y .so { font-size: 12px; }
+#goi-y .dg { display: flex; justify-content: space-between; gap: 14px; }
+#goi-y i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+svg .chu { font-family: var(--f-chu); font-size: 12px; fill: var(--muc-3); }
+svg .chu-so { font-family: var(--f-so); font-size: 11px; fill: var(--muc-3); }
+svg .chu-dam { font-family: var(--f-chu); font-size: 12.5px; fill: var(--muc); font-weight: 600; }
+svg .chu-phu { font-family: var(--f-chu); font-size: 12px; fill: var(--muc-2); }
+[hidden] { display: none !important; }
+@media (max-width: 600px) {
+  /* biểu đồ co theo viewBox nên chữ nhỏ đi; bù lại trên màn hình hẹp */
+  .rong svg .chu-so, .rong svg .chu, .rong svg .chu-phu { font-size: 17px; }
+  .rong svg .chu-dam { font-size: 18px; }
+}
+</style>
+
+<div class="trang">
+
+  <!-- ===================== MỞ ĐẦU ===================== -->
+  <header class="phim" aria-label="Tóm tắt">
+    <div class="goc">
+      <div>RSNA KNEE ABNORMALITY · BÁO CÁO PBL<br><span id="g-du-lieu"></span></div>
+      <div>12 NHÃN · MACRO AUC<br>OUT-OF-FOLD · 5 FOLD</div>
+    </div>
+    <h1>Đọc MRI đầu gối khi chỉ có 58 ca được bác sĩ gán nhãn</h1>
+    <p class="loi-dan">Dự án dựng toàn bộ pipeline từ file DICOM thô tới dự đoán 12 bất thường. Phần đáng kể nhất không nằm ở con số cao nhất, mà ở chỗ đo lại cho đúng: con số 0.811 từng báo cáo là số lạc quan, và model cuối khi đó không phải model đã được chấm.</p>
+    <div class="ba-so" id="ba-so"></div>
+    <div class="goc">
+      <div>DINOv2 ViT-S/14 · ViT-B/14 · ĐÓNG BĂNG<br>5 HEAD · GỘP THEO HẠNG</div>
+      <div>PYTHON 3.12 · PYTORCH 2.14<br><span id="g-test"></span></div>
+    </div>
+  </header>
+
+  <!-- ===================== BÀI TOÁN ===================== -->
+  <section class="nhom" aria-labelledby="h-bai-toan">
+    <span class="nhan-muc">1 · Bài toán</span>
+    <h2 id="h-bai-toan">Mười hai câu hỏi cho mỗi ca chụp, và gần như không có đáp án mẫu</h2>
+    <div class="cot nhom">
+      <p>Đầu vào là một ca chụp MRI đầu gối gồm nhiều series ở ba mặt phẳng (sagittal, coronal, axial), mỗi series khoảng 26 lát. Đầu ra là 12 xác suất, mỗi xác suất cho một bất thường như rách dây chằng chéo trước (ACL), rách sụn chêm, tràn dịch khớp. Đây là bài toán đa nhãn: một ca có thể dương tính với nhiều bệnh cùng lúc. Điểm chấm là trung bình AUC của 12 nhãn.</p>
+      <p>Khó nhất là nhãn. Chỉ <b id="t-gold"></b> ca có nhãn bác sĩ. Các ca còn lại chỉ có một bản báo cáo chẩn đoán viết tự do bằng <b>9 ngôn ngữ</b>. Muốn dùng được 98,7% dữ liệu còn lại thì phải rút nhãn từ văn bản, tức là có một bài toán xử lý ngôn ngữ nằm bên trong bài toán thị giác máy tính.</p>
+    </div>
+    <div class="dai-so" id="dai-so"></div>
+    <div class="hai-cot">
+      <figure class="hinh" style="margin:0">
+        <figcaption class="ten-hinh">Số ca dương tính trong 58 ca có nhãn bác sĩ</figcaption>
+        <div class="thanh" id="h-nhan"></div>
+        <p class="chu-thich">MCL chỉ có 9 ca dương tính. Chia 5 fold thì mỗi fold còn 1–2 ca, nên AUC của nhãn này dao động rất mạnh.</p>
+      </figure>
+      <figure class="hinh" style="margin:0">
+        <figcaption class="ten-hinh">Ngôn ngữ của các bản báo cáo chẩn đoán</figcaption>
+        <div class="thanh" id="h-ngon-ngu"></div>
+        <p class="chu-thich">Bộ rút nhãn bằng từ điển phải xử lý cả phủ định ("không thấy rách") và biến đổi hình thái, ví dụ tiếng Thổ <span class="so">yırtık → yırtığı</span>.</p>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ===================== PIPELINE ===================== -->
+  <section class="nhom" aria-labelledby="h-ong">
+    <span class="nhan-muc">2 · Kiến trúc</span>
+    <h2 id="h-ong">Backbone đóng băng, học phần đầu, gộp năm góc nhìn</h2>
+    <p class="cot">Ảnh đi qua DINOv2 một lần để lấy đặc trưng từng lát. Phần được train chỉ là các head nhỏ gom lát thành ca. Nhờ vậy cả vòng thí nghiệm chạy được trên laptop 8 GB VRAM, còn bước trích đặc trưng nặng nhất chạy trên GPU miễn phí của Kaggle.</p>
+    <div class="ong" role="img" aria-label="Sơ đồ pipeline: ảnh DICOM qua DINOv2 đóng băng thành đặc trưng lát; báo cáo 9 ngôn ngữ thành nhãn LLM; hai nhánh gặp nhau ở bước train 5 head, sau đó gộp theo hạng ra 12 xác suất">
+      <span class="nhan-hang">Nhánh ảnh</span>
+      <div class="hang">
+        <div class="buoc"><b>DICOM 3 mặt phẳng</b><span>Một series mỗi mặt phẳng, đọc cả JPEG Lossless và JPEG 2000</span><span class="so">569 GB · 5,53 series/ca</span></div>
+        <span class="mui" aria-hidden="true">→</span>
+        <div class="buoc"><b>Chuẩn hoá theo cả series</b><span>Percentile 1–99 trên toàn series, không theo từng lát, để giữ độ sáng tương đối giữa các lát</span></div>
+        <span class="mui" aria-hidden="true">→</span>
+        <div class="buoc"><b>DINOv2 đóng băng</b><span>Mỗi lát thành một vector đặc trưng</span><span class="so">ViT-S/14 @224 → 384 chiều</span></div>
+      </div>
+      <span class="nhan-hang">Nhánh nhãn</span>
+      <div class="hang">
+        <div class="buoc nhan-may"><b>Báo cáo 9 ngôn ngữ</b><span>4.349 ca không có nhãn bác sĩ</span></div>
+        <span class="mui" aria-hidden="true">→</span>
+        <div class="buoc nhan-may"><b>Nhãn LLM mềm</b><span>Giá trị 0–1, so với nhãn bác sĩ đạt AUC <span class="so" id="t-auc-llm"></span></span></div>
+        <span class="mui" aria-hidden="true">→</span>
+        <div class="buoc"><b>58 ca gold giữ riêng</b><span>Chỉ dùng để chấm, chia fold theo ca chụp</span></div>
+      </div>
+      <span class="nhan-hang">Gặp nhau</span>
+      <div class="hang">
+        <div class="buoc dich"><b>5 head, attention riêng từng bệnh</b><span>3 head một mặt phẳng, 2 head nối lát cả ba mặt phẳng (ViT-S và ViT-B)</span><span class="so">train 9 epoch, cố định trước</span></div>
+        <span class="mui" aria-hidden="true">→</span>
+        <div class="buoc dich"><b>Gộp theo hạng</b><span>Logit của 5 head không chung thang đo, nên trung bình thứ hạng chứ không trung bình giá trị</span></div>
+        <span class="mui" aria-hidden="true">→</span>
+        <div class="buoc dich"><b>12 xác suất</b><span>Một số cho mỗi bất thường</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== HÀNH TRÌNH ===================== -->
+  <section class="nhom" aria-labelledby="h-hanh-trinh">
+    <span class="nhan-muc">3 · Hành trình</span>
+    <h2 id="h-hanh-trinh">Từng bước cải tiến, và bước cuối phải đo lại</h2>
+    <div class="cot nhom">
+      <p>Mỗi bước chỉ đổi một thứ, rồi đo bằng cùng một giao thức: 5 fold trên 58 ca gold, bootstrap theo ca để có khoảng tin cậy. Bước lớn nhất là dùng nhãn rút từ báo cáo cho 4.349 ca không có nhãn bác sĩ, tiếp đó là gộp nhiều head nhìn dữ liệu theo những cách khác nhau.</p>
+      <p>Cột cam là con số 0.811 từng báo cáo. Khi kiểm tra lại cách đo, con số này hoá ra lạc quan; cột xanh là số đo lại đúng cách. Phần 4 giải thích vì sao.</p>
+    </div>
+    <figure class="hinh" style="margin:0">
+      <figcaption class="ten-hinh">Macro AUC trên 58 ca gold qua từng bước</figcaption>
+      <div class="chu-giai"><span><i class="cham" style="background:var(--muc-3)"></i>đo theo cách cũ, dùng để so các bước</span><span><i class="cham" style="background:var(--cu)"></i>bộ gộp, cách đo cũ</span><span><i class="cham" style="background:var(--chinh)"></i>bộ gộp, đo lại đúng cách</span></div>
+      <div id="h-buoc" class="rong"></div>
+    </figure>
+  </section>
+
+  <!-- ===================== PHÁT HIỆN CHÍNH ===================== -->
+  <section class="nhom" aria-labelledby="h-epoch">
+    <span class="nhan-muc">4 · Phát hiện chính</span>
+    <h2 id="h-epoch">Điểm CV đo một model, model cuối là một model khác</h2>
+    <p class="cot">Cùng một hàm train được dùng ở hai chỗ, nhưng chọn checkpoint theo hai cách khác nhau mà không có dòng log nào báo. Lỗi này chỉ lộ ra khi ghi lại dự đoán ở mọi epoch trong một lần train và chấm lại.</p>
+    <div class="doi-chieu">
+      <div>
+        <span class="the" style="color:var(--cu)">Lúc chấm CV</span>
+        <span class="gt so" id="t-epoch-chon"></span>
+        <p>Mỗi fold lấy epoch có AUC cao nhất <b>trên chính 11–12 ca gold đang chấm</b>. Đây là chọn trên tập đánh giá, lặp lại 5 lần mỗi lần chạy.</p>
+      </div>
+      <div>
+        <span class="the" style="color:var(--cu)">Lúc train model cuối</span>
+        <span class="gt so">≈ epoch 80</span>
+        <p>Nhãn LLM là nhãn mềm nên <code>roc_auc_score</code> báo lỗi và AUC thành <code>nan</code> ở mọi epoch. Hàm train âm thầm chuyển sang chọn theo loss, tức là gần như lấy epoch cuối.</p>
+      </div>
+    </div>
+
+    <figure class="hinh" style="margin:0">
+      <figcaption class="ten-hinh">Head <span class="so">chung_s224</span>: AUC trên 58 ca gold theo số epoch train</figcaption>
+      <div class="chu-giai"><span><i style="background:var(--muc)"></i>AUC out-of-fold nếu dừng ở epoch đó</span><span><i class="cham" style="background:var(--cu)"></i>epoch mà cách cũ chọn ở từng fold</span></div>
+      <div id="h-s224" class="rong"></div>
+      <p class="chu-thich">Head đạt đỉnh rất sớm rồi giảm dần. Mỗi epoch có khoảng 1.100 bước cập nhật trên 4.400 ca nhãn LLM, nên chỉ sau vài epoch model đã bắt đầu học thuộc nhiễu của nhãn LLM.</p>
+    </figure>
+
+    <div class="hai-cot">
+      <figure class="hinh" style="margin:0">
+        <figcaption class="ten-hinh">Bộ gộp 5 model, dừng ở cùng một epoch cố định</figcaption>
+        <div class="chu-giai"><span><i style="background:var(--chinh)"></i>bộ gộp</span><span><i class="mo" style="background:var(--muc-3)"></i>từng head</span></div>
+        <div id="h-gop"></div>
+        <p class="chu-thich">Bộ gộp khá phẳng trong khoảng epoch 5–20. Con số chính xác không quan trọng bằng việc không train tới 80 epoch.</p>
+      </figure>
+      <figure class="hinh" style="margin:0">
+        <figcaption class="ten-hinh">Chọn số epoch mà không nhìn 58 ca gold</figcaption>
+        <div class="chu-giai"><span><i style="background:var(--phu)"></i>AUC so với nhãn LLM, trên 10% ca nhãn LLM giữ lại</span></div>
+        <div id="h-khong-gold"></div>
+        <p class="chu-thich">Bỏ hẳn 58 ca gold, train trên 90% ca nhãn LLM, kiểm tra trên 10% còn lại. Đỉnh ở epoch 9, nên số epoch được chốt là 9 trước khi nhìn điểm gold.</p>
+      </figure>
+    </div>
+
+    <figure class="hinh" style="margin:0">
+      <figcaption class="ten-hinh">Cùng 5 model, ba cách chọn epoch, chấm trên 58 ca gold (seed 42)</figcaption>
+      <div id="h-ba-cach" class="rong"></div>
+    </figure>
+
+    <div class="luu-y">
+      <b>Chưa chứng minh được trên 58 ca</b>
+      <p id="t-chua-chung-minh"></p>
+    </div>
+  </section>
+
+  <!-- ===================== KẾT QUẢ CUỐI ===================== -->
+  <section class="nhom" aria-labelledby="h-ket-qua">
+    <span class="nhan-muc">5 · Kết quả cuối</span>
+    <h2 id="h-ket-qua">Con số đáng tin: <span class="so" id="t-cuoi"></span></h2>
+    <p class="cot" id="t-cuoi-mo-ta"></p>
+    <div class="hai-cot">
+      <figure class="hinh" style="margin:0">
+        <figcaption class="ten-hinh">AUC từng bệnh, kèm khoảng tin cậy 95%</figcaption>
+        <div class="chu-giai"><span><i class="cham" style="background:var(--chinh)"></i>AUC</span><span><i style="background:var(--truc)"></i>khoảng tin cậy (bootstrap theo ca)</span></div>
+        <div id="h-tung-nhan"></div>
+        <p class="chu-thich">Đường dọc nét đứt là AUC 0.5, tức là đoán mò. Khoảng tin cậy của MCL và Fracture rất rộng vì ít ca dương tính.</p>
+      </figure>
+      <div class="nhom" style="align-content:start; gap:20px">
+        <figure class="hinh" style="margin:0">
+          <figcaption class="ten-hinh">Năm thành phần của bộ gộp</figcaption>
+          <div class="bang-chinh">
+            <table>
+              <thead><tr><th>Head</th><th>Nhìn gì</th><th class="so">Cách cũ</th><th class="so">Epoch 9, seed 42</th></tr></thead>
+              <tbody id="b-thanh-phan"></tbody>
+            </table>
+          </div>
+          <p class="chu-thich">Không head nào vượt 0.75 khi đứng một mình. Gộp lại cao hơn hẳn vì mỗi head sai ở những ca khác nhau. 5 head đã train lại trong repo (<code>data/interim/ensemble/</code>) là bản seed 42.</p>
+        </figure>
+        <figure class="hinh" style="margin:0" id="khung-seed">
+          <figcaption class="ten-hinh">Độ ổn định theo seed</figcaption>
+          <div id="h-seed"></div>
+          <p class="chu-thich" id="t-seed"></p>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CÁC PHÁT HIỆN KHÁC ===================== -->
+  <section class="nhom" aria-labelledby="h-khac">
+    <span class="nhan-muc">6 · Những điều đo được</span>
+    <h2 id="h-khac">Các lỗi hỏng âm thầm và cách chặn</h2>
+    <p class="cot">Phần lớn thời gian của dự án dành cho loại lỗi không báo exception: pipeline vẫn chạy, vẫn ra một con số hợp lý, chỉ có con số đó sai. Mỗi lỗi dưới đây đều có test hoặc chốt chặn trong code.</p>
+    <div class="luoi-the">
+      <article class="the-pd">
+        <span class="gt so">100%</span>
+        <h3>Chia fold theo series làm rò rỉ toàn bộ tập kiểm tra</h3>
+        <p>Đo trên 336 series của 58 ca gold: mọi ca kiểm tra đều có ít nhất một series nằm bên train. Đơn vị dự đoán là ca chụp thì đơn vị chia fold cũng phải là ca chụp.</p>
+      </article>
+      <article class="the-pd">
+        <span class="gt so">1 / 4.349</span>
+        <h3>Báo cáo trùng từng ký tự mang đáp án qua UID khác</h3>
+        <p>Nhãn máy rút từ báo cáo, nên một ca ngoài gold có báo cáo giống hệt ca kiểm tra sẽ mang đáp án vào train. Chỉ 1 ca bị ảnh hưởng, nhưng chặn nó làm cận dưới khoảng tin cậy đổi từ <span class="so">+0.006</span> sang <span class="so">−0.004</span>, tức là đảo kết luận.</p>
+      </article>
+      <article class="the-pd">
+        <span class="gt so">AUC 1.000</span>
+        <h3>Một bộ nhãn công khai đã chép nhãn gold</h3>
+        <div class="ma">v4_blend  AUC 0.893 · 0/1: 0,1%
+v5        AUC 1.000 · 0/1: 100% gold</div>
+        <p>Dấu hiệu không phải "AUC cao", mà là AUC cao đi kèm giá trị trên gold toàn 0/1 còn ngoài gold thì không. Pipeline có chốt tự dừng khi gặp mẫu này.</p>
+      </article>
+      <article class="the-pd">
+        <span class="gt so" id="t-llm-chenh"></span>
+        <h3>Nhãn LLM tốt hơn từ điển tự viết</h3>
+        <p id="t-llm-mo-ta"></p>
+        <div id="h-nguon-nhan"></div>
+      </article>
+      <article class="the-pd">
+        <span class="gt so" id="t-seed-cu"></span>
+        <h3>Chỉ đổi seed, điểm đã dao động</h3>
+        <p id="t-seed-cu-mo-ta"></p>
+        <div id="h-seed-cu"></div>
+      </article>
+      <article class="the-pd">
+        <span class="gt so">82,8%</span>
+        <h3>Đặc trưng đoán được hãng máy chụp</h3>
+        <p>Đoán ngẫu nhiên chỉ đạt 37,9%. Điểm theo từng hãng chênh nhau nhưng khoảng tin cậy chồng lên nhau, với 16–22 ca mỗi hãng thì chưa đo được mức ảnh hưởng.</p>
+        <div id="h-hang-may"></div>
+      </article>
+      <article class="the-pd">
+        <span class="gt so">4 lát</span>
+        <h3>Bản đồ chú ý bị suy biến</h3>
+        <p>Mỗi bệnh có trọng số chú ý riêng, nhưng trên một ca mẫu 12 bệnh chỉ dùng 4 lát khác nhau, 7/12 bệnh dồn vào cùng một lát, entropy chú ý 0.196 (1.0 là trải đều). Tín hiệu có vẻ ở mức cả ca chứ không ở mức tổn thương.</p>
+      </article>
+      <article class="the-pd">
+        <span class="gt so">67,2%</span>
+        <h3>Vì sao không báo cáo accuracy</h3>
+        <p>Đoán "không bệnh" cho mọi ca đạt accuracy 67,2% vì nhãn mất cân bằng, trong khi AUC của cách đoán đó đúng bằng 0.500.</p>
+      </article>
+      <article class="the-pd">
+        <span class="gt so">−0.022</span>
+        <h3>Kết quả âm vẫn giữ trong tài liệu</h3>
+        <p>Fine-tune backbone: <span class="so">+0.009</span>, khoảng tin cậy cắt qua 0. Backbone lớn hơn ở độ phân giải cao hơn: kém hơn <span class="so">0.022</span>. Cả hai vẫn có ích vì sai khác chỗ, nên được đưa vào bộ gộp.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ===================== GIỚI HẠN ===================== -->
+  <section class="nhom" aria-labelledby="h-gioi-han">
+    <span class="nhan-muc">7 · Giới hạn và hướng tiếp</span>
+    <h2 id="h-gioi-han">Điều bài này chưa làm được</h2>
+    <div class="hai-cot">
+      <div class="nhom" style="align-content:start">
+        <h3>Giới hạn</h3>
+        <ul class="gon">
+          <li><b>58 ca là trần cứng.</b> Khoảng tin cậy rộng khoảng 0.09. Thêm ảnh hay thêm nhãn máy không làm nó hẹp lại, vì bootstrap lấy mẫu theo ca gold.</li>
+          <li><b>Chỉ đánh giá bằng CV</b> trên 58 ca đó; chưa có tập kiểm tra có nhãn nào khác để đối chiếu.</li>
+          <li><b>Rò rỉ theo hãng máy chưa chặn.</b> Chia fold theo hãng chỉ được tối đa 4 fold, fold nhỏ nhất 2 ca. Với cỡ mẫu này chi phí lớn hơn lợi ích.</li>
+          <li><b>Chưa dò siêu tham số.</b> Learning rate cố định từ đầu. Số epoch chỉ chốt lại ở bước cuối, bằng nhãn LLM chứ không bằng gold.</li>
+          <li><b>Nhãn LLM là của người khác công bố.</b> Bộ từ điển 9 ngôn ngữ là tự viết và đã so sánh có kiểm soát, nhưng nhãn dùng trong model cuối không tự sinh.</li>
+        </ul>
+      </div>
+      <div class="nhom" style="align-content:start">
+        <h3>Hướng tiếp, theo thứ tự đáng làm</h3>
+        <ul class="gon">
+          <li><b>Chọn đúng series nhạy dịch.</b> Hiện mặt sagittal chỉ 48,7% chọn đúng series nhạy dịch, dù 94,2% ca có sẵn. Script trích lại đặc trưng đã viết xong, cần khoảng 4,3 giờ GPU.</li>
+          <li><b>Thêm đặc trưng patch.</b> Lưu thêm trung bình và max của patch token bên cạnh CLS, cùng một lần trích.</li>
+          <li><b>Đo bằng giao thức đã sửa từ đầu.</b> Mọi so sánh mới dùng epoch cố định và khoảng tin cậy bắt cặp.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TÁI LẬP ===================== -->
+  <section class="nhom" aria-labelledby="h-tai-lap">
+    <span class="nhan-muc">8 · Tái lập</span>
+    <h2 id="h-tai-lap">Chạy lại các con số trong báo cáo</h2>
+    <div class="bang-chinh">
+      <table>
+        <thead><tr><th>Việc</th><th>Lệnh</th><th>Thời gian</th></tr></thead>
+        <tbody>
+          <tr><td>OOF theo từng epoch của một head</td><td><code>python scripts/48_do_theo_epoch.py --ten chung_s224 --epochs 25</code></td><td>~25 phút</td></tr>
+          <tr><td>Chọn epoch không nhìn gold</td><td><code>python scripts/48_do_theo_epoch.py --ten chung_s224 --khong-gold</code></td><td>~8 phút</td></tr>
+          <tr><td>Thêm một seed (mỗi head)</td><td><code>python scripts/48_do_theo_epoch.py --ten mp_axial --epochs 9 --seed 7</code></td><td>~8 phút</td></tr>
+          <tr><td>Chấm bộ gộp theo mọi cách chọn epoch</td><td><code>python scripts/48_do_theo_epoch.py --cham</code></td><td>~1 phút</td></tr>
+          <tr><td>Train 5 head cuối (9 epoch)</td><td><code>python scripts/45_train_final_ensemble.py</code></td><td>~6 phút</td></tr>
+          <tr><td>Xuất lại báo cáo này</td><td><code>python scripts/70_xuat_bao_cao.py</code></td><td>~1 phút</td></tr>
+          <tr><td>Xuất slide (PNG, PPTX, PDF)</td><td><code>python scripts/70_xuat_bao_cao.py --slide</code></td><td>~2 phút</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <footer class="chan">
+      <span>Mọi con số trên trang được tính lại từ file kết quả trong <code>reports/</code> bởi <code>scripts/70_xuat_bao_cao.py</code>, không gõ tay. Trang chỉ chứa số tổng hợp, không chứa ảnh MRI hay nội dung báo cáo bệnh nào.</span>
+      <span>RTX 4060 Laptop 8 GB cho phần train head; GPU T4 của Kaggle cho phần trích đặc trưng.</span>
+    </footer>
+  </section>
+</div>
+<div id="goi-y" hidden></div>
+
+<script>
+/*__DU_LIEU__*/
+(() => {
+  /*__VE__*/
+
+  // =============================== ĐỔ DỮ LIỆU ===============================
+  const du = D.du_lieu, ce = D.chon_epoch, sd = D.seed;
+  const cuoi = sd.n > 1 ? sd.gop : ce.chot, ciCuoi = sd.n > 1 ? sd.ci_gop : ce.ci_chot;
+
+  $("#g-du-lieu").textContent = `${vn(du.n_study)} CA · ${vn(du.n_series)} SERIES · ${du.n_gold} CA GOLD`;
+  $("#g-test").textContent = `TEST HỎNG ÂM THẦM · KHÔNG CẦN ẢNH`;
+  $("#t-gold").textContent = `${du.n_gold}/${vn(du.n_study)}`;
+  $("#t-auc-llm").textContent = f(D.nguon_nhan.auc_llm, 3);
+
+  $("#ba-so").innerHTML = `
+    <div><span class="gt cu so">${f(ce.cv_cu_bao_cao, 3)}</span><span class="mo-ta">CV từng báo cáo cho bộ gộp 5 model. Chọn epoch trên chính tập đang chấm, nên lạc quan.</span></div>
+    <div><span class="gt so">${f(ce.dai, 3)}</span><span class="mo-ta">Cùng 5 head nhưng train lâu (${ce.n_ep_dai} epoch) như model cuối cũ. Model cũ train tới 80 epoch nên còn thấp hơn.</span></div>
+    <div><span class="gt chinh so">${f(cuoi, 3)}</span><span class="mo-ta">CV đo lại đúng cách: số epoch chốt trước mà không nhìn gold${sd.n > 1 ? `, gộp ${sd.n} seed` : ""}. Khoảng tin cậy 95%: ${f(ciCuoi[0], 3)}–${f(ciCuoi[1], 3)}.</span></div>`;
+
+  const tongNN = du.ngon_ngu.reduce((a, b) => a + b.n, 0);
+  $("#dai-so").innerHTML = [
+    [vn(du.n_study), "ca chụp MRI"], [vn(du.n_series), "series ảnh"], [String(du.series_moi_study).replace(".", ","), "series mỗi ca"],
+    [String(du.n_gold), `ca có nhãn bác sĩ (${(du.n_gold / du.n_study * 100).toFixed(2).replace(".", ",")}%)`],
+    [String(du.ngon_ngu.length), "ngôn ngữ báo cáo"], ["12", "nhãn đa nhãn"],
+  ].map(([g, m]) => `<div><span class="gt">${g}</span><span class="mo-ta">${m}</span></div>`).join("");
+
+  thanh($("#h-nhan"), [...du.nhan_duong].sort((a, b) => b.n - a.n).map(r => ({ ten: r.nhan, v: r.n })),
+        { tipFn: r => `<b>${r.ten}</b><br>${r.v}/58 ca dương tính (${(r.v / 58 * 100).toFixed(0)}%)` });
+  thanh($("#h-ngon-ngu"), du.ngon_ngu.map(r => ({ ten: r.ten, v: r.n })),
+        { mau: "var(--muc-3)", tipFn: r => `<b>Tiếng ${r.ten}</b><br>${vn(r.v)} báo cáo (${(r.v / tongNN * 100).toFixed(1).replace(".", ",")}%)` });
+
+  // --- hành trình
+  cot($("#h-buoc"), [
+    { ten: "Đoán mò\nhằng số", v: 0.5, mau: "var(--muc-3)" },
+    { ten: "DINOv2 đóng băng\n58 ca, 1 mặt phẳng", v: 0.5256, mau: "var(--muc-3)" },
+    { ten: "+ 3 mặt phẳng\n437k lát", v: 0.6266, mau: "var(--muc-3)" },
+    { ten: "+ nhãn từ điển\n9 ngôn ngữ", v: 0.6923, mau: "var(--muc-3)" },
+    { ten: "+ nhãn LLM\nthay từ điển", v: D.nguon_nhan.D, mau: "var(--muc-3)" },
+    { ten: "+ attention\nriêng từng bệnh", v: 0.7698, mau: "var(--muc-3)" },
+    { ten: "Gộp 5 head\ncách đo cũ", v: ce.cv_cu_bao_cao, mau: "var(--cu)" },
+    { ten: `Gộp 5 head × ${sd.n} seed\nđo đúng cách`, v: cuoi, ci: ciCuoi, mau: "var(--chinh)" },
+  ], { y: [0.45, 0.85], tick: [0.45, 0.05], w: 1000, h: 300, b: 52, bw: 70, d: 3, aria: "Macro AUC qua từng bước cải tiến",
+       tip: r => `<b>${r.ten.replace("\n", " ")}</b><br>Macro AUC <span class="so">${f(r.v, 4)}</span>${r.ci ? `<br>KTC 95% <span class="so">${f(r.ci[0], 3)}–${f(r.ci[1], 3)}</span>` : ""}` });
+
+  // --- chọn epoch
+  const chon = ce.epoch_chon_tung_fold.chung_s224;
+  const allChon = Object.values(ce.epoch_chon_tung_fold).flat();
+  $("#t-epoch-chon").textContent = `epoch ${Math.min(...allChon)}–${Math.max(...allChon)}`;
+  const s224 = D.duong_epoch.chung_s224_dai;
+  duong($("#h-s224"), {
+    n: s224.length, y: [0.62, 0.76], yTick: [0.62, 0.02], xTicks: [1, 10, 20, 30, 40, 50, 60, 70, 80], h: 260, r: 24,
+    aria: "AUC của head chung_s224 theo epoch, đỉnh sớm rồi giảm tới 0.674 ở epoch 80",
+    series: [{ ten: "AUC out-of-fold", v: s224, mau: "var(--muc)", day: 2 }],
+    diem: [
+      ...chon.map((e, k) => ({ e, v: s224[e - 1], mau: "var(--cu)", r: 4.5 })),
+      { e: s224.length, v: s224[s224.length - 1], mau: "var(--cu)", r: 6, nhan: `model cuối cũ ≈ ${f(s224[s224.length - 1], 3)}`, dx: -10, dy: -14, anchor: "end", dam: true },
+      { e: 5, v: s224[4], mau: "var(--muc)", r: 0.01, nhan: `epoch 5: ${f(s224[4], 3)}`, dx: 10, dy: -10, dam: true },
+    ],
+    tipThem: (e) => chon.includes(e) ? `<div style="opacity:.8">cách cũ chọn epoch này ở ${chon.filter(c => c === e).length} fold</div>` : "",
+  });
+  bangSo($("#h-s224"), ["Epoch", "AUC"], s224.map((v, i) => [i + 1, f(v, 4)]).filter((_, i) => i < 10 || (i + 1) % 10 === 0));
+
+  const gop = D.duong_epoch.gop, tp = D.duong_epoch.thanh_phan;
+  duong($("#h-gop"), {
+    n: gop.length, y: [0.62, 0.80], yTick: [0.62, 0.04], xTicks: [1, 5, 9, 15, 20, 25], w: 520, h: 280, r: 54,
+    aria: "AUC bộ gộp theo epoch cố định",
+    vach: [{ e: ce.epoch_chot, mau: "var(--chinh)", nhan: `chốt ${ce.epoch_chot}` }],
+    series: [
+      ...Object.entries(tp).map(([t, v]) => ({ ten: t, v, mau: "var(--muc-3)", day: 1.2, mo: 0.5 })),
+      { ten: "bộ gộp", v: gop, mau: "var(--chinh)", day: 2.5, nhan: "bộ gộp" },
+    ],
+    diem: [{ e: ce.epoch_chot, v: gop[ce.epoch_chot - 1], mau: "var(--chinh)", r: 5.5 }],
+  });
+  bangSo($("#h-gop"), ["Epoch", "Bộ gộp", ...Object.keys(tp)], gop.map((v, i) => [i + 1, f(v, 4), ...Object.values(tp).map(a => f(a[i], 3))]));
+
+  const kg = D.khong_gold.auc;
+  duong($("#h-khong-gold"), {
+    n: kg.length, y: [0.72, 0.78], yTick: [0.72, 0.01], xTicks: [1, 5, 9, 15, 20, 25], w: 520, h: 280, r: 18,
+    aria: `AUC so với nhãn LLM giữ lại, đỉnh ở epoch ${D.khong_gold.dinh}`,
+    series: [{ ten: "AUC so với nhãn LLM", v: kg, mau: "var(--phu)", day: 2.5 }],
+    diem: [{ e: D.khong_gold.dinh, v: kg[D.khong_gold.dinh - 1], mau: "var(--phu)", r: 6, nhan: `đỉnh: epoch ${D.khong_gold.dinh}`, dam: true }],
+  });
+  bangSo($("#h-khong-gold"), ["Epoch", "AUC so với nhãn LLM"], kg.map((v, i) => [i + 1, f(v, 4)]));
+
+  cot($("#h-ba-cach"), [
+    { ten: "Best epoch từng fold\n(cách cũ, chạy lại)", v: ce.cu, mau: "var(--cu)" },
+    { ten: `Cố định ${ce.epoch_chot} epoch\n(chốt không nhìn gold)`, v: ce.chot, ci: ce.ci_chot, mau: "var(--chinh)" },
+    { ten: `Cố định ${ce.n_ep_dai} epoch\n(model cũ còn train lâu hơn)`, v: ce.dai, mau: "var(--muc-3)" },
+  ], { y: [0.6, 0.85], tick: [0.6, 0.05], w: 760, h: 260, b: 52, aria: "So sánh ba cách chọn epoch",
+       tip: r => `<b>${r.ten.replace("\n", " ")}</b><br>AUC bộ gộp <span class="so">${f(r.v, 4)}</span>${r.ci ? `<br>KTC 95% <span class="so">${f(r.ci[0], 3)}–${f(r.ci[1], 3)}</span>` : ""}` });
+
+  $("#t-chua-chung-minh").innerHTML = `Dừng ở epoch ${ce.epoch_chot} hơn dừng ở epoch ${ce.n_ep_dai} khoảng <span class="so">+${f(ce.chenh_chot_dai, 3)}</span>, nhưng khoảng tin cậy bắt cặp là <span class="so">[${f(ce.ci_chenh[0], 3)}, +${f(ce.ci_chenh[1], 3)}]</span>, vẫn cắt qua 0 (${Math.round(ce.p_duong * 100)}% số lần bootstrap cho kết quả dương). Điều chắc chắn là cách đo cũ đã thổi phồng điểm, còn việc train ngắn có thật sự tốt hơn hay không thì cần một tập kiểm tra lớn hơn 58 ca mới khẳng định được.`;
+
+  // --- kết quả cuối
+  $("#t-cuoi").textContent = f(cuoi, 3);
+  $("#t-cuoi-mo-ta").innerHTML = `Macro AUC out-of-fold trên 58 ca gold của bộ gộp 5 head${sd.n > 1 ? ` × ${sd.n} seed` : ""}, mỗi head train ${ce.epoch_chot} epoch, số epoch chốt trước mà không nhìn gold. Khoảng tin cậy 95% bootstrap theo ca: <span class="so">${f(ciCuoi[0], 3)}–${f(ciCuoi[1], 3)}</span>. Số này thấp hơn 0.811 từng báo cáo, nhưng đây là số đo đúng thứ sẽ được đem dùng.`;
+  chamKtc($("#h-tung-nhan"), D.tung_nhan.map(r => ({ ten: r.nhan, v: r.auc, ci: r.ci, n: r.n_duong })), {
+    x: [0.3, 1.0], tick: [0.3, 0.1], moc: 0.5, aria: "AUC từng bệnh với khoảng tin cậy",
+    tip: r => `<b>${r.ten}</b><br>AUC <span class="so">${f(r.v, 3)}</span><br>KTC 95% <span class="so">${f(r.ci[0], 3)}–${f(r.ci[1], 3)}</span><br>${r.n}/58 ca dương tính`,
+  });
+  bangSo($("#h-tung-nhan"), ["Bệnh", "AUC", "KTC dưới", "KTC trên", "Ca dương"], D.tung_nhan.map(r => [r.nhan, f(r.auc, 3), f(r.ci[0], 3), f(r.ci[1], 3), r.n_duong]));
+  $("#b-thanh-phan").innerHTML = D.thanh_phan.map(r => `<tr><td><code>${r.ten}</code></td><td>${TEN_TP[r.ten]}</td><td class="so" style="color:var(--muc-3)">${f(r.cv_cu, 3)}</td><td class="so">${f(r.cv_chot, 3)}</td></tr>`).join("")
+    + `<tr><td><b>Gộp 5</b></td><td></td><td class="so" style="color:var(--muc-3)">0.811</td><td class="so"><b>${f(ce.chot, 3)}</b></td></tr>`;
+
+  if (sd.n > 1) {
+    cot($("#h-seed"), [
+      ...sd.moi_seed.map(s => ({ ten: `seed ${s.seed}`, v: s.auc, mau: "var(--muc-3)" })),
+      { ten: `gộp ${sd.n} seed`, v: sd.gop, mau: "var(--chinh)" },
+    ], { y: [0.70, 0.80], tick: [0.70, 0.02], w: 520, h: 200, b: 34, bw: 64, d: 3, aria: "Điểm bộ gộp theo từng seed",
+         tip: r => `<b>${r.ten}</b><br>AUC <span class="so">${f(r.v, 4)}</span>` });
+    $("#t-seed").innerHTML = `Cùng split, chỉ đổi seed khởi tạo và thứ tự trộn dữ liệu. Độ lệch chuẩn giữa các seed: <span class="so">${f(sd.do_lech, 4)}</span>, nghĩa là riêng seed đã làm điểm xê dịch khoảng ±0.01. Gộp nhiều seed là cách tăng độ ổn định hợp lệ, vì không phải nhìn tập chấm để chọn gì cả.`;
+  } else {
+    $("#khung-seed").hidden = true;
+  }
+
+  // --- các thẻ phát hiện
+  const nn = D.nguon_nhan;
+  $("#t-llm-chenh").textContent = `+${f(nn.chenh, 3)}`;
+  $("#t-llm-mo-ta").innerHTML = `So có kiểm soát, chỉ đổi nguồn nhãn: khoảng tin cậy bắt cặp <span class="so">[+${f(nn.ci[0], 3)}, +${f(nn.ci[1], 3)}]</span>. Nhãn LLM vừa phủ 100% ca, vừa khớp nhãn bác sĩ hơn (AUC ${f(nn.auc_llm, 3)} so với ${f(nn.auc_tu_dien, 3)}).`;
+  cot($("#h-nguon-nhan"), [
+    { ten: "chỉ gold", v: nn.A, mau: "var(--muc-3)" }, { ten: "+ từ điển", v: nn.B, mau: "var(--muc-3)" },
+    { ten: "+ LLM", v: nn.D, mau: "var(--chinh)" },
+  ], { y: [0.55, 0.80], tick: [0.55, 0.05], w: 320, h: 190, b: 30, bw: 56, d: 3, aria: "CV theo nguồn nhãn",
+       tip: r => `<b>${r.ten}</b><br>CV <span class="so">${f(r.v, 4)}</span> (cách đo cũ)` });
+  const sc = D.seed_cu;
+  $("#t-seed-cu").textContent = `±${f(sc.do_lech, 4)}`;
+  $("#t-seed-cu-mo-ta").innerHTML = `Cùng một cấu hình, 5 seed, fold giữ nguyên: dải điểm rộng <span class="so">${f(sc.be_rong, 4)}</span>. Đây là thước đo để đọc lại mọi kết luận trước đó: chênh lệch nhỏ hơn mức này là nhiễu.`;
+  (() => {
+    const host = $("#h-seed-cu"), W = 360, H = 54, x0 = 0.73, x1 = 0.75;
+    const X = (v) => 14 + (v - x0) / (x1 - x0) * (W - 28);
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Điểm của 5 seed" });
+    el("line", { x1: 14, x2: W - 14, y1: 20, y2: 20, style: "stroke:var(--truc)" }, svg);
+    for (const v of [0.73, 0.74, 0.75]) el("text", { x: X(v), y: 46, "text-anchor": "middle", class: "chu-so" }, svg).textContent = f(v, 2);
+    sc.diem.forEach((v, i) => {
+      const c = el("circle", { cx: X(v), cy: 20, r: 6, style: "fill:var(--chinh);stroke:var(--mat);stroke-width:2" }, svg);
+      c.addEventListener("mousemove", e => hien(`Seed ${i + 1}: <span class="so">${f(v, 4)}</span>`, e)); c.addEventListener("mouseleave", an);
+    });
+    host.appendChild(svg);
+  })();
+  chamKtc($("#h-hang-may"), D.hang_may.map(h => ({ ten: `${h.hang} (${h.n} ca)`, v: h.auc, ci: h.ci })), {
+    x: [0.5, 0.9], tick: [0.5, 0.1], w: 330, l: 104, hang: 26, aria: "AUC theo hãng máy chụp",
+    tip: r => `<b>${r.ten}</b><br>AUC <span class="so">${f(r.v, 3)}</span><br>KTC 95% <span class="so">${f(r.ci[0], 3)}–${f(r.ci[1], 3)}</span>`,
+  });
+})();
+</script>

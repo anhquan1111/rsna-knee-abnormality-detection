@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="vi">
+<title>Slide MRI gối 58 nhãn</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap">
+<style>
+/* Khổ 1920×1080 cố định. Cố ý một giao diện sáng cho máy chiếu; riêng bìa và kết luận dùng "màn hình đọc phim" tối như báo cáo. */
+:root {
+  --nen: #f3f5f7; --mat: #fdfdfe; --muc: #0f1a24; --muc-2: #475563; --muc-3: #7d8a97;
+  --ke: #dbe1e7; --truc: #b9c3cc; --chinh: #2a78d6; --cu: #eb6834; --phu: #1baf7a;
+  --phim-nen: #0a0f14; --phim-chu: #d6e2ec; --phim-mo: #7f93a5;
+  --f-tieu-de: "Newsreader", "Iowan Old Style", Georgia, serif;
+  --f-chu: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-so: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #c9d1d8; }
+body { color: var(--muc); font: 400 30px/1.5 var(--f-chu); -webkit-font-smoothing: antialiased; }
+@page { size: 1920px 1080px; margin: 0; }
+.slide { width: 1920px; height: 1080px; position: relative; overflow: hidden; background: var(--nen);
+  padding: 76px 110px 104px; display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 26px; margin: 0 auto 40px; break-after: page; }
+@media print { .slide { margin: 0; } html, body { background: var(--nen); } }
+body.mot .slide { display: none; margin: 0; }
+body.mot .slide.hien { display: grid; }
+.eyebrow { font: 500 21px/1 var(--f-so); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muc-3); }
+h1, h2, h3 { font-family: var(--f-tieu-de); font-weight: 600; margin: 0; letter-spacing: -0.012em; text-wrap: balance; }
+h2 { font-size: 66px; line-height: 1.08; max-width: 26ch; }
+h3 { font-family: var(--f-chu); font-size: 30px; font-weight: 600; letter-spacing: 0; }
+p { margin: 0; }
+b { font-weight: 600; }
+.so { font-family: var(--f-so); font-variant-numeric: tabular-nums; }
+.chan { position: absolute; left: 110px; right: 110px; bottom: 40px; display: flex; justify-content: space-between;
+  font: 400 18px/1 var(--f-so); color: var(--muc-3); letter-spacing: 0.06em; }
+.noi { min-height: 0; display: grid; gap: 36px; }
+.hai { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px; min-height: 0; }
+.hai.lech { grid-template-columns: 5fr 7fr; }
+.hai.lech2 { grid-template-columns: 7fr 5fr; }
+.the { background: var(--mat); border: 1.5px solid var(--ke); border-radius: 10px; padding: 30px 34px; display: grid; gap: 14px; align-content: start; min-width: 0; }
+.the .tt { font-size: 25px; font-weight: 600; color: var(--muc); }
+.the .gc { font-size: 22px; color: var(--muc-2); line-height: 1.45; }
+.chu-giai { display: flex; flex-wrap: wrap; gap: 8px 28px; font-size: 22px; color: var(--muc-2); }
+.chu-giai span { display: inline-flex; align-items: center; gap: 10px; }
+.chu-giai i { width: 26px; height: 5px; border-radius: 3px; display: inline-block; }
+.chu-giai i.cham { width: 16px; height: 16px; border-radius: 50%; }
+.chu-giai i.mo { opacity: 0.45; }
+ul.ds { margin: 0; padding-left: 1.05em; display: grid; gap: 18px; font-size: 29px; color: var(--muc-2); }
+ul.ds li::marker { color: var(--muc-3); }
+ul.ds b { color: var(--muc); }
+.hinh svg { width: 100%; height: auto; display: block; overflow: visible; }
+svg .chu { font-family: var(--f-chu); font-size: 12px; fill: var(--muc-3); }
+svg .chu-so { font-family: var(--f-so); font-size: 11px; fill: var(--muc-3); }
+svg .chu-dam { font-family: var(--f-chu); font-size: 12.5px; fill: var(--muc); font-weight: 600; }
+svg .chu-phu { font-family: var(--f-chu); font-size: 12px; fill: var(--muc-2); }
+.thanh { display: grid; gap: 9px; }
+.thanh .dong { display: grid; grid-template-columns: 250px minmax(0, 1fr) 90px; gap: 16px; align-items: center; font-size: 23px; }
+.thanh .ten { color: var(--muc-2); white-space: nowrap; }
+.thanh .ray { height: 24px; position: relative; }
+.thanh .dac { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 5px 5px 0; }
+.thanh .gt { font-family: var(--f-so); text-align: right; }
+details.bang-so { display: none; }
+table { border-collapse: collapse; width: 100%; font-size: 24px; }
+th, td { text-align: left; padding: 12px 14px 12px 0; border-bottom: 1.5px solid var(--ke); }
+th { font-size: 19px; color: var(--muc-2); font-weight: 600; letter-spacing: 0.02em; }
+td.so, th.so { text-align: right; font-family: var(--f-so); }
+code { font: 0.88em var(--f-so); background: var(--mat); border: 1px solid var(--ke); border-radius: 5px; padding: 1px 8px; }
+#goi-y { display: none; }
+[hidden] { display: none !important; }
+
+/* bìa / kết luận */
+.slide.toi { background: var(--phim-nen); color: var(--phim-chu); grid-template-rows: auto minmax(0, 1fr) auto; }
+.slide.toi::before { content: ""; position: absolute; inset: 0; opacity: 0.35; pointer-events: none;
+  background-image: linear-gradient(rgba(127,147,165,0.10) 1px, transparent 1px), linear-gradient(90deg, rgba(127,147,165,0.10) 1px, transparent 1px);
+  background-size: 48px 48px; }
+.goc { display: flex; justify-content: space-between; font: 400 20px/1.6 var(--f-so); color: var(--phim-mo); letter-spacing: 0.05em; position: relative; }
+.goc > div:last-child { text-align: right; }
+.slide.toi h1 { font-size: 104px; line-height: 1.02; color: #f3f7fa; max-width: 15ch; position: relative; }
+.slide.toi .phu { font-size: 32px; color: var(--phim-chu); opacity: 0.85; max-width: 52ch; position: relative; }
+.slide.toi .chan { color: var(--phim-mo); }
+.ba-so { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5px; background: rgba(127,147,165,0.3); border: 1.5px solid rgba(127,147,165,0.3); border-radius: 8px; overflow: hidden; position: relative; }
+.ba-so > div { background: var(--phim-nen); padding: 30px 32px; display: grid; gap: 10px; align-content: start; }
+.ba-so .gt { font: 500 76px/1 var(--f-so); color: #f3f7fa; }
+.ba-so .gt.cu { color: #f19066; } .ba-so .gt.chinh { color: #7fb6f5; }
+.ba-so .mt { font-size: 22px; color: var(--phim-mo); line-height: 1.4; }
+
+.so-lon { font: 500 150px/0.95 var(--f-so); color: var(--chinh); letter-spacing: -0.03em; }
+.dai-so { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-top: 1.5px solid var(--ke); }
+.dai-so > div { padding: 26px 20px 22px 0; border-bottom: 1.5px solid var(--ke); display: grid; gap: 6px; }
+.dai-so .gt { font: 500 58px/1 var(--f-so); }
+.dai-so .mt { font-size: 22px; color: var(--muc-2); }
+
+.ong { display: grid; gap: 18px; }
+.ong .nh { font: 500 19px/1 var(--f-so); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muc-3); }
+.ong .hang { display: grid; grid-template-columns: minmax(0,1fr) 40px minmax(0,1fr) 40px minmax(0,1fr); align-items: stretch; }
+.ong .b { background: var(--mat); border: 1.5px solid var(--ke); border-radius: 10px; padding: 18px 22px; display: grid; gap: 6px; align-content: start; }
+.ong .b b { font-size: 25px; line-height: 1.25; }
+.ong .b span { font-size: 20px; color: var(--muc-2); line-height: 1.4; }
+.ong .b .so { font-size: 18px; color: var(--muc-3); }
+.ong .b.may { border-style: dashed; }
+.ong .b.dich { border-color: var(--chinh); box-shadow: inset 5px 0 0 var(--chinh); }
+.ong .m { align-self: center; text-align: center; color: var(--muc-3); font: 28px var(--f-so); }
+
+.doi { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); border: 1.5px solid var(--ke); border-radius: 10px; overflow: hidden; background: var(--mat); }
+.doi > div { padding: 40px 44px; display: grid; gap: 16px; align-content: start; }
+.doi > div + div { border-left: 1.5px solid var(--ke); }
+.doi .nhan { font: 500 21px/1 var(--f-so); letter-spacing: 0.12em; text-transform: uppercase; color: var(--cu); }
+.doi .gt { font: 500 72px/1.05 var(--f-so); }
+.doi p { font-size: 27px; color: var(--muc-2); }
+.luu-y { border-left: 6px solid var(--cu); padding: 8px 0 8px 28px; display: grid; gap: 8px; }
+.luu-y b { font-size: 27px; }
+.luu-y p { font-size: 25px; color: var(--muc-2); }
+.luoi { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 24px; }
+.luoi .the .gt { font: 500 50px/1 var(--f-so); }
+.ket { display: grid; gap: 28px; position: relative; }
+.ket .y { display: grid; grid-template-columns: 70px minmax(0,1fr); gap: 20px; align-items: baseline; }
+.ket { gap: 44px; }
+.ket .y { grid-template-columns: 96px minmax(0,1fr); }
+.ket .y .so { font-size: 44px; color: #7fb6f5; }
+.ket .y p { font-family: var(--f-tieu-de); font-weight: 500; font-size: 58px; color: #f3f7fa; line-height: 1.15; }
+.ket .y p span { font-family: var(--f-chu); font-weight: 400; color: var(--phim-mo); font-size: 28px; display: block; margin-top: 10px; }
+pre.ma { margin: 0; font: 22px/1.6 var(--f-so); color: var(--muc-2); white-space: pre; overflow: hidden; background: var(--nen); border-radius: 8px; padding: 18px 22px; }
+pre.ma b { font-weight: 500; } pre.ma .cu { color: var(--cu); } pre.ma .chinh { color: var(--chinh); }
+</style>
+
+<!-- 1 · BÌA -->
+<section class="slide toi" data-ghi-chu="Giới thiệu đề tài: dự đoán 12 bất thường đầu gối từ MRI khi chỉ 58 trên 4.407 ca có nhãn bác sĩ. Ba con số ở dưới là mạch chính của bài: 0.811 là số từng báo cáo, nhưng đo sai cách; model cuối khi đó còn yếu hơn; 0.764 là số đo lại đúng cách.">
+  <div class="goc"><div>RSNA KNEE ABNORMALITY · BÁO CÁO PBL<br><span class="g-du-lieu"></span></div><div>12 NHÃN · MACRO AUC<br>OUT-OF-FOLD · 5 FOLD</div></div>
+  <div style="display:grid; gap:40px; align-content:center; position:relative">
+    <h1>Đọc MRI đầu gối khi chỉ có 58 ca được gán nhãn</h1>
+    <p class="phu">Từ file DICOM thô tới 12 xác suất bệnh, với backbone đóng băng, nhãn rút từ báo cáo 9 ngôn ngữ, và một lần đo lại khiến con số đẹp nhất phải giảm xuống.</p>
+    <div class="ba-so" id="bia-so"></div>
+  </div>
+  <div class="goc"><div>DINOv2 ViT-S/14 · ViT-B/14 · ĐÓNG BĂNG<br>5 HEAD · GỘP THEO HẠNG</div><div>PYTHON 3.12 · PYTORCH 2.14<br><span class="g-test"></span></div></div>
+</section>
+
+<!-- 2 · BÀI TOÁN -->
+<section class="slide" data-ghi-chu="Mỗi ca chụp gồm nhiều series ở ba mặt phẳng. Đầu ra là 12 xác suất, đa nhãn. Điểm chấm là trung bình AUC của 12 nhãn. Khó nhất: chỉ 1,32% số ca có nhãn bác sĩ, phần còn lại chỉ có báo cáo chẩn đoán viết tự do.">
+  <span class="eyebrow">1 · Bài toán</span>
+  <h2>Mười hai câu hỏi cho mỗi ca chụp, gần như không có đáp án mẫu</h2>
+  <div class="hai lech2">
+    <ul class="ds" style="align-content:start">
+      <li><b>Đầu vào:</b> một ca MRI đầu gối, trung bình <span class="so" id="s2-series"></span> series ở ba mặt phẳng, mỗi series khoảng 26 lát.</li>
+      <li><b>Đầu ra:</b> 12 xác suất, mỗi xác suất cho một bất thường (rách ACL, rách sụn chêm, tràn dịch…). Một ca có thể mắc nhiều bệnh cùng lúc.</li>
+      <li><b>Thước đo:</b> trung bình AUC của 12 nhãn. Không dùng accuracy, vì đoán "không bệnh" cho mọi ca đã đạt 67,2%.</li>
+      <li><b>Cái khó:</b> các ca không có nhãn bác sĩ chỉ có một bản báo cáo viết tự do bằng 9 ngôn ngữ.</li>
+    </ul>
+    <div style="display:grid; gap:26px; align-content:start">
+      <div class="so-lon" id="s2-ty-le"></div>
+      <p style="font-size:28px; color:var(--muc-2)">số ca có nhãn bác sĩ: <b class="so" id="s2-gold"></b> ca</p>
+      <div class="dai-so" id="s2-dai" style="grid-template-columns:repeat(2,minmax(0,1fr))"></div>
+    </div>
+  </div>
+  <div class="chan"><span>RSNA KNEE · PBL</span><span class="trang"></span></div>
+</section>
+
+<!-- 3 · NHÃN -->
+<section class="slide" data-ghi-chu="Bên trái: 58 ca gold, số ca dương tính mỗi nhãn. MCL chỉ 9 ca, nên khi chia 5 fold mỗi fold còn 1 đến 2 ca, AUC nhãn này dao động rất mạnh. Bên phải: ngôn ngữ của 4.407 báo cáo. Muốn dùng 98,7% dữ liệu còn lại thì phải rút nhãn từ văn bản đa ngôn ngữ.">
+  <span class="eyebrow">1 · Bài toán</span>
+  <h2>Nhãn hiếm, và báo cáo viết bằng chín thứ tiếng</h2>
+  <div class="hai">
+    <div class="the"><span class="tt">Số ca dương tính trong 58 ca có nhãn bác sĩ</span><div class="thanh" id="s3-nhan"></div></div>
+    <div class="the"><span class="tt">Ngôn ngữ của 4.407 báo cáo chẩn đoán</span><div class="thanh" id="s3-nn"></div></div>
+  </div>
+  <div class="chan"><span>RSNA KNEE · PBL</span><span class="trang"></span></div>
+</section>
+
+<!-- 4 · KIẾN TRÚC -->
+<section class="slide" data-ghi-chu="Hai nhánh. Nhánh ảnh: DICOM được chuẩn hoá theo cả series rồi đi qua DINOv2 đóng băng, mỗi lát thành một vector 384 chiều. Nhánh nhãn: báo cáo của 4.349 ca được chuyển thành nhãn mềm; 58 ca gold giữ riêng để chấm. Hai nhánh gặp nhau ở bước train 5 head nhỏ, rồi gộp theo thứ hạng. Backbone đóng băng nên toàn bộ vòng thí nghiệm chạy được trên laptop 8 GB.">
+  <span class="eyebrow">2 · Kiến trúc</span>
+  <h2>Backbone đóng băng, chỉ học phần đầu, gộp năm góc nhìn</h2>
+  <div class="ong">
+    <span class="nh">Nhánh ảnh</span>
+    <div class="hang">
+      <div class="b"><b>DICOM 3 mặt phẳng</b><span>Một series mỗi mặt phẳng; đọc cả JPEG Lossless và JPEG 2000</span><span class="so">569 GB</span></div><span class="m">→</span>
+      <div class="b"><b>Chuẩn hoá theo cả series</b><span>Percentile 1–99 trên toàn series, giữ độ sáng tương đối giữa các lát</span></div><span class="m">→</span>
+      <div class="b"><b>DINOv2 đóng băng</b><span>Mỗi lát thành một vector đặc trưng</span><span class="so">ViT-S/14 @224 → 384 chiều</span></div>
+    </div>
+    <span class="nh">Nhánh nhãn</span>
+    <div class="hang">
+      <div class="b may"><b>Báo cáo 9 ngôn ngữ</b><span>4.349 ca không có nhãn bác sĩ</span></div><span class="m">→</span>
+      <div class="b may"><b>Nhãn LLM mềm</b><span>Giá trị 0–1; khớp nhãn bác sĩ ở AUC <span class="so" id="s4-llm"></span></span></div><span class="m">→</span>
+      <div class="b"><b>58 ca gold giữ riêng</b><span>Chỉ để chấm; chia fold theo ca chụp</span></div>
+    </div>
+    <span class="nh">Gặp nhau</span>
+    <div class="hang">
+      <div class="b dich"><b>5 head, attention riêng từng bệnh</b><span>3 head một mặt phẳng, 2 head nối lát cả ba mặt phẳng</span><span class="so">9 epoch, chốt trước</span></div><span class="m">→</span>
+      <div class="b dich"><b>Gộp theo hạng</b><span>Trung bình thứ hạng, không trung bình logit</span></div><span class="m">→</span>
+      <div class="b dich"><b>12 xác suất</b><span>Một số cho mỗi bất thường</span></div>
+    </div>
+  </div>
+  <div class="chan"><span>RSNA KNEE · PBL</span><span class="trang"></span></div>
+</section>
+
+<!-- 5 · NHÃN TỪ BÁO CÁO -->
+<section class="slide" data-ghi-chu="So sánh có kiểm soát: cùng model, cùng fold, chỉ đổi nguồn nhãn cho 4.349 ca. Thêm nhãn từ điển tự viết đã tăng mạnh so với chỉ dùng 58 ca. Nhãn LLM còn tốt hơn nữa, vì vừa phủ 100% số ca vừa khớp nhãn bác sĩ hơn. Khoảng tin cậy bắt cặp không cắt qua 0.">
+  <span class="eyebrow">3 · Nhãn rút từ báo cáo</span>
+  <h2>Dùng được 98,7% dữ liệu không nhãn nhờ đọc báo cáo</h2>
+  <div class="hai lech">
+    <div class="the"><span class="tt">Macro AUC theo nguồn nhãn cho 4.349 ca</span><div class="hinh" id="s5-cot"></div></div>
+    <div style="display:grid; gap:24px; align-content:start">
+      <table>
+        <thead><tr><th></th><th class="so">Từ điển tự viết</th><th class="so">Nhãn LLM</th></tr></thead>
+        <tbody>
+          <tr><td>Độ phủ</td><td class="so">30,8%</td><td class="so">100%</td></tr>
+          <tr><td>AUC so với bác sĩ</td><td class="so" id="s5-td"></td><td class="so" id="s5-llm"></td></tr>
+          <tr><td>Dạng nhãn</td><td class="so">1 / 0 / chưa rõ</td><td class="so">mềm 0–1</td></tr>
+        </tbody>
+      </table>
+      <div class="luu-y" style="border-color:var(--chinh)"><b>LLM hơn từ điển: <span class="so" id="s5-chenh"></span></b><p id="s5-ci"></p></div>
+      <p style="font-size:23px; color:var(--muc-2)">Từ điển 9 ngôn ngữ phải xử lý phủ định ("không thấy rách") và biến đổi hình thái, ví dụ tiếng Thổ <span class="so">yırtık → yırtığı</span>.</p>
+    </div>
+  </div>
+  <div class="chan"><span>RSNA KNEE · PBL</span><span class="trang"></span></div>
+</section>
+
+<!-- 6 · HÀNH TRÌNH -->
+<section class="slide" data-ghi-chu="Mỗi bước chỉ đổi một thứ. Các cột xám đo theo cách cũ, dùng để so các bước với nhau. Cột cam là con số 0.811 từng báo cáo. Khi kiểm tra lại cách đo, con số này hoá ra lạc quan; cột xanh là số đo lại đúng cách. Các slide tiếp theo giải thích vì sao.">
+  <span class="eyebrow">4 · Hành trình</span>
+  <h2>Từng bước cải tiến, và bước cuối phải đo lại</h2>
+  <div class="noi">
+    <div class="chu-giai"><span><i class="cham" style="background:var(--muc-3)"></i>đo theo cách cũ</span><span><i class="cham" style="background:var(--cu)"></i>bộ gộp, cách đo cũ</span><span><i class="cham" style="background:var(--chinh)"></i>bộ gộp, đo lại đúng cách</span></div>
+    <div class="hinh" id="s6-buoc" style="max-width:1560px"></div>
+  </div>
+  <div class="chan"><span>RSNA KNEE · PBL</span><span class="trang"></span></div>
+</section>
+
+<!-- 7 · PHÁT HIỆN: HAI LÚC -->
+<section class="slide" data-ghi-chu="Cùng một hàm train được dùng ở hai chỗ nhưng chọn checkpoint theo hai cách khác nhau. Lúc chấm CV, mỗi fold lấy epoch có AUC cao nhất trên chính các ca đang chấm, tức là chọn trên tập đánh giá. Lúc train model cuối, nhãn mềm khiến AUC thành nan, hàm âm thầm chuyển sang chọn theo loss, ra gần epoch cuối. Không có dòng log nào báo chuyện này.">
+  <span class="eyebrow">5 · Phát hiện chính</span>
+  <h2>Điểm CV đo một model, model cuối là một model khác</h2>
+  <div class="noi" style="align-content:start">
+    <div class="doi">
+      <div><span class="nhan">Lúc chấm CV</span><span class="gt" id="s7-epoch"></span><p>Mỗi fold lấy epoch có AUC cao nhất <b>trên chính 11–12 ca gold đang chấm</b>. Đây là chọn trên tập đánh giá, lặp lại 5 lần mỗi lần chạy.</p></div>
+      <div><span class="nhan">Lúc train model cuối</span><span class="gt">≈ epoch 80</span><p>Nhãn LLM là nhãn mềm nên <code>roc_auc_score</code> báo lỗi, AUC thành <code>nan</code> ở mọi epoch. Hàm train âm thầm chuyển sang chọn theo loss, tức gần như lấy epoch cuối.</p></div>
+    </div>
+    <div class="hai">
+      <div class="the"><span class="tt">Trước: chọn checkpoint ngầm</span><pre class="ma">out = train_head(model, train, <b class="cu">val</b>, epochs=<b class="cu">80</b>)
+# val = fold gold đang chấm  → chọn epoch trên tập chấm
+# model cuối: AUC = nan       → âm thầm chọn theo loss</pre></div>
+      <div class="the"><span class="tt">Sau: số epoch chốt trước, lấy epoch cuối</span><pre class="ma">out = train_head(model, train, val, epochs=<b class="chinh">9</b>,
+                 select=<b class="chinh">"last"</b>)
+# 9 chọn bằng 10% ca nhãn LLM, không nhìn gold
+# test khoá đường lùi nan → loss</pre></div>
+    </div>
+  </div>
+  <div class="chan"><span>RSNA KNEE · PBL</span><span class="trang"></span></div>
+</section>
+
+<!-- 8 · ĐƯỜNG 80 EPOCH -->
+<section class="slide" data-ghi-chu="Đường đen là AUC trên 58 ca gold nếu dừng head ở từng epoch. Đỉnh rất sớm, khoảng epoch 5, rồi giảm dần xuống 0.674 ở epoch 80. Các chấm cam là epoch mà cách cũ chọn ở từng fold: đều nằm ở vùng đỉnh. Còn model cuối cũ thì nằm ở đầu bên phải. Lý do: mỗi epoch có khoảng 1.100 bước cập nhật trên 4.400 ca nhãn LLM, vài epoch là đủ để bắt đầu học thuộc nhiễu.">
+  <span class="eyebrow">5 · Phát hiện chính</span>
+  <h2>Head đạt đỉnh rất sớm, rồi tệ dần nếu train tiếp</h2>
+  <div class="noi">
+    <div class="chu-giai"><span><i style="background:var(--muc)"></i>AUC trên 58 ca gold nếu dừng ở epoch đó (head <span class="so">chung_s224</span>)</span><span><i class="cham" style="background:var(--cu)"></i>epoch mà cách cũ chọn ở từng fold</span></div>
+    <div class="hinh" id="s8-s224"></div>
+  </div>
+  <div class="chan"><span>RSNA KNEE · PBL</span><span class="trang"></span></div>
+</section>
+
+<!-- 9 · CHỌN EPOCH -->
+<section class="slide" data-ghi-chu="Sửa bằng cách chốt số epoch trước. Bên phải: bỏ hẳn 58 ca gold, train trên 90% ca nhãn LLM, kiểm tra trên 10% còn lại. Đỉnh ở epoch 9, nên chốt 9 epoch mà không nhìn điểm gold. Bên trái: bộ gộp khá phẳng trong khoảng epoch 5 đến 20, nên con số chính xác không quan trọng bằng việc không train tới 80.">
+  <span class="eyebrow">5 · Phát hiện chính</span>
+  <h2>Chốt 9 epoch mà không nhìn 58 ca gold</h2>
+  <div class="hai">
+    <div class="the"><span class="tt">Bộ gộp 5 head, dừng ở cùng một epoch</span>
+      <div class="chu-giai"><span><i style="background:var(--chinh)"></i>bộ gộp</span><span><i class="mo" style="background:var(--muc-3)"></i>từng head</span></div>
+      <div class="hinh" id="s9-gop"></div></div>
+    <div class="the"><span class="tt">AUC so với nhãn LLM trên 10% ca giữ lại</span>
+      <div class="chu-giai"><span><i style="background:var(--phu)"></i>không dùng ca gold nào</span></div>
+      <div class="hinh" id="s9-kg"></div></div>
+  </div>
+  <div class="chan"><span>RSNA KNEE · PBL</span><span class="trang"></span></div>
+</section>
+
+<!-- 10 · BA CÁCH -->
+<section class="slide" data-ghi-chu="Cùng 5 model, ba cách chọn epoch. Cách cũ cho số cao nhất vì chọn trên tập chấm. Chốt 9 epoch cho 0.759. Train lâu như model cũ còn thấp hơn nữa. Nói rõ giới hạn: chênh lệch giữa epoch 9 và epoch 25 có khoảng tin cậy vẫn cắt qua 0, nên điều chắc chắn là cách đo cũ thổi phồng điểm; việc train ngắn tốt hơn bao nhiêu thì 58 ca chưa đủ để khẳng định.">
+  <span class="eyebrow">5 · Phát hiện chính</span>
+  <h2>Cùng năm model, ba cách chọn epoch</h2>
+  <div class="hai lech2">
+    <div class="hinh" id="s10-cot"></div>
+    <div class="luu-y" style="align-self:center"><b>Chưa chứng minh được trên 58 ca</b><p id="s10-ci"></p></div>
+  </div>
+  <div class="chan"><span>RSNA KNEE · PBL</span><span class="trang"></span></div>
+</section>
+
+<!-- 11 · KẾT QUẢ CUỐI -->
+<section class="slide" data-ghi-chu="Kết quả cuối: macro AUC 0.764, khoảng tin cậy 95% bootstrap theo ca. Bên phải là AUC từng bệnh: tốt nhất ở các bệnh có dấu hiệu rõ trên toàn khớp như Baker, thoái hoá khớp trong, tràn dịch; yếu nhất ở MCL và ACL, nơi tổn thương nằm trên ít lát và ít ca dương tính.">
+  <span class="eyebrow">6 · Kết quả cuối</span>
+  <h2>Con số đáng tin</h2>
+  <div class="hai lech">
+    <div style="display:grid; gap:22px; align-content:start">
+      <div class="so-lon" id="s11-so"></div>
+      <p style="font-size:27px; color:var(--muc-2)" id="s11-mt"></p>
+    </div>
+    <div class="the"><span class="tt">AUC từng bệnh, kèm khoảng tin cậy 95%</span><div class="hinh" id="s11-nhan"></div></div>
+  </div>
+  <div class="chan"><span>RSNA KNEE · PBL</span><span class="trang"></span></div>
+</section>
+
+<!-- 12 · ỔN ĐỊNH -->
+<section class="slide" data-ghi-chu="Bảng bên trái: không head nào vượt 0.75 khi đứng một mình, gộp lại thì cao hơn hẳn vì mỗi head sai ở những ca khác nhau. Bên phải: chỉ đổi seed khởi tạo, bộ gộp đã xê dịch khoảng ±0.01. Gộp 3 seed là cách tăng độ ổn định hợp lệ, vì không phải nhìn tập chấm để chọn.">
+  <span class="eyebrow">6 · Kết quả cuối</span>
+  <h2>Năm góc nhìn và ba seed</h2>
+  <div class="hai">
+    <div class="the"><span class="tt">Năm thành phần (epoch 9, seed 42)</span>
+      <table><thead><tr><th>Head</th><th>Nhìn gì</th><th class="so">AUC</th></tr></thead><tbody id="s12-tp"></tbody></table></div>
+    <div class="the"><span class="tt">Bộ gộp theo từng seed</span><div class="hinh" id="s12-seed"></div><span class="gc" id="s12-mt"></span></div>
+  </div>
+  <div class="chan"><span>RSNA KNEE · PBL</span><span class="trang"></span></div>
+</section>
+
+<!-- 13 · LỖI ÂM THẦM -->
+<section class="slide" data-ghi-chu="Phần lớn thời gian dự án dành cho lỗi không báo exception: pipeline vẫn chạy, vẫn ra một con số hợp lý, chỉ có con số đó sai. Chọn ba hoặc bốn thẻ để kể, ví dụ rò rỉ khi chia theo series và bộ nhãn công khai chép nhãn gold. Mỗi lỗi đều có test hoặc chốt chặn; bộ test hiện có 110 test, không cần ảnh.">
+  <span class="eyebrow">7 · Những điều đo được</span>
+  <h2>Lỗi hỏng âm thầm, và cách chặn từng cái</h2>
+  <div class="luoi">
+    <div class="the"><span class="gt so">100%</span><span class="tt">Chia fold theo series rò rỉ toàn bộ tập kiểm tra</span><span class="gc">Mọi ca kiểm tra đều có series nằm bên train. Đơn vị chia fold phải là ca chụp.</span></div>
+    <div class="the"><span class="gt so">1 ca</span><span class="tt">Báo cáo trùng từng ký tự mang đáp án sang train</span><span class="gc">Chặn nó làm cận dưới khoảng tin cậy đổi dấu, tức là đảo kết luận.</span></div>
+    <div class="the"><span class="gt so">AUC 1.000</span><span class="tt">Một bộ nhãn công khai đã chép nhãn gold</span><span class="gc">Dấu hiệu: giá trị trên gold toàn 0/1, ngoài gold thì không. Pipeline tự dừng khi gặp.</span></div>
+    <div class="the"><span class="gt so">82,8%</span><span class="tt">Đặc trưng đoán được hãng máy chụp</span><span class="gc">Ngẫu nhiên chỉ 37,9%. Với 16–22 ca mỗi hãng, chưa đo được mức ảnh hưởng.</span></div>
+    <div class="the"><span class="gt so">4 lát</span><span class="tt">Bản đồ chú ý bị suy biến</span><span class="gc">12 bệnh chỉ dùng 4 lát, 7/12 dồn vào một lát. Tín hiệu ở mức cả ca, không ở mức tổn thương.</span></div>
+    <div class="the"><span class="gt so" id="s13-seed"></span><span class="tt">Chỉ đổi seed, điểm đã dao động</span><span class="gc">Chênh lệch nhỏ hơn mức này giữa hai cấu hình là nhiễu, không phải cải tiến.</span></div>
+  </div>
+  <div class="chan"><span>RSNA KNEE · PBL</span><span class="trang"></span></div>
+</section>
+
+<!-- 14 · GIỚI HẠN -->
+<section class="slide" data-ghi-chu="Nói thẳng các giới hạn: 58 ca là trần cứng, khoảng tin cậy rộng khoảng 0.09; chỉ đánh giá bằng CV trên 58 ca này; rò rỉ theo hãng máy chưa chặn; nhãn LLM là của người khác công bố. Hướng tiếp: chọn đúng series nhạy dịch, đã có script, cần khoảng 4,3 giờ GPU.">
+  <span class="eyebrow">8 · Giới hạn và hướng tiếp</span>
+  <h2>Điều bài này chưa làm được</h2>
+  <div class="hai">
+    <div class="the"><span class="tt">Giới hạn</span>
+      <ul class="ds" style="font-size:27px; gap:18px">
+        <li><b>58 ca là trần cứng.</b> Khoảng tin cậy rộng khoảng 0.09; thêm ảnh hay nhãn máy không làm nó hẹp lại.</li>
+        <li><b>Chỉ đánh giá bằng CV</b> trên 58 ca đó; chưa có tập kiểm tra có nhãn nào khác.</li>
+        <li><b>Rò rỉ theo hãng máy chưa chặn:</b> chia fold theo hãng chỉ được 4 fold, fold nhỏ nhất 2 ca.</li>
+        <li><b>Nhãn LLM là của người khác công bố;</b> bộ từ điển 9 ngôn ngữ thì tự viết.</li>
+      </ul></div>
+    <div class="the"><span class="tt">Hướng tiếp, theo thứ tự đáng làm</span>
+      <ul class="ds" style="font-size:27px; gap:18px">
+        <li><b>Chọn đúng series nhạy dịch.</b> Sagittal hiện chỉ 48,7% chọn đúng, dù 94,2% ca có sẵn. Script đã viết, cần ~4,3 giờ GPU.</li>
+        <li><b>Thêm đặc trưng patch</b> (trung bình và max) bên cạnh CLS, trong cùng lần trích.</li>
+        <li><b>Mọi so sánh mới</b> dùng epoch cố định, nhiều seed và khoảng tin cậy bắt cặp.</li>
+      </ul></div>
+  </div>
+  <div class="chan"><span>RSNA KNEE · PBL</span><span class="trang"></span></div>
+</section>
+
+<!-- 15 · KẾT LUẬN -->
+<section class="slide toi" data-ghi-chu="Ba ý mang về. Một: với 1,3% nhãn, nhãn rút từ báo cáo là đòn bẩy lớn nhất. Hai: gộp nhiều góc nhìn giúp nhiều hơn bất kỳ head đơn lẻ nào. Ba: con số chỉ đáng tin khi cách đo đúng; đo lại khiến điểm giảm từ 0.811 xuống 0.764, nhưng 0.764 là số thật. Cảm ơn và mời câu hỏi.">
+  <div class="goc"><div>KẾT LUẬN</div><div>RSNA KNEE · PBL</div></div>
+  <div class="ket" style="align-content:center">
+    <div class="y"><span class="so">01</span><p>Nhãn rút từ báo cáo là đòn bẩy lớn nhất khi chỉ 1,3% dữ liệu có nhãn.<span id="k1"></span></p></div>
+    <div class="y"><span class="so">02</span><p>Gộp năm góc nhìn tốt hơn mọi head đơn lẻ.<span>Không head nào vượt 0.75 một mình.</span></p></div>
+    <div class="y"><span class="so">03</span><p>Con số chỉ đáng tin khi cách đo đúng.<span id="k3"></span></p></div>
+  </div>
+  <div class="goc"><div>CẢM ƠN · HỎI ĐÁP</div><div class="g-du-lieu"></div></div>
+</section>
+
+<div id="goi-y" hidden></div>
+<script>
+const D = {"du_lieu": {"n_study": 4407, "n_series": 24371, "n_gold": 58, "series_moi_study": 5.53, "nhan_duong": [{"nhan": "ACL", "n": 24}, {"nhan": "MCL", "n": 9}, {"nhan": "Medial Meniscus", "n": 26}, {"nhan": "Lateral Meniscus", "n": 23}, {"nhan": "Medial OA", "n": 15}, {"nhan": "Lateral OA", "n": 11}, {"nhan": "PF OA", "n": 21}, {"nhan": "Effusion", "n": 35}, {"nhan": "Synovitis", "n": 27}, {"nhan": "Baker's", "n": 12}, {"nhan": "Contusion", "n": 19}, {"nhan": "Fracture", "n": 18}], "ngon_ngu": [{"ma": "en", "ten": "Anh", "n": 1736}, {"ma": "es", "ten": "Tây Ban Nha", "n": 682}, {"ma": "tr", "ten": "Thổ Nhĩ Kỳ", "n": 546}, {"ma": "hr", "ten": "Croatia", "n": 406}, {"ma": "el", "ten": "Hy Lạp", "n": 321}, {"ma": "de", "ten": "Đức", "n": 262}, {"ma": "bg", "ten": "Bulgaria", "n": 220}, {"ma": "nl", "ten": "Hà Lan", "n": 153}, {"ma": "fr", "ten": "Pháp", "n": 81}]}, "duong_epoch": {"gop": [0.7103, 0.7303, 0.7441, 0.7457, 0.7526, 0.761, 0.7523, 0.7662, 0.7593, 0.7593, 0.7616, 0.7726, 0.7709, 0.7617, 0.7593, 0.7543, 0.761, 0.7554, 0.7542, 0.7543, 0.7635, 0.7488, 0.7408, 0.7444, 0.7426], "thanh_phan": {"mp_sagittal": [0.6696, 0.6866, 0.6813, 0.6739, 0.6727, 0.6761, 0.6669, 0.6833, 0.6795, 0.668, 0.6793, 0.6733, 0.6753, 0.6727, 0.6656, 0.6617, 0.6705, 0.6577, 0.6667, 0.6558, 0.6797, 0.6594, 0.6636, 0.6473, 0.6535], "mp_axial": [0.6814, 0.7212, 0.7383, 0.734, 0.7487, 0.7465, 0.7371, 0.7493, 0.7476, 0.748, 0.734, 0.7439, 0.7462, 0.7295, 0.7235, 0.7223, 0.7192, 0.7111, 0.7098, 0.7, 0.7096, 0.6944, 0.6965, 0.6947, 0.6943], "mp_coronal": [0.6676, 0.6871, 0.6979, 0.7083, 0.7195, 0.7306, 0.7175, 0.7227, 0.722, 0.7174, 0.7291, 0.7404, 0.7326, 0.7156, 0.7267, 0.719, 0.7209, 0.713, 0.7229, 0.7121, 0.7223, 0.7158, 0.7057, 0.7002, 0.6944], "chung_s224": [0.6949, 0.7189, 0.7335, 0.7162, 0.7346, 0.7402, 0.7325, 0.734, 0.7329, 0.7195, 0.7247, 0.7279, 0.7269, 0.7084, 0.7177, 0.7094, 0.7177, 0.712, 0.7032, 0.715, 0.7229, 0.7061, 0.6911, 0.695, 0.7081], "chung_b336": [0.7085, 0.7117, 0.7145, 0.7388, 0.7373, 0.7384, 0.7412, 0.7395, 0.7316, 0.7314, 0.735, 0.745, 0.7272, 0.7288, 0.7325, 0.7142, 0.7205, 0.7264, 0.7005, 0.7042, 0.7019, 0.701, 0.6861, 0.6857, 0.6825]}, "chung_s224_dai": [0.6949, 0.7189, 0.7335, 0.7162, 0.7346, 0.7402, 0.7325, 0.734, 0.7329, 0.7195, 0.7247, 0.7279, 0.7269, 0.7084, 0.7177, 0.7094, 0.7177, 0.712, 0.7032, 0.715, 0.7229, 0.7061, 0.6911, 0.695, 0.7081, 0.7033, 0.703, 0.6979, 0.7067, 0.6773, 0.6928, 0.6793, 0.6843, 0.6755, 0.6802, 0.6784, 0.6784, 0.6754, 0.6756, 0.657, 0.6754, 0.6732, 0.6717, 0.6765, 0.6668, 0.674, 0.6676, 0.6704, 0.6668, 0.678, 0.6715, 0.6667, 0.6692, 0.6668, 0.659, 0.6533, 0.6557, 0.664, 0.6594, 0.6663, 0.6666, 0.6614, 0.6694, 0.6705, 0.6572, 0.6567, 0.6517, 0.6661, 0.6654, 0.6613, 0.6718, 0.6689, 0.6666, 0.675, 0.6609, 0.6584, 0.6563, 0.661, 0.655, 0.6736]}, "khong_gold": {"auc": [0.7312, 0.7391, 0.751, 0.7556, 0.7573, 0.7595, 0.7603, 0.7638, 0.7664, 0.7633, 0.7594, 0.7633, 0.7567, 0.7505, 0.7566, 0.7467, 0.7488, 0.7493, 0.7444, 0.7436, 0.7411, 0.7412, 0.7364, 0.7262, 0.7352], "dinh": 9}, "chon_epoch": {"cu": 0.7933, "chot": 0.7593, "dai": 0.7426, "n_ep_dai": 25, "epoch_chot": 9, "ci_chot": [0.7113, 0.7982], "cv_cu_bao_cao": 0.8112, "chenh_chot_dai": 0.0167, "ci_chenh": [-0.0086, 0.0409], "p_duong": 0.9, "epoch_chon_tung_fold": {"mp_sagittal": [2, 5, 8, 22, 3], "mp_axial": [9, 13, 13, 7, 2], "mp_coronal": [12, 15, 22, 16, 2], "chung_s224": [7, 3, 2, 17, 4], "chung_b336": [2, 12, 6, 6, 9]}}, "thanh_phan": [{"ten": "mp_sagittal", "cv_cu": 0.7106, "cv_chot": 0.6795}, {"ten": "mp_axial", "cv_cu": 0.7691, "cv_chot": 0.7476}, {"ten": "mp_coronal", "cv_cu": 0.7394, "cv_chot": 0.722}, {"ten": "chung_s224", "cv_cu": 0.7698, "cv_chot": 0.7329}, {"ten": "chung_b336", "cv_cu": 0.7481, "cv_chot": 0.7316}], "seed": {"moi_seed": [{"seed": 42, "auc": 0.7593}, {"seed": 7, "auc": 0.769}, {"seed": 2026, "auc": 0.7461}], "gop": 0.7645, "ci_gop": [0.7154, 0.8054], "n": 3, "do_lech": 0.0115}, "tung_nhan": [{"nhan": "Baker's", "auc": 0.899, "ci": [0.795, 0.971], "n_duong": 12}, {"nhan": "Medial OA", "auc": 0.896, "ci": [0.792, 0.969], "n_duong": 15}, {"nhan": "Effusion", "auc": 0.868, "ci": [0.772, 0.948], "n_duong": 35}, {"nhan": "PF OA", "auc": 0.786, "ci": [0.661, 0.907], "n_duong": 21}, {"nhan": "Medial Meniscus", "auc": 0.778, "ci": [0.65, 0.885], "n_duong": 26}, {"nhan": "Lateral Meniscus", "auc": 0.777, "ci": [0.654, 0.889], "n_duong": 23}, {"nhan": "Lateral OA", "auc": 0.743, "ci": [0.554, 0.897], "n_duong": 11}, {"nhan": "Contusion", "auc": 0.709, "ci": [0.546, 0.858], "n_duong": 19}, {"nhan": "Synovitis", "auc": 0.701, "ci": [0.561, 0.822], "n_duong": 27}, {"nhan": "ACL", "auc": 0.683, "ci": [0.532, 0.816], "n_duong": 24}, {"nhan": "Fracture", "auc": 0.672, "ci": [0.496, 0.819], "n_duong": 18}, {"nhan": "MCL", "auc": 0.662, "ci": [0.434, 0.861], "n_duong": 9}], "nguon_nhan": {"A": 0.6266, "B": 0.6923, "D": 0.7467, "E": 0.7179, "auc_tu_dien": 0.7362, "auc_llm": 0.8927, "chenh": 0.0544, "ci": [0.0086, 0.0907]}, "seed_cu": {"diem": [0.7407, 0.7447, 0.734, 0.7468, 0.7431], "do_lech": 0.0049, "be_rong": 0.0128}, "hang_may": [{"hang": "GE", "n": 16, "auc": 0.7818, "ci": [0.7, 0.874]}, {"hang": "PHILIPS", "n": 18, "auc": 0.6985, "ci": [0.578, 0.789]}, {"hang": "SIEMENS", "n": 22, "auc": 0.7598, "ci": [0.704, 0.817]}], "tu_dien": [{"nhan": "ACL", "phu": 0.586, "precision": 0.84}, {"nhan": "MCL", "phu": 0.397, "precision": 0.6}, {"nhan": "Medial Meniscus", "phu": 0.466, "precision": 0.773}, {"nhan": "Lateral Meniscus", "phu": 0.483, "precision": 0.778}, {"nhan": "Medial OA", "phu": 0.19, "precision": 0.889}, {"nhan": "Lateral OA", "phu": 0.086, "precision": 0.5}, {"nhan": "PF OA", "phu": 0.534, "precision": 0.733}, {"nhan": "Effusion", "phu": 0.776, "precision": 0.625}, {"nhan": "Synovitis", "phu": 0.259, "precision": 0.733}, {"nhan": "Baker's", "phu": 0.276, "precision": 0.636}, {"nhan": "Contusion", "phu": 0.552, "precision": 0.467}, {"nhan": "Fracture", "phu": 0.362, "precision": 0.667}]};
+(() => {
+  // Bo ve bieu do dung chung cho bao cao (khung.html) va slide (slide.html).
+// scripts/70_xuat_bao_cao.py chen nguyen van file nay vao cho `/*__VE__*/` BEN TRONG IIFE
+// cua moi trang, nen cac ham duoi day nam trong pham vi cua trang do, khong ra global.
+  const $ = (s) => document.querySelector(s);
+  const f = (x, d = 3) => Number(x).toFixed(d);
+  const vn = (n) => Number(n).toLocaleString("vi-VN");
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (tag, attrs = {}, parent) => {
+    const e = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    if (parent) parent.appendChild(e);
+    return e;
+  };
+  const TEN_TP = { mp_sagittal: "chỉ Sagittal", mp_axial: "chỉ Axial", mp_coronal: "chỉ Coronal",
+                   chung_s224: "cả 3 mặt phẳng, ViT-S", chung_b336: "cả 3 mặt phẳng, ViT-B" };
+
+  // ---------------- tooltip
+  const tip = $("#goi-y");
+  const hien = (html, ev) => {
+    tip.innerHTML = html; tip.hidden = false;
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    let x = ev.clientX + 14, y = ev.clientY + 14;
+    if (x + w > innerWidth - 8) x = ev.clientX - w - 14;
+    if (y + h > innerHeight - 8) y = ev.clientY - h - 14;
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  };
+  const an = () => { tip.hidden = true; };
+  const dongTip = (mau, ten, gt) => `<div class="dg"><span><i style="background:${mau}"></i>${ten}</span><span class="so">${gt}</span></div>`;
+
+  // ---------------- bảng số kèm theo biểu đồ
+  const bangSo = (host, dau, dong) => {
+    const d = document.createElement("details"); d.className = "bang-so";
+    d.innerHTML = `<summary>Xem bảng số</summary><div class="cuon"><table><thead><tr>${dau.map((h, i) => `<th class="${i ? "so" : ""}">${h}</th>`).join("")}</tr></thead><tbody>${dong.map(r => `<tr>${r.map((c, i) => `<td class="${i ? "so" : ""}">${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    host.after(d);
+  };
+
+  // ---------------- thanh ngang (HTML)
+  const thanh = (host, rows, { fmt = vn, mau = "var(--chinh)", tipFn } = {}) => {
+    const max = Math.max(...rows.map(r => r.v));
+    for (const r of rows) {
+      const d = document.createElement("div"); d.className = "dong";
+      d.innerHTML = `<span class="ten">${r.ten}</span><span class="ray"><span class="dac" style="width:${(r.v / max) * 100}%;background:${mau}"></span></span><span class="gt">${fmt(r.v)}</span>`;
+      if (tipFn) { d.addEventListener("mousemove", e => hien(tipFn(r), e)); d.addEventListener("mouseleave", an); }
+      host.appendChild(d);
+    }
+  };
+
+  // ---------------- biểu đồ đường
+  const duong = (host, o) => {
+    const W = o.w || 720, H = o.h || 280, m = { l: 46, r: o.r ?? 18, t: 14, b: 38 };
+    const n = o.n, [y0, y1] = o.y;
+    const X = (e) => m.l + ((e - 1) / (n - 1)) * (W - m.l - m.r);
+    const Y = (v) => m.t + (1 - (v - y0) / (y1 - y0)) * (H - m.t - m.b);
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": o.aria });
+    // lưới + trục y
+    for (let v = o.yTick[0]; v <= y1 + 1e-9; v += o.yTick[1]) {
+      el("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), style: "stroke:var(--ke);stroke-width:1" }, svg);
+      el("text", { x: m.l - 8, y: Y(v) + 4, "text-anchor": "end", class: "chu-so" }, svg).textContent = f(v, 2);
+    }
+    el("line", { x1: m.l, x2: W - m.r, y1: H - m.b, y2: H - m.b, style: "stroke:var(--truc);stroke-width:1" }, svg);
+    for (const e of o.xTicks) {
+      el("text", { x: X(e), y: H - m.b + 18, "text-anchor": "middle", class: "chu-so" }, svg).textContent = e;
+    }
+    el("text", { x: (m.l + W - m.r) / 2, y: H - 4, "text-anchor": "middle", class: "chu" }, svg).textContent = "epoch";
+    // dải / vạch dọc
+    for (const v of o.vach || []) {
+      el("line", { x1: X(v.e), x2: X(v.e), y1: m.t, y2: H - m.b, style: `stroke:${v.mau};stroke-width:1.5;stroke-dasharray:4 4` }, svg);
+      el("text", { x: X(v.e) + 6, y: m.t + 12, class: "chu-phu" }, svg).textContent = v.nhan;
+    }
+    // đường
+    for (const s of o.series) {
+      const d = s.v.map((v, i) => `${i ? "L" : "M"}${X(i + 1).toFixed(1)},${Y(v).toFixed(1)}`).join("");
+      el("path", { d, fill: "none", style: `stroke:${s.mau};stroke-width:${s.day || 2};opacity:${s.mo || 1};stroke-linejoin:round;stroke-linecap:round` }, svg);
+      if (s.nhan) {
+        const last = s.v.length;
+        el("text", { x: X(last) + 6, y: Y(s.v[last - 1]) + 4, class: "chu-phu" }, svg).textContent = s.nhan;
+      }
+    }
+    // điểm nhấn
+    for (const pt of o.diem || []) {
+      el("circle", { cx: X(pt.e), cy: Y(pt.v), r: pt.r || 5, style: `fill:${pt.mau};stroke:var(--mat);stroke-width:2` }, svg);
+      if (pt.nhan) el("text", { x: X(pt.e) + (pt.dx ?? 8), y: Y(pt.v) + (pt.dy ?? -8), "text-anchor": pt.anchor || "start", class: pt.dam ? "chu-dam" : "chu-phu" }, svg).textContent = pt.nhan;
+    }
+    // lớp rê chuột
+    const cross = el("line", { y1: m.t, y2: H - m.b, style: "stroke:var(--muc-3);stroke-width:1", visibility: "hidden" }, svg);
+    const vung = el("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: "transparent" }, svg);
+    vung.addEventListener("mousemove", (ev) => {
+      const r = svg.getBoundingClientRect();
+      const px = (ev.clientX - r.left) * (W / r.width);
+      const e = Math.min(n, Math.max(1, Math.round(1 + (px - m.l) / (W - m.l - m.r) * (n - 1))));
+      cross.setAttribute("x1", X(e)); cross.setAttribute("x2", X(e)); cross.setAttribute("visibility", "visible");
+      const rows = o.series.filter(s => s.v[e - 1] != null && (s.tip ?? true))
+        .map(s => dongTip(s.mau, s.ten, f(s.v[e - 1], 3))).join("");
+      hien(`<b>Epoch ${e}</b>${o.tipThem ? o.tipThem(e) : ""}${rows}`, ev);
+    });
+    vung.addEventListener("mouseleave", () => { cross.setAttribute("visibility", "hidden"); an(); });
+    host.appendChild(svg);
+  };
+
+  // ---------------- chấm + khoảng tin cậy (ngang)
+  const chamKtc = (host, rows, o = {}) => {
+    const W = o.w || 520, hang = o.hang || 26, m = { l: o.l || 128, r: 52, t: 6, b: 30 };
+    const H = m.t + m.b + rows.length * hang, [x0, x1] = o.x;
+    const X = (v) => m.l + (v - x0) / (x1 - x0) * (W - m.l - m.r);
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": o.aria });
+    for (let v = o.tick[0]; v <= x1 + 1e-9; v += o.tick[1]) {
+      el("line", { x1: X(v), x2: X(v), y1: m.t, y2: H - m.b, style: "stroke:var(--ke);stroke-width:1" }, svg);
+      el("text", { x: X(v), y: H - m.b + 18, "text-anchor": "middle", class: "chu-so" }, svg).textContent = f(v, 1);
+    }
+    if (o.moc != null) el("line", { x1: X(o.moc), x2: X(o.moc), y1: m.t, y2: H - m.b, style: "stroke:var(--muc-3);stroke-width:1;stroke-dasharray:3 3" }, svg);
+    rows.forEach((r, i) => {
+      const y = m.t + hang * i + hang / 2;
+      const g = el("g", {}, svg);
+      el("rect", { x: 0, y: y - hang / 2, width: W, height: hang, fill: "transparent" }, g);
+      el("text", { x: m.l - 10, y: y + 4, "text-anchor": "end", class: "chu-phu" }, g).textContent = r.ten;
+      el("line", { x1: X(r.ci[0]), x2: X(r.ci[1]), y1: y, y2: y, style: "stroke:var(--truc);stroke-width:3;stroke-linecap:round" }, g);
+      el("circle", { cx: X(r.v), cy: y, r: 5, style: `fill:${r.mau || "var(--chinh)"};stroke:var(--mat);stroke-width:2` }, g);
+      el("text", { x: W - m.r + 8, y: y + 4, class: "chu-so" }, g).textContent = f(r.v, 3);
+      g.addEventListener("mousemove", e => hien(o.tip(r), e)); g.addEventListener("mouseleave", an);
+    });
+    host.appendChild(svg);
+  };
+
+  // ---------------- cột dọc nhỏ (so sánh vài giá trị)
+  const cot = (host, rows, o) => {
+    const W = o.w || 520, H = o.h || 220, m = { l: 46, r: 12, t: 26, b: o.b || 46 };
+    const [y0, y1] = o.y, n = rows.length;
+    const bw = Math.min(o.bw || 96, (W - m.l - m.r) / n * 0.56);
+    const X = (i) => m.l + (W - m.l - m.r) * (i + 0.5) / n;
+    const Y = (v) => m.t + (1 - (v - y0) / (y1 - y0)) * (H - m.t - m.b);
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": o.aria });
+    for (let v = o.tick[0]; v <= y1 + 1e-9; v += o.tick[1]) {
+      el("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), style: "stroke:var(--ke);stroke-width:1" }, svg);
+      el("text", { x: m.l - 8, y: Y(v) + 4, "text-anchor": "end", class: "chu-so" }, svg).textContent = f(v, 2);
+    }
+    rows.forEach((r, i) => {
+      const g = el("g", {}, svg), x = X(i) - bw / 2, top = Y(r.v), bot = Y(y0);
+      const rad = 4;
+      el("path", { d: `M${x},${bot}V${top + rad}Q${x},${top} ${x + rad},${top}H${x + bw - rad}Q${x + bw},${top} ${x + bw},${top + rad}V${bot}Z`, style: `fill:${r.mau}` }, g);
+      if (r.ci) {
+        el("line", { x1: X(i), x2: X(i), y1: Y(r.ci[0]), y2: Y(r.ci[1]), style: "stroke:var(--muc);stroke-width:1.5" }, g);
+        for (const c of r.ci) el("line", { x1: X(i) - 6, x2: X(i) + 6, y1: Y(c), y2: Y(c), style: "stroke:var(--muc);stroke-width:1.5" }, g);
+      }
+      el("text", { x: X(i), y: (r.ci ? Math.min(Y(r.ci[1]), top) : top) - 8, "text-anchor": "middle", class: "chu-dam" }, g).textContent = f(r.v, o.d ?? 4);
+      const lines = r.ten.split("\n");
+      lines.forEach((t, k) => { el("text", { x: X(i), y: H - m.b + 18 + k * 15, "text-anchor": "middle", class: k ? "chu" : "chu-phu" }, g).textContent = t; });
+      el("rect", { x: X(i) - (W - m.l - m.r) / n / 2, y: m.t, width: (W - m.l - m.r) / n, height: H - m.t - m.b, fill: "transparent" }, g);
+      if (o.tip) { g.addEventListener("mousemove", e => hien(o.tip(r), e)); g.addEventListener("mouseleave", an); }
+    });
+    el("line", { x1: m.l, x2: W - m.r, y1: Y(y0), y2: Y(y0), style: "stroke:var(--truc);stroke-width:1" }, svg);
+    host.appendChild(svg);
+  };
+
+
+
+  const du = D.du_lieu, ce = D.chon_epoch, sd = D.seed, nn = D.nguon_nhan;
+  const cuoi = sd.n > 1 ? sd.gop : ce.chot, ciCuoi = sd.n > 1 ? sd.ci_gop : ce.ci_chot;
+  const set = (sel, html) => document.querySelectorAll(sel).forEach(e => { e.innerHTML = html; });
+
+  // chế độ một slide (#s3) để chụp ảnh; không có hash thì hiện cả bộ
+  const tat = [...document.querySelectorAll(".slide")];
+  tat.forEach((s, i) => { const t = s.querySelector(".trang"); if (t) t.textContent = `${String(i + 1).padStart(2, "0")} / ${tat.length}`; });
+  const m = location.hash.match(/^#s(\d+)$/);
+  if (m) { document.body.classList.add("mot"); tat[+m[1] - 1]?.classList.add("hien"); }
+
+  set(".g-du-lieu", `${vn(du.n_study)} CA · ${vn(du.n_series)} SERIES · ${du.n_gold} CA GOLD`);
+  set(".g-test", "110 TEST HỎNG ÂM THẦM");
+
+  // 1
+  $("#bia-so").innerHTML = `
+    <div><span class="gt cu so">${f(ce.cv_cu_bao_cao, 3)}</span><span class="mt">CV từng báo cáo. Chọn epoch trên chính tập đang chấm, nên lạc quan.</span></div>
+    <div><span class="gt so">${f(ce.dai, 3)}</span><span class="mt">Cùng 5 head nhưng train lâu (${ce.n_ep_dai} epoch) như model cuối cũ.</span></div>
+    <div><span class="gt chinh so">${f(cuoi, 3)}</span><span class="mt">Đo lại đúng cách, ${sd.n} seed. KTC 95%: ${f(ciCuoi[0], 3)}–${f(ciCuoi[1], 3)}.</span></div>`;
+
+  // 2
+  $("#s2-series").textContent = String(du.series_moi_study).replace(".", ",");
+  $("#s2-ty-le").textContent = (du.n_gold / du.n_study * 100).toFixed(2).replace(".", ",") + "%";
+  $("#s2-gold").textContent = `${du.n_gold} / ${vn(du.n_study)}`;
+  $("#s2-dai").innerHTML = [[vn(du.n_study), "ca chụp MRI"], [vn(du.n_series), "series ảnh"], ["12", "nhãn, đa nhãn"], [String(du.ngon_ngu.length), "ngôn ngữ báo cáo"]]
+    .map(([g, t]) => `<div><span class="gt">${g}</span><span class="mt">${t}</span></div>`).join("");
+
+  // 3
+  thanh($("#s3-nhan"), [...du.nhan_duong].sort((a, b) => b.n - a.n).map(r => ({ ten: r.nhan, v: r.n })));
+  thanh($("#s3-nn"), du.ngon_ngu.map(r => ({ ten: r.ten, v: r.n })), { mau: "var(--muc-3)" });
+
+  // 4, 5
+  $("#s4-llm").textContent = f(nn.auc_llm, 3);
+  cot($("#s5-cot"), [
+    { ten: "chỉ 58 ca gold", v: nn.A, mau: "var(--muc-3)" }, { ten: "+ từ điển", v: nn.B, mau: "var(--muc-3)" },
+    { ten: "+ nhãn LLM", v: nn.D, mau: "var(--chinh)" },
+  ], { y: [0.55, 0.80], tick: [0.55, 0.05], w: 340, h: 280, b: 34, bw: 64, d: 3, aria: "CV theo nguồn nhãn" });
+  $("#s5-td").textContent = f(nn.auc_tu_dien, 3); $("#s5-llm").textContent = f(nn.auc_llm, 3);
+  $("#s5-chenh").textContent = `+${f(nn.chenh, 3)}`;
+  $("#s5-ci").innerHTML = `Khoảng tin cậy bắt cặp <span class="so">[+${f(nn.ci[0], 3)}, +${f(nn.ci[1], 3)}]</span>, không cắt qua 0. Đo theo cách cũ, nhưng cả hai cấu hình cùng một cách đo nên so sánh vẫn công bằng.`;
+
+  // 6
+  cot($("#s6-buoc"), [
+    { ten: "Đoán mò\nhằng số", v: 0.5, mau: "var(--muc-3)" },
+    { ten: "DINOv2 đóng băng\n58 ca, 1 mặt phẳng", v: 0.5256, mau: "var(--muc-3)" },
+    { ten: "+ 3 mặt phẳng\n437k lát", v: 0.6266, mau: "var(--muc-3)" },
+    { ten: "+ nhãn từ điển\n9 ngôn ngữ", v: 0.6923, mau: "var(--muc-3)" },
+    { ten: "+ nhãn LLM\nthay từ điển", v: nn.D, mau: "var(--muc-3)" },
+    { ten: "+ attention\nriêng từng bệnh", v: 0.7698, mau: "var(--muc-3)" },
+    { ten: "Gộp 5 head\ncách đo cũ", v: ce.cv_cu_bao_cao, mau: "var(--cu)" },
+    { ten: `Gộp 5 head × ${sd.n} seed\nđo đúng cách`, v: cuoi, ci: ciCuoi, mau: "var(--chinh)" },
+  ], { y: [0.45, 0.85], tick: [0.45, 0.05], w: 1000, h: 380, b: 52, bw: 74, d: 3, aria: "Macro AUC qua từng bước" });
+
+  // 7, 8
+  const allChon = Object.values(ce.epoch_chon_tung_fold).flat();
+  $("#s7-epoch").textContent = `epoch ${Math.min(...allChon)}–${Math.max(...allChon)}`;
+  const chon = ce.epoch_chon_tung_fold.chung_s224, s224 = D.duong_epoch.chung_s224_dai;
+  duong($("#s8-s224"), {
+    n: s224.length, y: [0.62, 0.76], yTick: [0.62, 0.02], xTicks: [1, 10, 20, 30, 40, 50, 60, 70, 80], w: 760, h: 300, r: 22,
+    aria: "AUC theo epoch", series: [{ ten: "AUC", v: s224, mau: "var(--muc)", day: 2.2 }],
+    diem: [...chon.map(e => ({ e, v: s224[e - 1], mau: "var(--cu)", r: 4.5 })),
+      { e: s224.length, v: s224[s224.length - 1], mau: "var(--cu)", r: 6, nhan: `model cuối cũ ≈ ${f(s224[s224.length - 1], 3)}`, dx: -10, dy: -14, anchor: "end", dam: true },
+      { e: 5, v: s224[4], mau: "var(--muc)", r: 0.01, nhan: `epoch 5: ${f(s224[4], 3)}`, dx: 10, dy: -10, dam: true }],
+  });
+
+  // 9
+  const gop = D.duong_epoch.gop, tp = D.duong_epoch.thanh_phan, kg = D.khong_gold.auc;
+  duong($("#s9-gop"), {
+    n: gop.length, y: [0.62, 0.80], yTick: [0.62, 0.04], xTicks: [1, 5, 9, 15, 20, 25], w: 440, h: 300, r: 54, aria: "Bộ gộp theo epoch",
+    vach: [{ e: ce.epoch_chot, mau: "var(--chinh)", nhan: `chốt ${ce.epoch_chot}` }],
+    series: [...Object.values(tp).map(v => ({ ten: "", v, mau: "var(--muc-3)", day: 1.2, mo: 0.5 })),
+             { ten: "bộ gộp", v: gop, mau: "var(--chinh)", day: 2.6, nhan: "bộ gộp" }],
+    diem: [{ e: ce.epoch_chot, v: gop[ce.epoch_chot - 1], mau: "var(--chinh)", r: 5.5 }],
+  });
+  duong($("#s9-kg"), {
+    n: kg.length, y: [0.72, 0.78], yTick: [0.72, 0.01], xTicks: [1, 5, 9, 15, 20, 25], w: 440, h: 300, r: 18, aria: "AUC so với nhãn LLM",
+    series: [{ ten: "AUC", v: kg, mau: "var(--phu)", day: 2.6 }],
+    diem: [{ e: D.khong_gold.dinh, v: kg[D.khong_gold.dinh - 1], mau: "var(--phu)", r: 6, nhan: `đỉnh: epoch ${D.khong_gold.dinh}`, dam: true }],
+  });
+
+  // 10
+  cot($("#s10-cot"), [
+    { ten: "Best epoch từng fold\n(cách cũ)", v: ce.cu, mau: "var(--cu)" },
+    { ten: `Cố định ${ce.epoch_chot} epoch\n(chốt không nhìn gold)`, v: ce.chot, ci: ce.ci_chot, mau: "var(--chinh)" },
+    { ten: `Cố định ${ce.n_ep_dai} epoch\n(train lâu như model cũ)`, v: ce.dai, mau: "var(--muc-3)" },
+  ], { y: [0.6, 0.85], tick: [0.6, 0.05], w: 500, h: 330, b: 52, bw: 96, aria: "Ba cách chọn epoch" });
+  $("#s10-ci").innerHTML = `Dừng ở epoch ${ce.epoch_chot} hơn dừng ở epoch ${ce.n_ep_dai} khoảng <span class="so">+${f(ce.chenh_chot_dai, 3)}</span>, nhưng khoảng tin cậy bắt cặp <span class="so">[${f(ce.ci_chenh[0], 3)}, +${f(ce.ci_chenh[1], 3)}]</span> vẫn cắt qua 0. Điều chắc chắn: cách đo cũ thổi phồng điểm.`;
+
+  // 11
+  $("#s11-so").textContent = f(cuoi, 3);
+  $("#s11-mt").innerHTML = `Macro AUC out-of-fold trên 58 ca gold. Bộ gộp 5 head × ${sd.n} seed, mỗi head ${ce.epoch_chot} epoch.<br><br>Khoảng tin cậy 95%:<br><span class="so" style="font-size:40px; color:var(--muc)">${f(ciCuoi[0], 3)} – ${f(ciCuoi[1], 3)}</span>`;
+  chamKtc($("#s11-nhan"), D.tung_nhan.map(r => ({ ten: r.nhan, v: r.auc, ci: r.ci })), { x: [0.3, 1.0], tick: [0.3, 0.1], moc: 0.5, hang: 24, aria: "AUC từng bệnh", tip: () => "" });
+
+  // 12
+  const TEN = { mp_sagittal: "chỉ Sagittal", mp_axial: "chỉ Axial", mp_coronal: "chỉ Coronal", chung_s224: "3 mặt phẳng, ViT-S", chung_b336: "3 mặt phẳng, ViT-B" };
+  $("#s12-tp").innerHTML = D.thanh_phan.map(r => `<tr><td><code>${r.ten}</code></td><td>${TEN[r.ten]}</td><td class="so">${f(r.cv_chot, 3)}</td></tr>`).join("")
+    + `<tr><td><b>Gộp 5</b></td><td></td><td class="so"><b>${f(ce.chot, 3)}</b></td></tr>`;
+  cot($("#s12-seed"), [...sd.moi_seed.map(s => ({ ten: `seed ${s.seed}`, v: s.auc, mau: "var(--muc-3)" })), { ten: `gộp ${sd.n} seed`, v: sd.gop, mau: "var(--chinh)" }],
+      { y: [0.70, 0.80], tick: [0.70, 0.02], w: 420, h: 250, b: 34, bw: 60, d: 3, aria: "Điểm theo seed" });
+  $("#s12-mt").innerHTML = sd.n > 1 ? `Cùng split, chỉ đổi seed. Độ lệch chuẩn <span class="so">${f(sd.do_lech, 4)}</span>: riêng seed đã làm điểm xê dịch khoảng ±0.01.` : "";
+  $("#s13-seed").textContent = sd.n > 1 ? `±${f(sd.do_lech, 3)}` : `±${f(D.seed_cu.do_lech, 3)}`;
+
+  // 15
+  $("#k1").textContent = `Chỉ 58 ca: ${f(nn.A, 3)}. Thêm nhãn LLM cho 4.349 ca: ${f(nn.D, 3)}.`;
+  $("#k3").textContent = `Đo lại khiến điểm giảm từ ${f(ce.cv_cu_bao_cao, 3)} xuống ${f(cuoi, 3)}, nhưng ${f(cuoi, 3)} là số thật.`;
+  document.body.dataset.xong = "1";
+})();
+</script>
+
+</html>

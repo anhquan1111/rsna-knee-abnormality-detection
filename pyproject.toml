@@ -28,6 +28,9 @@ dependencies = [
 # Chi can khi tai du lieu tu Kaggle - khong can de chay test hay train tu dac trung da co.
 data = ["kaggle==2.2.4"]
 dev = ["pytest>=8.0"]
+bao-cao = [
+    "python-pptx==1.0.2",
+]
 
 [build-system]
 requires = ["hatchling"]
