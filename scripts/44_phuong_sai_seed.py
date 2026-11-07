@@ -54,6 +54,7 @@ import torch
 from scipy.stats import rankdata
 from torch.utils.data import DataLoader
 
+from rsna_knee.oof import khoa_thu_tu
 from rsna_knee.config import (
     DATA_INTERIM,
     LABELS,
@@ -198,7 +199,7 @@ def main() -> None:
         "phong_len_neu_nhat_seed_tot_nhat": float(d.max() - d.mean()),
         "gop_cac_seed": float(auc_gop),
     }, indent=2))
-    np.savez_compressed(REPORTS_DIR / "day12_seed_oof.npz", y=y,
+    np.savez_compressed(REPORTS_DIR / "day12_seed_oof.npz", **khoa_thu_tu(y),   # khong luu nhan gold
                         **{f"seed{i+1}": o for i, o in enumerate(oofs)})
     print("\nDa ghi day12_phuong_sai_seed.json va day12_seed_oof.npz")
 

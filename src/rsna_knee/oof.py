@@ -40,3 +40,22 @@ def nap_oof(path: Path, uid: np.ndarray, fold: np.ndarray) -> np.ndarray:
         if not np.array_equal(z["fold"], fold):
             raise SystemExit(f"{path.name}: so fold khac")
         return z["per_ep"]
+
+
+def khoa_thu_tu(y: np.ndarray) -> dict:
+    """Thay mang nhan `y` bang ma bam thu tu ca + fold truoc khi ghi file OOF cong khai.
+
+    Kiem `y` trung voi `gold_theo_fold()` - tuc file ghi dung thu tu ma luc cham se dung lai.
+    Lech thi dung, khong ghi mot file ma sau nay khong ai cham dung duoc."""
+    yg, fold, uid = gold_theo_fold()
+    if y.shape != yg.shape or not np.array_equal(np.nan_to_num(y, nan=-1), np.nan_to_num(yg, nan=-1)):
+        raise SystemExit("Thu tu ca khac gold_theo_fold() - khong ghi duoc file OOF khong nhan")
+    return {"uid_md5": ma_thu_tu(uid), "fold": fold}
+
+
+def nap_khong_nhan(path: Path, uid: np.ndarray) -> dict[str, np.ndarray]:
+    """Cac mang du doan trong file OOF (khong nhan) sau khi kiem thu tu ca."""
+    with np.load(path) as z:
+        if str(z["uid_md5"]) != ma_thu_tu(uid):
+            raise SystemExit(f"{path.name}: thu tu ca khac voi phep chia hien tai - khong cham duoc")
+        return {k: z[k] for k in z.files if k not in ("uid_md5", "fold")}

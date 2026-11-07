@@ -39,6 +39,7 @@ import torch
 from scipy.stats import rankdata
 from torch.utils.data import DataLoader
 
+from rsna_knee.oof import khoa_thu_tu
 from rsna_knee.config import (
     DATA_INTERIM,
     LABELS,
@@ -193,7 +194,7 @@ def main() -> None:
               f"{macro_auc(y[k2], tat_ca, L).macro_auc:.4f}")
 
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(REPORTS_DIR / "day11_mat_phang_oof.npz", y=y, **oof_mp)
+    np.savez_compressed(REPORTS_DIR / "day11_mat_phang_oof.npz", **khoa_thu_tu(y), **oof_mp)   # khong luu nhan gold
     (REPORTS_DIR / "day11_mat_phang.json").write_text(json.dumps({
         "pooling": args.pooling, "epochs": args.epochs,
         "tung_mat_phang": {k: macro_auc(y[~np.isnan(v).all(axis=1)],

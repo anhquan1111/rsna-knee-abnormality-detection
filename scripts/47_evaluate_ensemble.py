@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import numpy as np
 from scipy.stats import rankdata
 
+from rsna_knee.oof import gold_theo_fold, nap_khong_nhan
 from rsna_knee.config import LABELS, REPORTS_DIR
 from rsna_knee.metrics import macro_auc
 
@@ -36,11 +37,11 @@ def theo_hang(p: np.ndarray) -> np.ndarray:
 
 
 def main() -> None:
-    mp = np.load(REPORTS_DIR / "day11_mat_phang_oof.npz")
-    ck = np.load(REPORTS_DIR / "day11_ck_oof.npz")
-    b336 = np.load(REPORTS_DIR / "day12_b336_oof.npz")
-    y = mp["y"]
-    assert np.array_equal(y, ck["y"], equal_nan=True) and np.array_equal(y, b336["y"], equal_nan=True)
+    # File OOF cong khai khong chua nhan gold: nhan dung lai tu data/raw/train.csv o may
+    y, _, uid = gold_theo_fold()
+    mp = nap_khong_nhan(REPORTS_DIR / "day11_mat_phang_oof.npz", uid)
+    ck = nap_khong_nhan(REPORTS_DIR / "day11_ck_oof.npz", uid)
+    b336 = nap_khong_nhan(REPORTS_DIR / "day12_b336_oof.npz", uid)
 
     models = {
         "mp_sagittal  (chi Sagittal)": mp["sagittal"],

@@ -48,6 +48,7 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 
+from rsna_knee.oof import khoa_thu_tu
 from rsna_knee.config import (
     DATA_INTERIM,
     DATA_RAW,
@@ -334,7 +335,7 @@ def main() -> None:
                  ("A_gold_only", "B_tu_dien", "D_llm", "E_llm_bit_theo_tu_dien"))
     if not du_bon:
         np.savez_compressed(REPORTS_DIR / f"{args.tag}_oof.npz",
-                            y=next(iter(res.values()))["y"],
+                            **khoa_thu_tu(next(iter(res.values()))["y"]),   # khong luu nhan gold
                             **{k: v["oof"] for k, v in res.items()})
         (REPORTS_DIR / f"{args.tag}_label_source.json").write_text(json.dumps({
             "pooling": args.pooling, "epochs": args.epochs,
@@ -384,7 +385,7 @@ def main() -> None:
     # Luu du doan out-of-fold de cac buoc sau (error analysis ngay 10, gop model) khong
     # phai train lai 20 phut moi lan muon hoi mot cau moi.
     np.savez_compressed(REPORTS_DIR / f"{args.tag}_oof.npz",
-                        y=b["y"], **{k: v["oof"] for k, v in res.items()})
+                        **khoa_thu_tu(b["y"]), **{k: v["oof"] for k, v in res.items()})
     print(f"\n  da luu du doan out-of-fold -> {args.tag}_oof.npz "
           f"({', '.join(res)})")
 
