@@ -53,6 +53,10 @@ Thumbs.db
 
 # Output tai tu notebook trich dac trung tren Kaggle ve (~450 MB, sinh lai duoc)
 data/kaggle_out/
+# Output notebook 81 tai ve (du doan + trong so CNN), sinh lai bang scripts/82 --tai
+data/kaggle_cnn/
+data/nhan_llm_cua_minh/
+data/web_demo/
 
 # Zip dong goi de upload (sinh lai bang scripts/49)
 data/submit_assets.zip
@@ -68,3 +72,5 @@ data/kaggle_b336/
 
 # Output notebook nop bai tai ve (sinh lai duoc)
 data/kernel_sub/
+# Ban chep sinh tu scripts/81 boi scripts/92 - nguon that la 81
+kaggle/83_train_nhan_minh/train_nhan_minh.py

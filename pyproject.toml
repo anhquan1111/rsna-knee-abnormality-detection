@@ -31,6 +31,16 @@ dev = ["pytest>=8.0"]
 bao-cao = [
     "python-pptx==1.0.2",
 ]
+cnn = [
+    "timm>=1.0.30",
+]
+# Web demo chay o 127.0.0.1: tai ca DICOM len, model CNN 2.5D tra 12 xac suat
+demo = [
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
+    "python-multipart>=0.0.12",
+    "timm>=1.0.30",
+]
 
 [build-system]
 requires = ["hatchling"]

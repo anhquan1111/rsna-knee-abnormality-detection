@@ -1,0 +1,15 @@
+{
+  "id": "votrananhquan/rsna-knee-train-25d-nhan-minh",
+  "title": "rsna-knee-train-25d-nhan-minh",
+  "code_file": "train_nhan_minh.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "machine_shape": "NvidiaTeslaT4",
+  "enable_internet": true,
+  "competition_sources": ["rsna-knee-abnormality-detection"],
+  "dataset_sources": ["votrananhquan/rsna-knee-nhan-llm-cua-minh"],
+  "kernel_sources": [],
+  "model_sources": []
+}

@@ -4,11 +4,25 @@ Predicting 12 knee abnormalities from multi-plane MRI when **only 1.3% of studie
 
 Full pipeline built from raw DICOM to predictions. No one else's fine-tuned checkpoints were used. Built as a PBL (project-based learning) project.
 
-*[Bản tiếng Việt →](README.vi.md)* · **Visual report:** `reports/bao_cao_pbl.html` · **Slides:** `reports/slide/bao_cao_pbl.pptx`
+*[Bản tiếng Việt →](README.vi.md)* · **Visual report:** `reports/bao_cao_pbl.html` · **Slides:** `reports/slide/bao_cao_pbl.pptx` · **Presentation summary (Vietnamese):** [`TRINH_BAY.md`](TRINH_BAY.md)
 
 ---
 
 ## Results
+
+**Stage 2, 2.5D CNN fine-tuned end to end: macro AUC `0.8848`**, 95% CI `[0.851, 0.915]`, on the 58 radiologist-labelled studies, which never enter training. It is a rank average of two models, EfficientNet-B3 (`0.8741`) and EfficientNetV2-B2 (`0.8791`), each trained for 12 epochs on LLM labels of 4,136 studies, using the EMA weights of the last epoch. Every choice was fixed before scoring (`scripts/81_kaggle_train_25d.py`, scored by `scripts/82_cham_cnn_25d.py`, numbers in `reports/day14_cnn_25d.json`).
+
+| | Macro AUC | 95% CI |
+|---|---:|---|
+| **2.5D CNN, 2-model blend** | **0.8848** | [0.851, 0.915] |
+| Frozen DINOv2, 5 heads × 3 seeds (stage 1) | 0.7645 | [0.717, 0.806] |
+| 50/50 blend CNN + DINOv2 (pre-declared) | 0.8519 | [0.815, 0.883] |
+
+CNN beats DINOv2 by `+0.120`, paired CI `[+0.084, +0.161]`. Adding DINOv2 to the blend lowers the score. The largest gains are ACL (0.683 → 0.966), contusion (0.709 → 0.949) and MCL (0.662 → 0.878).
+
+The first two Kaggle runs were *Killed* at 10.4 s/step. A diagnostic kernel showed that `nn.DataParallel` on two T4 GPUs is about 20× slower than one GPU (10.7 vs 0.47 s/step). The final run trains one model per GPU in separate processes and finishes in 3.1 hours.
+
+### Stage 1: frozen DINOv2
 
 **Macro AUC `0.7645`**, 95% CI `[0.715, 0.805]`: out-of-fold AUC on the 58 radiologist-labelled studies, for an ensemble of 5 heads × 3 seeds, each head trained for 9 epochs. The epoch count was fixed in advance without looking at those 58 studies.
 
@@ -225,7 +239,9 @@ The subtle failure mode: when pooling returns `(B, L, d)`, placing `nn.Linear(d,
 ```bash
 uv venv --python 3.12 .venv
 uv sync --extra data --extra dev --extra bao-cao   # bao-cao: python-pptx for the slide deck
-uv run pytest                        # 110 tests, ~20 seconds
+uv sync --extra cnn                  # (optional) timm, to smoke-test the 2.5D CNN notebook locally
+uv sync --extra demo                 # (optional) FastAPI + uvicorn for the web demo
+uv run pytest                        # 116 tests, ~20 seconds
 ```
 
 Versions are **pinned in `uv.lock`**. Several documented numbers depend on the exact version — for instance `roc_auc_score` returning `nan` rather than raising is `scikit-learn 1.9.x` behaviour.
@@ -254,6 +270,13 @@ Versions are **pinned in `uv.lock`**. Several documented numbers depend on the e
 | Offline inference notebook | paste `scripts/50_kaggle_submit.py` | **Kaggle, internet OFF** |
 | Backbone fine-tune | paste `scripts/60_kaggle_finetune.py` | **Kaggle GPU** |
 | Backbone throughput probe | paste `scripts/62_kaggle_do_toc_do.py` | **Kaggle GPU** |
+| **2.5D CNN, full fine-tune** (reads DICOM into a local cache, trains, scores gold) | `kaggle kernels push -p kaggle/81_train` (runs `scripts/81_kaggle_train_25d.py`) | **Kaggle GPU T4×2** |
+| Download the CNN outputs, score on the 58 gold studies, compare with DINOv2, 50/50 blend | `python scripts/82_cham_cnn_25d.py --tai` | local |
+| **Own LLM labels** for all 4,407 reports (Gemini Flash via `agy`, prompt in the script, resumable) | `python scripts/90_gan_nhan_llm.py` | local, needs `agy` |
+| Compare own labels with radiologist, public LLM and lexicon labels on the 58 gold studies | `python scripts/91_so_sanh_nhan.py` | local |
+| Retrain the 2.5D CNN on own labels | `python scripts/92_day_train_nhan_minh.py` | **Kaggle GPU T4×2** |
+| Score the CNN trained on own labels | `python scripts/82_cham_cnn_25d.py --nhan-minh --tai` | local |
+| **Web demo** (sample studies + DICOM upload, 12 probabilities, attention map) | `python scripts/95_web_demo.py` → http://127.0.0.1:8790 | local |
 
 ### Why feature extraction runs on Kaggle
 
@@ -265,7 +288,7 @@ Downloading ~1,500 `.dcm` files plus 4,000+ listing requests in one session gets
 
 ## Tests
 
-110 tests, no image data required. They do **not** check "does the function run" — they check the behaviours that **fail silently**, the kind that produce a plausible number instead of an error.
+116 tests, no image data required. They do **not** check "does the function run" — they check the behaviours that **fail silently**, the kind that produce a plausible number instead of an error.
 
 | File | What it blocks |
 |---|---|
@@ -279,6 +302,8 @@ Downloading ~1,500 `.dcm` files plus 4,000+ listing requests in one session gets
 | `test_submit_head_khop.py` | the **copy** of the model inside the inference notebook drifting from the repo version |
 | `test_submit_selection.py` | wrong plane chosen at inference; studies dropped |
 | `test_finetune_cache.py` | the image cache resuming at the wrong offset — every study reading another study's images |
+| `test_cnn_25d.py` | the 2.5D CNN picking a non-fluid series, 3-slice windows that are not adjacent, a study with no planes turning softmax into `NaN`, a masked plane leaking into the prediction |
+| `test_web_demo.py` | the web demo inferring the wrong plane from DICOM headers, picking a T1 series over the fluid-sensitive one, or missing a plane without a warning |
 | `test_gop_theo_hang.py` | the notebook's hand-rolled ranking drifting from the `scipy` version used to measure 0.8112 |
 
 The suite caught **two real bugs on its first run**:

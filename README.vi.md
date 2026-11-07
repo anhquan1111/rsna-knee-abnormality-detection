@@ -4,11 +4,25 @@ Dự đoán 12 bất thường đầu gối từ MRI đa mặt phẳng, trong đ
 
 Toàn bộ pipeline tự dựng từ file DICOM thô tới dự đoán, không dùng lại checkpoint của người khác. Dự án làm trong khuôn khổ PBL.
 
-*[English version →](README.md)* · **Báo cáo trực quan:** `reports/bao_cao_pbl.html` · **Slide:** `reports/slide/bao_cao_pbl.pptx`
+*[English version →](README.md)* · **Báo cáo trực quan:** `reports/bao_cao_pbl.html` · **Slide:** `reports/slide/bao_cao_pbl.pptx` · **Tóm tắt để trình bày:** [`TRINH_BAY.md`](TRINH_BAY.md)
 
 ---
 
 ## Kết quả
+
+**Giai đoạn 2, CNN 2.5D train toàn bộ mạng: macro AUC `0.8848`**, khoảng tin cậy 95% `[0.851, 0.915]`, trên 58 ca bác sĩ gán nhãn. 58 ca này không bao giờ vào train. Đây là gộp theo hạng hai model, EfficientNet-B3 (`0.8741`) và EfficientNetV2-B2 (`0.8791`), mỗi model train 12 epoch trên nhãn LLM của 4.136 ca, lấy trọng số EMA ở epoch cuối. Mọi lựa chọn đều chốt trước khi chấm (`scripts/81_kaggle_train_25d.py`, chấm bằng `scripts/82_cham_cnn_25d.py`, số liệu ở `reports/day14_cnn_25d.json`).
+
+| | Macro AUC | KTC 95% |
+|---|---:|---|
+| **CNN 2.5D, gộp 2 model** | **0.8848** | [0.851, 0.915] |
+| DINOv2 đóng băng, 5 head × 3 seed (giai đoạn 1) | 0.7645 | [0.717, 0.806] |
+| Gộp 50/50 CNN + DINOv2 (chốt trước) | 0.8519 | [0.815, 0.883] |
+
+CNN hơn DINOv2 `+0.120`, KTC bắt cặp `[+0.084, +0.161]`. Gộp thêm DINOv2 lại làm điểm giảm. Tăng mạnh nhất ở ACL (0.683 → 0.966), dập xương (0.709 → 0.949) và MCL (0.662 → 0.878).
+
+Hai lần chạy Kaggle đầu bị *Killed* ở 10,4 giây/bước. Kernel chẩn đoán cho thấy `nn.DataParallel` trên 2 GPU T4 chậm hơn 1 GPU khoảng 20 lần (10,7 so với 0,47 giây/bước). Bản cuối cho mỗi GPU train một model trong tiến trình riêng, xong trong 3,1 giờ.
+
+### Giai đoạn 1: DINOv2 đóng băng
 
 **Macro AUC `0.7645`**, khoảng tin cậy 95% `[0.715, 0.805]`. Đây là AUC out-of-fold trên 58 ca bác sĩ gán nhãn, của bộ gộp 5 head × 3 seed, mỗi head train 9 epoch. Số epoch được chốt trước mà không nhìn tới 58 ca này.
 
@@ -225,7 +239,9 @@ Chỗ dễ sai: khi pooling trả về `(B, L, d)`, đặt `nn.Linear(d, L)` ph�
 ```bash
 uv venv --python 3.12 .venv
 uv sync --extra data --extra dev --extra bao-cao   # bao-cao: python-pptx để xuất slide
-uv run pytest                        # 110 test, ~20 giây
+uv sync --extra cnn                  # (tuỳ chọn) timm, để chạy thử/test notebook CNN 2.5D ở máy
+uv sync --extra demo                 # (tuỳ chọn) FastAPI + uvicorn cho web demo
+uv run pytest                        # 116 test, ~20 giây
 ```
 
 Phiên bản **ghim trong `uv.lock`**. Nhiều con số trong tài liệu gắn chặt với hành vi của đúng phiên bản đó — ví dụ `roc_auc_score` trả `nan` thay vì ném lỗi là hành vi của `scikit-learn 1.9.x`.
@@ -253,6 +269,13 @@ Phiên bản **ghim trong `uv.lock`**. Nhiều con số trong tài liệu gắn 
 | Notebook suy luận offline | dán `scripts/50_kaggle_submit.py` | **Kaggle, Internet OFF** |
 | Fine-tune backbone | dán `scripts/60_kaggle_finetune.py` | **Kaggle GPU** |
 | Đo tốc độ backbone | dán `scripts/62_kaggle_do_toc_do.py` | **Kaggle GPU** |
+| **CNN 2.5D train toàn bộ mạng** (tự đọc DICOM ra cache cục bộ, train, chấm gold) | `kaggle kernels push -p kaggle/81_train` (chạy `scripts/81_kaggle_train_25d.py`) | **Kaggle GPU T4×2** |
+| Tải kết quả CNN về và chấm trên 58 ca gold, so với DINOv2, gộp 50/50 | `python scripts/82_cham_cnn_25d.py --tai` | máy |
+| **Tự gắn nhãn LLM** cho 4.407 báo cáo (Gemini Flash qua `agy`, prompt trong script, chạy tiếp được) | `python scripts/90_gan_nhan_llm.py` | máy, cần `agy` |
+| So nhãn tự gắn với nhãn bác sĩ, nhãn công khai, từ điển trên 58 ca gold | `python scripts/91_so_sanh_nhan.py` | máy |
+| Train lại CNN 2.5D bằng nhãn tự gắn | `python scripts/92_day_train_nhan_minh.py` | **Kaggle GPU T4×2** |
+| Chấm CNN train bằng nhãn tự gắn | `python scripts/82_cham_cnn_25d.py --nhan-minh --tai` | máy |
+| **Web demo** (ca mẫu + tải DICOM lên, 12 xác suất, bản đồ chú ý) | `python scripts/95_web_demo.py` → http://127.0.0.1:8790 | máy |
 
 ### Vì sao trích đặc trưng phải chạy trên Kaggle
 
@@ -264,7 +287,7 @@ Tải ~1.500 file `.dcm` cộng hơn 4.000 request liệt kê trong một buổi
 
 ## Kiểm thử
 
-110 test, không cần dữ liệu ảnh. Test ở đây **không kiểm "hàm có chạy không"** mà kiểm đúng những hành vi **hỏng âm thầm** — loại lỗi cho ra một con số đẹp thay vì một dòng lỗi.
+116 test, không cần dữ liệu ảnh. Test ở đây **không kiểm "hàm có chạy không"** mà kiểm đúng những hành vi **hỏng âm thầm** — loại lỗi cho ra một con số đẹp thay vì một dòng lỗi.
 
 | File | Chặn điều gì |
 |---|---|
@@ -278,6 +301,8 @@ Tải ~1.500 file `.dcm` cộng hơn 4.000 request liệt kê trong một buổi
 | `test_submit_head_khop.py` | bản **sao chép** của model trong notebook suy luận lệch khỏi bản repo |
 | `test_submit_selection.py` | chọn sai mặt phẳng lúc suy luận, bỏ sót study |
 | `test_finetune_cache.py` | cache ảnh ghi tiếp sai offset — mỗi ca đọc ra ảnh của ca khác |
+| `test_cnn_25d.py` | CNN 2.5D chọn nhầm series không nhạy dịch, cửa sổ 3 lát không liền kề, ca thiếu mọi mặt phẳng làm softmax ra `NaN`, mặt phẳng bị che vẫn lọt vào dự đoán |
+| `test_web_demo.py` | web demo đoán sai mặt phẳng từ header DICOM, chọn series T1 thay vì series nhạy dịch, thiếu mặt phẳng mà không cảnh báo |
 
 Bộ test bắt được **hai lỗi thật ngay lần chạy đầu**:
 

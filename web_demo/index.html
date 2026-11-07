@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đọc MRI đầu gối - CNN 2.5D PBL</title>
+  <style>
+    /* Biến giao diện phong cách y khoa hiện đại */
+    :root {
+      --primary: #1967d2;
+      --primary-hover: #1557b0;
+      --primary-light: #e8f0fe;
+      --bg: #f5f7fa;
+      --surface: #ffffff;
+      --surface-border: #e0e4eb;
+      --text-main: #1f2937;
+      --text-muted: #5f6d7e;
+      --chip-bg: #eef2f6;
+      --warn-bg: #fff8e6;
+      --warn-border: #ffe299;
+      --warn-text: #8c5800;
+      --err-bg: #fde8e8;
+      --err-border: #f8b4b4;
+      --err-text: #9b1c1c;
+      --doctor-pos: #fde8e8;
+      --doctor-pos-text: #c81e1e;
+      --doctor-neg: #f3f4f6;
+      --doctor-neg-text: #4b5563;
+      --shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --primary: #4a95f7;
+        --primary-hover: #6ca5f8;
+        --primary-light: #162a45;
+        --bg: #0f172a;
+        --surface: #1e293b;
+        --surface-border: #334155;
+        --text-main: #f1f5f9;
+        --text-muted: #94a3b8;
+        --chip-bg: #334155;
+        --warn-bg: #3b2a0c;
+        --warn-border: #6d4b12;
+        --warn-text: #fcd34d;
+        --err-bg: #37171a;
+        --err-border: #77252a;
+        --err-text: #fca5a5;
+        --doctor-pos: #451a1d;
+        --doctor-pos-text: #fca5a5;
+        --doctor-neg: #334155;
+        --doctor-neg-text: #cbd5e1;
+        --shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+      }
+    }
+
+    /* Giữ thanh cuộn ổn định, tránh nhảy layout 1px */
+    html {
+      scrollbar-gutter: stable;
+      box-sizing: border-box;
+    }
+
+    *, *::before, *::after {
+      box-sizing: inherit;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    /* Thanh tiêu đề dính trên cùng */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background-color: var(--surface);
+      border-bottom: 1px solid var(--surface-border);
+      box-shadow: var(--shadow);
+    }
+
+    .header-inner {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .header-left h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-left p {
+      margin: 2px 0 0;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 9999px;
+      background-color: var(--chip-bg);
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      border: 1px solid var(--surface-border);
+      font-family: var(--font-mono);
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #10b981;
+    }
+
+    /* Bố cục chính 2 cột */
+    main {
+      max-width: 1480px;
+      margin: 20px auto 40px;
+      padding: 0 20px;
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    main > * { min-width: 0; }   /* khong cho noi dung keo gian cot luoi -> cuon ngang */
+    html, body { overflow-x: hidden; }
+
+    @media (max-width: 900px) {
+      main {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    /* Thẻ bo góc */
+    .card {
+      background-color: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+
+    .card:last-child {
+      margin-bottom: 0;
+    }
+
+    .card-title {
+      margin: 0 0 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Khối ca mẫu */
+    .samples-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .sample-item {
+      padding: 10px 12px;
+      border: 1px solid var(--surface-border);
+      border-radius: 10px;
+      background-color: var(--surface);
+      cursor: pointer;
+      text-align: left;
+      width: 100%;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+      font-size: 13px;
+    }
+
+    .sample-item:hover {
+      background-color: var(--primary-light);
+    }
+
+    .sample-item.active {
+      border-color: var(--primary);
+      box-shadow: inset 0 0 0 1px var(--primary);
+    }
+
+    .sample-item .title {
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 2px;
+    }
+
+    .sample-item .desc {
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* Man hinh rong: bang benh va khung anh dat canh nhau, khong phai cuon xuong moi thay anh */
+    @media (min-width: 1280px) {
+      .ket-qua-luoi {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 20px;
+        align-items: start;
+      }
+      .ket-qua-luoi > .card { margin-bottom: 0 !important; }
+      .ket-qua-luoi .viewer-layout { grid-template-columns: 1fr; }
+      .ket-qua-luoi .mri-screen { max-width: 520px; width: 100%; margin: 0 auto; }
+    }
+
+    /* Khối tải lên DICOM */
+    .drop-zone {
+      border: 2px dashed var(--surface-border);
+      border-radius: 12px;
+      padding: 24px 16px;
+      text-align: center;
+      cursor: pointer;
+      background-color: var(--bg);
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .drop-zone.dragover {
+      border-color: var(--primary);
+      background-color: var(--primary-light);
+    }
+
+    .drop-zone p {
+      margin: 8px 0 12px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 7px 16px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      background-color: var(--primary);
+      color: #ffffff;
+      transition: background-color 0.15s ease;
+      font-family: inherit;
+    }
+
+    .btn:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .btn:focus-visible, .sample-item:focus-visible, input:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    .note-text {
+      margin-top: 10px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Cột phải */
+    .result-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Trạng thái rỗng */
+    .empty-state {
+      padding: 60px 20px;
+      text-align: center;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .empty-state svg {
+      width: 64px;
+      height: 64px;
+      stroke: var(--text-muted);
+      stroke-width: 1.5;
+      fill: none;
+      margin-bottom: 16px;
+      opacity: 0.7;
+    }
+
+    /* Trạng thái đang chạy */
+    .running-state {
+      padding: 50px 20px;
+      text-align: center;
+    }
+
+    .progress-bar-wrap {
+      width: 100%;
+      height: 6px;
+      background-color: var(--surface-border);
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    .progress-bar-indeterminate {
+      width: 40%;
+      height: 100%;
+      background-color: var(--primary);
+      position: absolute;
+      animation: indeterminate 1.4s infinite ease-in-out;
+      border-radius: 9999px;
+    }
+
+    @keyframes indeterminate {
+      0% { left: -40%; width: 30%; }
+      50% { left: 40%; width: 50%; }
+      100% { left: 100%; width: 30%; }
+    }
+
+    .running-text {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Hộp thông báo lỗi */
+    .error-box {
+      background-color: var(--err-bg);
+      border: 1px solid var(--err-border);
+      color: var(--err-text);
+      padding: 14px 16px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      display: none;
+    }
+
+    /* Hàng tóm tắt */
+    .summary-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--surface-border);
+    }
+
+    .summary-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.82rem;
+    }
+
+    .meta-tag {
+      background-color: var(--chip-bg);
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+    }
+
+    .warning-box {
+      margin-top: 10px;
+      padding: 8px 12px;
+      background-color: var(--warn-bg);
+      border: 1px solid var(--warn-border);
+      border-radius: 8px;
+      color: var(--warn-text);
+      font-size: 0.78rem;
+      width: 100%;
+    }
+
+    /* Bảng 12 bệnh */
+    .disease-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.83rem;
+    }
+
+    .disease-table th {
+      text-align: left;
+      padding: 8px 10px;
+      color: var(--text-muted);
+      font-weight: 500;
+      border-bottom: 1px solid var(--surface-border);
+      font-size: 0.75rem;
+    }
+
+    .disease-row {
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+      position: relative;
+    }
+
+    .disease-row:hover {
+      background-color: var(--chip-bg);
+    }
+
+    .disease-row.active {
+      background-color: var(--primary-light);
+    }
+
+    .disease-row td {
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--surface-border);
+      vertical-align: middle;
+    }
+
+    .disease-name {
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 220px;
+    }
+
+    .prob-bar-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 130px;
+    }
+
+    .prob-bar-bg {
+      flex: 1;
+      height: 8px;
+      background-color: var(--surface-border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .prob-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    .prob-num {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      width: 48px;
+      text-align: right;
+      font-size: 0.82rem;
+    }
+
+    .doc-chip {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .doc-pos {
+      background-color: var(--doctor-pos);
+      color: var(--doctor-pos-text);
+    }
+
+    .doc-neg {
+      background-color: var(--doctor-neg);
+      color: var(--doctor-neg-text);
+    }
+
+    /* Tooltip chi tiết từng model */
+    .disease-row[title] {
+      position: relative;
+    }
+
+    /* Khung xem ảnh MRI */
+    .viewer-layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .viewer-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .mri-screen {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background-color: #000000;
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--surface-border);
+      position: relative;
+    }
+
+    .mri-screen img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      image-rendering: -webkit-optimize-contrast;
+    }
+
+    .mri-no-img {
+      color: #64748b;
+      font-size: 0.8rem;
+    }
+
+    .viewer-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      justify-content: center;
+    }
+
+    .plane-selector {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+    }
+
+    .plane-btn {
+      padding: 8px 6px;
+      font-size: 0.82rem;
+      border: 1px solid var(--surface-border);
+      border-radius: 8px;
+      background-color: var(--surface);
+      color: var(--text-main);
+      cursor: pointer;
+      text-align: center;
+      font-weight: 500;
+      font-family: inherit;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .plane-btn.active {
+      border-color: var(--primary);
+      background-color: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .plane-btn:disabled, .plane-btn.dimmed {
+      opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .slider-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      font-weight: 500;
+      font-family: var(--font-mono);
+    }
+
+    input[type=range] {
+      width: 100%;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    .attention-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background-color: var(--primary-light);
+      color: var(--primary);
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+
+    /* Biểu đồ chú ý SVG */
+    .chart-container {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--surface-border);
+    }
+
+    .chart-title {
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .attention-svg {
+      width: 100%;
+      height: 60px;
+      overflow: visible;
+    }
+
+    .attn-bar {
+      fill: var(--surface-border);
+      cursor: pointer;
+      transition: fill 0.15s ease, y 0.2s ease, height 0.2s ease;
+    }
+
+    .attn-bar:hover {
+      fill: var(--text-muted);
+    }
+
+    .attn-bar.active {
+      fill: var(--primary);
+    }
+
+    /* Chân trang */
+    footer {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 0 20px 30px;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Thanh tiêu đề dính trên cùng -->
+  <header>
+    <div class="header-inner">
+      <div class="header-left">
+        <h1>Đọc MRI đầu gối</h1>
+        <p>CNN 2.5D · EfficientNet-B3 + EfficientNetV2-B2 · AUC 0.885 trên 58 ca bác sĩ</p>
+      </div>
+      <div>
+        <div id="deviceChip" class="status-chip">
+          <span class="status-dot"></span>
+          <span id="deviceText">sẵn sàng</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Bố cục chính -->
+  <main>
+    <!-- CỘT TRÁI (340px) -->
+    <aside>
+      <!-- Khối Ca mẫu -->
+      <section class="card">
+        <h2 class="card-title">Ca mẫu</h2>
+        <div id="samplesList" class="samples-list" role="listbox">
+          <div style="font-size:0.8rem; color:var(--text-muted);">Đang nạp ca mẫu...</div>
+        </div>
+      </section>
+
+      <!-- Khối Tải lên -->
+      <section class="card">
+        <h2 class="card-title">Tải ca của bạn lên</h2>
+        <div id="dropZone" class="drop-zone" tabindex="0" role="button" aria-label="Kéo thả hoặc chọn file DICOM">
+          <svg style="width:36px;height:36px;stroke:var(--primary);fill:none;stroke-width:1.6;margin-bottom:6px;" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+          </svg>
+          <div style="font-weight: 500; font-size: 0.85rem;">Kéo thả file .zip hoặc các file .dcm</div>
+          <p>hoặc tải lên từ máy tính của bạn</p>
+          <button type="button" class="btn" id="btnSelectFiles">Chọn file</button>
+          <input type="file" id="fileInput" multiple accept=".dcm,.zip,application/zip" style="display: none;" />
+        </div>
+        <div class="note-text">
+          Cần đủ 3 mặt phẳng Sagittal, Coronal, Axial. Ảnh chỉ xử lý trên máy này.
+        </div>
+      </section>
+    </aside>
+
+    <!-- CỘT PHẢI: KẾT QUẢ -->
+    <section class="result-container">
+      <!-- Thông báo lỗi (nếu có) -->
+      <div id="errorBox" class="error-box" role="alert"></div>
+
+      <!-- Trạng thái rỗng -->
+      <div id="emptyState" class="card empty-state">
+        <svg viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+        </svg>
+        <div style="font-weight: 500; font-size: 0.95rem; color: var(--text-main); margin-bottom: 4px;">Chưa có dữ liệu dự đoán</div>
+        <div>Chọn một ca mẫu hoặc tải ca DICOM lên</div>
+      </div>
+
+      <!-- Trạng thái đang chạy -->
+      <div id="runningState" class="card running-state hidden">
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-indeterminate"></div>
+        </div>
+        <div class="running-text">Đọc DICOM → chuẩn hoá → 2 model CNN → attention</div>
+      </div>
+
+      <!-- Khối hiển thị kết quả -->
+      <div id="resultContent" class="hidden">
+        <!-- 1. Hàng tóm tắt -->
+        <div class="card" style="margin-bottom: 20px;">
+          <div class="summary-bar">
+            <div>
+              <span id="caseName" style="font-size: 1.1rem; font-weight: 600;"></span>
+            </div>
+            <div class="summary-meta">
+              <span>Thời gian: <strong id="runTime" class="meta-tag">0 ms</strong></span>
+              <span>Thiết bị: <strong id="runDevice" class="meta-tag">cpu</strong></span>
+            </div>
+          </div>
+          <div id="warningContainer" class="hidden"></div>
+        </div>
+
+        <div class="ket-qua-luoi">
+        <!-- 2. Bảng 12 bệnh -->
+        <div class="card" style="margin-bottom: 20px;">
+          <h2 class="card-title">Xác suất 12 bệnh (xếp giảm dần)</h2>
+          <div style="overflow-x: auto;">
+            <table class="disease-table">
+              <thead>
+                <tr>
+                  <th style="width: 35%;">Bệnh</th>
+                  <th style="width: 40%;">Xác suất</th>
+                  <th style="width: 25%; text-align: right;">Bác sĩ</th>
+                </tr>
+              </thead>
+              <tbody id="diseaseTableBody">
+                <!-- Chèn các dòng bằng JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 3 & 4. Khung xem ảnh MRI và Biểu đồ mức chú ý -->
+        <div class="card">
+          <h2 class="card-title">Khung xem ảnh lát cắt MRI</h2>
+          <div class="viewer-layout">
+            <!-- Màn hình xem ảnh -->
+            <div class="mri-screen">
+              <img id="mriImage" src="" alt="Lát cắt MRI" class="hidden" />
+              <div id="mriPlaceholder" class="mri-no-img">Không có ảnh</div>
+            </div>
+
+            <!-- Bảng điều khiển lát cắt -->
+            <div class="viewer-controls">
+              <!-- 3 nút mặt phẳng chia 3 cột cố định -->
+              <div class="plane-selector" id="planeSelector">
+                <button type="button" class="plane-btn" data-plane="0">Sagittal</button>
+                <button type="button" class="plane-btn" data-plane="1">Coronal</button>
+                <button type="button" class="plane-btn" data-plane="2">Axial</button>
+              </div>
+
+              <!-- Thanh trượt lát -->
+              <div class="slider-group">
+                <div class="slider-header">
+                  <span id="planeSeriesName" style="font-weight: normal; color: var(--text-muted);">Series</span>
+                  <span id="sliceCounter">Lát 1/24</span>
+                </div>
+                <input type="range" id="sliceRange" min="1" max="24" value="1" />
+              </div>
+
+              <!-- Nhãn lát chính được chú ý nhất -->
+              <div id="attnNotice" class="attention-badge hidden">
+                <svg style="width:14px;height:14px;fill:currentColor;" viewBox="0 0 20 20">
+                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                  <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
+                </svg>
+                <span id="attnNoticeText"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Biểu đồ mức chú ý theo lát -->
+          <div class="chart-container">
+            <div class="chart-title" id="chartTitle">Mức chú ý của model theo lát</div>
+            <svg id="attentionSvg" class="attention-svg" viewBox="0 0 576 60" preserveAspectRatio="none">
+              <!-- 24 cột SVG dựng bằng JS -->
+            </svg>
+          </div>
+        </div>
+        </div><!-- /ket-qua-luoi -->
+      </div>
+    </section>
+  </main>
+
+  <!-- Chân trang -->
+  <footer>
+    Chỉ để minh hoạ đồ án, không dùng để chẩn đoán. Xác suất không cần ngưỡng: AUC đo khả năng xếp ca bệnh trên ca lành.
+  </footer>
+
+  <!-- Logic ứng dụng thuần JS -->
+  <script>
+    // Trạng thái ứng dụng
+    let state = {
+      samples: [],
+      selectedSampleId: null,
+      currentResult: null,
+      selectedDiseaseIndex: 0,
+      currentPlaneIndex: 0, // 0: Sagittal, 1: Coronal, 2: Axial
+      currentSliceIndex: 0  // 0 - 23 (ứng với lát 1 - 24)
+    };
+
+    // DOM Elements
+    const el = {
+      samplesList: document.getElementById('samplesList'),
+      dropZone: document.getElementById('dropZone'),
+      fileInput: document.getElementById('fileInput'),
+      btnSelectFiles: document.getElementById('btnSelectFiles'),
+      emptyState: document.getElementById('emptyState'),
+      runningState: document.getElementById('runningState'),
+      resultContent: document.getElementById('resultContent'),
+      errorBox: document.getElementById('errorBox'),
+      deviceChip: document.getElementById('deviceChip'),
+      deviceText: document.getElementById('deviceText'),
+      caseName: document.getElementById('caseName'),
+      runTime: document.getElementById('runTime'),
+      runDevice: document.getElementById('runDevice'),
+      warningContainer: document.getElementById('warningContainer'),
+      diseaseTableBody: document.getElementById('diseaseTableBody'),
+      mriImage: document.getElementById('mriImage'),
+      mriPlaceholder: document.getElementById('mriPlaceholder'),
+      planeBtns: document.querySelectorAll('.plane-btn'),
+      sliceRange: document.getElementById('sliceRange'),
+      sliceCounter: document.getElementById('sliceCounter'),
+      planeSeriesName: document.getElementById('planeSeriesName'),
+      attnNotice: document.getElementById('attnNotice'),
+      attnNoticeText: document.getElementById('attnNoticeText'),
+      attentionSvg: document.getElementById('attentionSvg'),
+      chartTitle: document.getElementById('chartTitle')
+    };
+
+    // Khởi tạo
+    window.addEventListener('DOMContentLoaded', async () => {
+      await fetchSamples();
+      setupEvents();
+      // ?mau=mau1 -> tu chay ca mau khi mo trang (de trinh chieu, chup man hinh)
+      const mau = new URLSearchParams(location.search).get('mau');
+      if (mau) runSample(mau);
+    });
+
+    // 1. Tải danh sách ca mẫu
+    async function fetchSamples() {
+      try {
+        const res = await fetch('/api/ca-mau');
+        if (!res.ok) throw new Error('Không thể tải ca mẫu');
+        const data = await res.json();
+        state.samples = data;
+        renderSamples();
+      } catch (err) {
+        el.samplesList.innerHTML = '<div style="color:var(--err-text);font-size:0.8rem;">Không kết nối được API ca mẫu</div>';
+      }
+    }
+
+    function renderSamples() {
+      if (!state.samples || state.samples.length === 0) {
+        el.samplesList.innerHTML = '<div style="font-size:0.8rem;color:var(--text-muted);">Không có ca mẫu</div>';
+        return;
+      }
+      el.samplesList.innerHTML = '';
+      state.samples.forEach(sample => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'sample-item' + (state.selectedSampleId === sample.id ? ' active' : '');
+        item.setAttribute('role', 'option');
+        item.innerHTML = `
+          <div class="title">
+            <span>${escapeHtml(sample.ten)}</span>
+            <span style="font-size:0.75rem;font-weight:normal;color:var(--text-muted);">${sample.n_benh} bệnh</span>
+          </div>
+          <div class="desc" title="${escapeHtml(sample.mo_ta || '')}">${escapeHtml(sample.mo_ta || '')}</div>
+        `;
+        item.addEventListener('click', () => runSample(sample.id));
+        el.samplesList.appendChild(item);
+      });
+    }
+
+    // 2. Chạy ca mẫu
+    async function runSample(id) {
+      state.selectedSampleId = id;
+      renderSamples();
+      showRunning();
+      try {
+        const res = await fetch(`/api/du-doan?mau=${encodeURIComponent(id)}`, { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) {
+          showError(data.loi || 'Lỗi xử lý dự đoán');
+          return;
+        }
+        handleSuccessResult(data);
+      } catch (err) {
+        showError('Không thể gửi yêu cầu tới máy chủ (' + err.message + ')');
+      }
+    }
+
+    // 3. Tải file lên
+    function setupEvents() {
+      el.btnSelectFiles.addEventListener('click', (e) => {
+        e.stopPropagation();
+        el.fileInput.click();
+      });
+
+      el.dropZone.addEventListener('click', () => el.fileInput.click());
+
+      el.fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+          uploadFiles(e.target.files);
+        }
+      });
+
+      el.dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        el.dropZone.classList.add('dragover');
+      });
+
+      el.dropZone.addEventListener('dragleave', () => {
+        el.dropZone.classList.remove('dragover');
+      });
+
+      el.dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        el.dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) {
+          uploadFiles(e.dataTransfer.files);
+        }
+      });
+
+      // Chuyển mặt phẳng
+      el.planeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const planeIdx = parseInt(btn.getAttribute('data-plane'), 10);
+          switchPlane(planeIdx);
+        });
+      });
+
+      // Kéo thanh trượt chọn lát
+      el.sliceRange.addEventListener('input', (e) => {
+        setSlice(parseInt(e.target.value, 10) - 1);
+      });
+    }
+
+    async function uploadFiles(files) {
+      state.selectedSampleId = null;
+      renderSamples();
+      showRunning();
+
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append('tep', files[i]);
+      }
+
+      try {
+        const res = await fetch('/api/du-doan', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showError(data.loi || 'Tải file thất bại hoặc định dạng không đúng');
+          return;
+        }
+        handleSuccessResult(data);
+      } catch (err) {
+        showError('Lỗi kết nối khi gửi file (' + err.message + ')');
+      } finally {
+        el.fileInput.value = '';
+      }
+    }
+
+    // 4. Xử lý kết quả trả về
+    function handleSuccessResult(data) {
+      state.currentResult = data;
+      hideError();
+
+      // Cập nhật chip thiết bị đầu trang
+      if (data.thiet_bi) {
+        el.deviceText.textContent = data.thiet_bi.toUpperCase();
+      }
+
+      // Xếp 12 bệnh theo xác suất giảm dần
+      if (Array.isArray(data.benh)) {
+        data.benh.sort((a, b) => b.p - a.p);
+      }
+
+      // Thông tin tổng quan
+      el.caseName.textContent = data.ten || 'Ca kiểm tra';
+      el.runTime.textContent = (data.ms || 0) + ' ms';
+      el.runDevice.textContent = (data.thiet_bi || 'cpu').toUpperCase();
+
+      // Cảnh báo (nếu có)
+      if (Array.isArray(data.canh_bao) && data.canh_bao.length > 0) {
+        el.warningContainer.innerHTML = data.canh_bao.map(w => `<div class="warning-box">⚠️ ${escapeHtml(w)}</div>`).join('');
+        el.warningContainer.classList.remove('hidden');
+      } else {
+        el.warningContainer.innerHTML = '';
+        el.warningContainer.classList.add('hidden');
+      }
+
+      // Tự chọn bệnh có p cao nhất (vị trí 0)
+      state.selectedDiseaseIndex = 0;
+      renderDiseaseTable();
+
+      // Cập nhật mặt phẳng & lát dựa trên lat_chinh của bệnh cao nhất
+      focusDiseaseSlice(data.benh[0]);
+
+      showResult();
+    }
+
+    // 5. Render bảng bệnh
+    function renderDiseaseTable() {
+      const diseases = state.currentResult.benh || [];
+      el.diseaseTableBody.innerHTML = '';
+
+      diseases.forEach((d, idx) => {
+        const row = document.createElement('tr');
+        row.className = 'disease-row' + (idx === state.selectedDiseaseIndex ? ' active' : '');
+        
+        // Tooltip p_tung_model
+        let tooltip = `Xác suất chung: ${(d.p * 100).toFixed(1)}%`;
+        if (d.p_tung_model) {
+          tooltip += '\n' + Object.entries(d.p_tung_model)
+            .map(([m, pVal]) => `${m}: ${(pVal * 100).toFixed(1)}%`)
+            .join('\n');
+        }
+        row.setAttribute('title', tooltip);
+
+        // Màu thanh p: đậm dần theo giá trị p
+        const pct = Math.round(d.p * 100);
+        // Alpha từ 0.25 đến 0.95
+        const alpha = Math.max(0.25, Math.min(0.95, d.p * 0.95 + 0.15));
+        const barColor = `rgba(25, 103, 210, ${alpha.toFixed(2)})`;
+
+        // Chip nhãn bác sĩ
+        let docChipHtml = '<span style="color:var(--text-muted);font-size:0.75rem;">—</span>';
+        if (d.nhan_bac_si === 1) {
+          docChipHtml = '<span class="doc-chip doc-pos">Bác sĩ: có</span>';
+        } else if (d.nhan_bac_si === 0) {
+          docChipHtml = '<span class="doc-chip doc-neg">Bác sĩ: không</span>';
+        }
+
+        row.innerHTML = `
+          <td class="disease-name" title="${escapeHtml(d.ten)}">${escapeHtml(d.ten)}</td>
+          <td>
+            <div class="prob-bar-container">
+              <div class="prob-bar-bg">
+                <div class="prob-bar-fill" style="width: ${pct}%; background-color: ${barColor};"></div>
+              </div>
+              <span class="prob-num">${pct}%</span>
+            </div>
+          </td>
+          <td style="text-align: right;">${docChipHtml}</td>
+        `;
+
+        row.addEventListener('click', () => {
+          state.selectedDiseaseIndex = idx;
+          updateTableActiveRow();
+          focusDiseaseSlice(d);
+        });
+
+        el.diseaseTableBody.appendChild(row);
+      });
+    }
+
+    function updateTableActiveRow() {
+      const rows = el.diseaseTableBody.querySelectorAll('.disease-row');
+      rows.forEach((r, i) => {
+        if (i === state.selectedDiseaseIndex) {
+          r.classList.add('active');
+        } else {
+          r.classList.remove('active');
+        }
+      });
+    }
+
+    // Khi chọn một bệnh: nhảy tới lat_chinh nếu có
+    function focusDiseaseSlice(disease) {
+      if (!disease) return;
+
+      if (disease.lat_chinh && typeof disease.lat_chinh.mat_phang === 'number') {
+        const mp = disease.lat_chinh.mat_phang;
+        const lat = disease.lat_chinh.lat;
+        // Kiểm tra mặt phẳng đó có ảnh không
+        const planes = state.currentResult.mat_phang || [];
+        if (planes[mp] && planes[mp].co) {
+          state.currentPlaneIndex = mp;
+          state.currentSliceIndex = Math.max(0, Math.min(23, lat));
+        }
+      }
+
+      updatePlaneButtons();
+      renderViewer();
+      renderAttentionChart();
+    }
+
+    // 6. Cập nhật các nút mặt phẳng
+    function updatePlaneButtons() {
+      const planes = (state.currentResult && state.currentResult.mat_phang) || [];
+      el.planeBtns.forEach((btn, idx) => {
+        const planeData = planes[idx];
+        const isAvailable = planeData && planeData.co;
+        
+        // Nút thiếu ảnh thì làm mờ (không ẩn)
+        if (!isAvailable) {
+          btn.classList.add('dimmed');
+          btn.disabled = true;
+          btn.title = 'Mặt phẳng này thiếu dữ liệu';
+        } else {
+          btn.classList.remove('dimmed');
+          btn.disabled = false;
+          btn.title = '';
+        }
+
+        if (idx === state.currentPlaneIndex) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
+
+    function switchPlane(planeIdx) {
+      const planes = (state.currentResult && state.currentResult.mat_phang) || [];
+      if (!planes[planeIdx] || !planes[planeIdx].co) return;
+      state.currentPlaneIndex = planeIdx;
+      updatePlaneButtons();
+      renderViewer();
+      renderAttentionChart();
+    }
+
+    function setSlice(sliceIdx) {
+      state.currentSliceIndex = Math.max(0, Math.min(23, sliceIdx));
+      el.sliceRange.value = state.currentSliceIndex + 1;
+      renderSliceImage();
+      updateAttentionChartHighlight();
+    }
+
+    // 7. Render khung xem ảnh MRI
+    function renderViewer() {
+      const planes = (state.currentResult && state.currentResult.mat_phang) || [];
+      const currentPlane = planes[state.currentPlaneIndex];
+
+      if (currentPlane) {
+        el.planeSeriesName.textContent = currentPlane.series || currentPlane.mat_phang;
+      } else {
+        el.planeSeriesName.textContent = '';
+      }
+
+      el.sliceRange.value = state.currentSliceIndex + 1;
+      renderSliceImage();
+
+      // Kiểm tra nhãn chú ý nhất
+      const currentDisease = state.currentResult.benh[state.selectedDiseaseIndex];
+      if (currentDisease && currentDisease.lat_chinh) {
+        const lc = currentDisease.lat_chinh;
+        if (lc.mat_phang === state.currentPlaneIndex && lc.lat === state.currentSliceIndex) {
+          el.attnNoticeText.textContent = `Model nhìn lát này nhiều nhất cho ${currentDisease.ten}`;
+          el.attnNotice.classList.remove('hidden');
+        } else {
+          el.attnNotice.classList.add('hidden');
+        }
+      } else {
+        el.attnNotice.classList.add('hidden');
+      }
+    }
+
+    function renderSliceImage() {
+      el.sliceCounter.textContent = `Lát ${state.currentSliceIndex + 1}/24`;
+
+      const planes = (state.currentResult && state.currentResult.mat_phang) || [];
+      const currentPlane = planes[state.currentPlaneIndex];
+
+      if (currentPlane && currentPlane.co && Array.isArray(currentPlane.lat) && currentPlane.lat[state.currentSliceIndex]) {
+        const raw = currentPlane.lat[state.currentSliceIndex];
+        const src = raw.startsWith('data:') ? raw : `data:image/jpeg;base64,${raw}`;
+        el.mriImage.src = src;
+        el.mriImage.classList.remove('hidden');
+        el.mriPlaceholder.classList.add('hidden');
+      } else {
+        el.mriImage.classList.add('hidden');
+        el.mriPlaceholder.classList.remove('hidden');
+      }
+
+      // Cập nhật lại nhãn lat_chinh nếu trúng lát
+      const currentDisease = state.currentResult.benh[state.selectedDiseaseIndex];
+      if (currentDisease && currentDisease.lat_chinh) {
+        const lc = currentDisease.lat_chinh;
+        if (lc.mat_phang === state.currentPlaneIndex && lc.lat === state.currentSliceIndex) {
+          el.attnNoticeText.textContent = `Model nhìn lát này nhiều nhất cho ${currentDisease.ten}`;
+          el.attnNotice.classList.remove('hidden');
+        } else {
+          el.attnNotice.classList.add('hidden');
+        }
+      }
+    }
+
+    // 8. Biểu đồ mức chú ý theo lát (SVG)
+    function renderAttentionChart() {
+      const currentDisease = state.currentResult && state.currentResult.benh ? state.currentResult.benh[state.selectedDiseaseIndex] : null;
+      if (!currentDisease) return;
+
+      el.chartTitle.textContent = `Mức chú ý của [${currentDisease.ten}] theo 24 lát (${['Sagittal', 'Coronal', 'Axial'][state.currentPlaneIndex]})`;
+
+      // chu_y là mảng 3 phần tử, mỗi phần tử là 24 số
+      let attnWeights = [];
+      if (Array.isArray(currentDisease.chu_y) && currentDisease.chu_y[state.currentPlaneIndex]) {
+        attnWeights = currentDisease.chu_y[state.currentPlaneIndex];
+      }
+
+      // Chuẩn hoá chiều cao 24 cột
+      let maxVal = 0.0001;
+      for (let i = 0; i < 24; i++) {
+        const val = attnWeights[i] || 0;
+        if (val > maxVal) maxVal = val;
+      }
+
+      // Xây dựng 24 cột trong viewBox 0 0 576 60 (mỗi cột rộng 18px, khoảng cách 6px)
+      // Tổng width = 24 * 24 = 576
+      const svgH = 54;
+      let barsHtml = '';
+      for (let i = 0; i < 24; i++) {
+        const val = attnWeights[i] || 0;
+        const barH = Math.max(3, Math.round((val / maxVal) * svgH));
+        const x = i * 24 + 3;
+        const y = 60 - barH;
+        const isActive = (i === state.currentSliceIndex);
+
+        barsHtml += `
+          <rect class="attn-bar ${isActive ? 'active' : ''}" 
+                data-slice="${i}" 
+                x="${x}" y="${y}" 
+                width="18" height="${barH}" 
+                rx="3">
+            <title>Lát ${i + 1}: ${val.toFixed(4)}</title>
+          </rect>
+        `;
+      }
+
+      el.attentionSvg.innerHTML = barsHtml;
+
+      // Gắn sự kiện click cột nhảy tới lát
+      el.attentionSvg.querySelectorAll('.attn-bar').forEach(rect => {
+        rect.addEventListener('click', () => {
+          const s = parseInt(rect.getAttribute('data-slice'), 10);
+          setSlice(s);
+        });
+      });
+    }
+
+    function updateAttentionChartHighlight() {
+      const bars = el.attentionSvg.querySelectorAll('.attn-bar');
+      bars.forEach((bar, i) => {
+        if (i === state.currentSliceIndex) {
+          bar.classList.add('active');
+        } else {
+          bar.classList.remove('active');
+        }
+      });
+    }
+
+    // Tiện ích hiển thị trạng thái
+    function showRunning() {
+      hideError();
+      el.emptyState.classList.add('hidden');
+      el.resultContent.classList.add('hidden');
+      el.runningState.classList.remove('hidden');
+      el.deviceText.textContent = 'đang chạy...';
+    }
+
+    function showResult() {
+      el.emptyState.classList.add('hidden');
+      el.runningState.classList.add('hidden');
+      el.resultContent.classList.remove('hidden');
+    }
+
+    function showError(msg) {
+      el.runningState.classList.add('hidden');
+      el.errorBox.textContent = 'Lỗi: ' + msg;
+      el.errorBox.style.display = 'block';
+      if (!state.currentResult) {
+        el.emptyState.classList.remove('hidden');
+      }
+      el.deviceText.textContent = 'lỗi';
+    }
+
+    function hideError() {
+      el.errorBox.style.display = 'none';
+      el.errorBox.textContent = '';
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
