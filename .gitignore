@@ -73,4 +73,4 @@ data/kaggle_b336/
 # Output notebook nop bai tai ve (sinh lai duoc)
 data/kernel_sub/
 # Ban chep sinh tu scripts/81 boi scripts/92 - nguon that la 81
-kaggle/83_train_nhan_minh/train_nhan_minh.py
+kaggle/8*/train.py

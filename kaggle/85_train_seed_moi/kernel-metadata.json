@@ -1,0 +1,15 @@
+{
+  "id": "votrananhquan/rsna-knee-train-25d-seed-moi",
+  "title": "rsna-knee-train-25d-seed-moi",
+  "code_file": "train.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "machine_shape": "NvidiaTeslaT4",
+  "enable_internet": true,
+  "competition_sources": ["rsna-knee-abnormality-detection"],
+  "dataset_sources": ["votrananhquan/rsna-knee-my-assets"],
+  "kernel_sources": [],
+  "model_sources": []
+}

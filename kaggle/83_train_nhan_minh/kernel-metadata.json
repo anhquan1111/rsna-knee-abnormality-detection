@@ -1,7 +1,7 @@
 {
   "id": "votrananhquan/rsna-knee-train-25d-nhan-minh",
   "title": "rsna-knee-train-25d-nhan-minh",
-  "code_file": "train_nhan_minh.py",
+  "code_file": "train.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": true,

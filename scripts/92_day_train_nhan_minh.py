@@ -1,29 +1,41 @@
-"""NGAY 15 - Train lai CNN 2.5D tren Kaggle bang nhan LLM TU GAN (script 90).
+"""NGAY 15 - Train lai CNN 2.5D tren Kaggle bang nhan LLM khac (giu nguyen notebook 81).
 
-    python scripts/92_day_train_nhan_minh.py      # up nhan len dataset rieng tu, day notebook
+    python scripts/92_day_train_nhan_minh.py                       # nhan tu gan (script 90)
+    python scripts/92_day_train_nhan_minh.py --nhan trung_binh     # trung binh nhan tu gan + cong khai
+    python scripts/92_day_train_nhan_minh.py --nhan cong_khai --mo-hinh "efficientnet_b3:123,tf_efficientnetv2_b2:2026"
 
-Giu NGUYEN notebook 81 (cung kien truc, cung 12 epoch, cung seed, cung chia train/val),
-chi doi file nhan: RSNA_NHAN=llm_labels_cua_minh.csv. Nhu vay chenh lech diem gold giua
-hai lan chay chi den tu nguon nhan.
+Giu NGUYEN notebook 81 (cung kien truc, cung 12 epoch, cung chia train/val), chi doi file
+nhan (va tuy chon backbone:seed). Nhu vay chenh lech diem gold giua cac lan chay den tu
+nguon nhan, khong tu thu khac.
 
 Kaggle khong dat duoc bien moi truong cho notebook, nen script tao mot ban chep cua 81 co
-them dong `os.environ.setdefault("RSNA_NHAN", ...)` ngay sau `from __future__`, ghi vao
-kaggle/83_train_nhan_minh/ (file sinh ra, khong commit) roi day len.
-Dataset nhan de RIENG TU: nhan suy tu bao cao cua cuoc thi, khong phat tan lai.
+them dong `os.environ.setdefault(...)` ngay sau `from __future__`, ghi vao kaggle/<thu muc>/
+(file sinh ra, khong commit) roi day len. Dataset nhan de RIENG TU: nhan suy tu bao cao cua
+cuoc thi, khong phat tan lai.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import shutil
 import subprocess
+import time
 from pathlib import Path
+
+import pandas as pd
 
 REPO = Path(__file__).resolve().parents[1]
 KAGGLE = str(REPO / ".venv" / "bin" / "kaggle")
-NHAN = REPO / "data" / "nhan_llm_cua_minh" / "llm_labels_cua_minh.csv"
+THU_MUC_NHAN = REPO / "data" / "nhan_llm_cua_minh"
+CONG_KHAI = REPO / "data" / "external" / "rsna-knee-llm-report-labels" / "llm_labels_v4_blend.csv"
 DS_ID = "votrananhquan/rsna-knee-nhan-llm-cua-minh"
-KERNEL = REPO / "kaggle" / "83_train_nhan_minh"
-TEN_FILE = "train_nhan_minh.py"
+LAN_CHAY = {   # --nhan -> (file nhan trong dataset, thu muc kernel)
+    "cua_minh": ("llm_labels_cua_minh.csv", REPO / "kaggle" / "83_train_nhan_minh"),
+    "trung_binh": ("llm_labels_trung_binh.csv", REPO / "kaggle" / "84_train_nhan_trung_binh"),
+    # nhan cong khai, seed moi: dataset rsna-knee-my-assets da gan san trong metadata, khong up gi
+    "cong_khai": ("llm_labels_v4_blend.csv", REPO / "kaggle" / "85_train_seed_moi"),
+}
+TEN_FILE = "train.py"
 
 
 def chay(*lenh: str) -> str:
@@ -32,26 +44,62 @@ def chay(*lenh: str) -> str:
     return r.stdout + r.stderr
 
 
+def tao_trung_binh() -> Path:
+    """Trung binh tung o cua hai bo nhan LLM (cung UID, cung 12 cot). Hai bo khop 96,9% o
+    nhung sai o nhung cho khac nhau, nen trung binh giam nhieu cua tung bo."""
+    a = pd.read_csv(THU_MUC_NHAN / "llm_labels_cua_minh.csv", dtype={"StudyInstanceUID": str}).set_index("StudyInstanceUID")
+    b = pd.read_csv(CONG_KHAI, dtype={"StudyInstanceUID": str}).set_index("StudyInstanceUID")[a.columns]
+    chung = a.index.intersection(b.index)
+    out = ((a.loc[chung] + b.loc[chung]) / 2).reset_index()
+    ra = THU_MUC_NHAN / "llm_labels_trung_binh.csv"
+    out.to_csv(ra, index=False)
+    print(f"trung binh {len(chung):,} ca -> {ra.name}")
+    return ra
+
+
 def main() -> None:
-    if not NHAN.exists():
-        raise SystemExit(f"Chua co {NHAN} - chay scripts/90_gan_nhan_llm.py truoc")
-    ds = NHAN.parent / "kaggle_ds"
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--nhan", choices=list(LAN_CHAY), default="cua_minh")
+    ap.add_argument("--mo-hinh", default="", help="backbone:seed,... (mac dinh: nhu notebook 81)")
+    a = ap.parse_args()
+    if a.nhan == "cong_khai":
+        ten_nhan, thu_muc = LAN_CHAY[a.nhan]
+        day_notebook(ten_nhan, thu_muc, a.mo_hinh)
+        return
+    if not (THU_MUC_NHAN / "llm_labels_cua_minh.csv").exists():
+        raise SystemExit("Chua co nhan tu gan - chay scripts/90_gan_nhan_llm.py truoc")
+    if a.nhan == "trung_binh":
+        tao_trung_binh()
+    ten_nhan, thu_muc = LAN_CHAY[a.nhan]
+
+    # Dataset rieng tu chua MOI file nhan da tao; da co thi them phien ban moi
+    ds = THU_MUC_NHAN / "kaggle_ds"
     ds.mkdir(exist_ok=True)
-    shutil.copy(NHAN, ds / NHAN.name)
+    for f in THU_MUC_NHAN.glob("llm_labels_*.csv"):
+        shutil.copy(f, ds / f.name)
     (ds / "dataset-metadata.json").write_text(json.dumps(
         {"title": "rsna-knee-nhan-llm-cua-minh", "id": DS_ID, "licenses": [{"name": "CC0-1.0"}]}))
-    da_co = DS_ID.split("/")[1] in chay("datasets", "list", "--mine", "-s", "rsna-knee-nhan-llm-cua-minh")
-    if da_co:
-        chay("datasets", "version", "-p", str(ds), "-m", "nhan moi")
+    if DS_ID.split("/")[1] in chay("datasets", "list", "--mine", "-s", "rsna-knee-nhan-llm-cua-minh"):
+        chay("datasets", "version", "-p", str(ds), "-m", f"them {ten_nhan}")
     else:
         chay("datasets", "create", "-p", str(ds))          # mac dinh rieng tu
+    for _ in range(60):   # day notebook truoc khi dataset xu ly xong thi Kaggle bo dataset ra
+        if "ready" in chay("datasets", "status", DS_ID):
+            break
+        time.sleep(20)
 
+    day_notebook(ten_nhan, thu_muc, a.mo_hinh)
+
+
+def day_notebook(ten_nhan: str, thu_muc: Path, mo_hinh: str) -> None:
     goc = (REPO / "scripts" / "81_kaggle_train_25d.py").read_text()
     moc = "from __future__ import annotations\n"
     assert goc.count(moc) == 1
-    ban = goc.replace(moc, moc + '\nimport os as _os\n_os.environ.setdefault("RSNA_NHAN", "llm_labels_cua_minh.csv")\n', 1)
-    (KERNEL / TEN_FILE).write_text(ban)
-    chay("kernels", "push", "-p", str(KERNEL))
+    dat = f'\nimport os as _os\n_os.environ.setdefault("RSNA_NHAN", "{ten_nhan}")\n'
+    if mo_hinh:
+        dat += f'_os.environ.setdefault("RSNA_MO_HINH", "{mo_hinh}")\n'
+    (thu_muc / TEN_FILE).write_text(goc.replace(moc, moc + dat, 1))
+    chay("kernels", "push", "-p", str(thu_muc))
 
 
 if __name__ == "__main__":
