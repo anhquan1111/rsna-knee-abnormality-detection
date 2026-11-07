@@ -1,7 +1,6 @@
 """NGAY 15 - Train lai CNN 2.5D tren Kaggle bang nhan LLM khac (giu nguyen notebook 81).
 
     python scripts/92_day_train_nhan_minh.py                       # nhan tu gan (script 90)
-    python scripts/92_day_train_nhan_minh.py --nhan trung_binh     # trung binh nhan tu gan + cong khai
     python scripts/92_day_train_nhan_minh.py --nhan cong_khai --mo-hinh "efficientnet_b3:123,tf_efficientnetv2_b2:2026"
 
 Giu NGUYEN notebook 81 (cung kien truc, cung 12 epoch, cung chia train/val), chi doi file
@@ -22,16 +21,12 @@ import subprocess
 import time
 from pathlib import Path
 
-import pandas as pd
-
 REPO = Path(__file__).resolve().parents[1]
 KAGGLE = str(REPO / ".venv" / "bin" / "kaggle")
 THU_MUC_NHAN = REPO / "data" / "nhan_llm_cua_minh"
-CONG_KHAI = REPO / "data" / "external" / "rsna-knee-llm-report-labels" / "llm_labels_v4_blend.csv"
 DS_ID = "votrananhquan/rsna-knee-nhan-llm-cua-minh"
 LAN_CHAY = {   # --nhan -> (file nhan trong dataset, thu muc kernel)
     "cua_minh": ("llm_labels_cua_minh.csv", REPO / "kaggle" / "83_train_nhan_minh"),
-    "trung_binh": ("llm_labels_trung_binh.csv", REPO / "kaggle" / "84_train_nhan_trung_binh"),
     # nhan cong khai, seed moi: dataset rsna-knee-my-assets da gan san trong metadata, khong up gi
     "cong_khai": ("llm_labels_v4_blend.csv", REPO / "kaggle" / "85_train_seed_moi"),
 }
@@ -42,19 +37,6 @@ def chay(*lenh: str) -> str:
     r = subprocess.run([KAGGLE, *lenh], capture_output=True, text=True)
     print(r.stdout.strip() or r.stderr.strip())
     return r.stdout + r.stderr
-
-
-def tao_trung_binh() -> Path:
-    """Trung binh tung o cua hai bo nhan LLM (cung UID, cung 12 cot). Hai bo khop 96,9% o
-    nhung sai o nhung cho khac nhau, nen trung binh giam nhieu cua tung bo."""
-    a = pd.read_csv(THU_MUC_NHAN / "llm_labels_cua_minh.csv", dtype={"StudyInstanceUID": str}).set_index("StudyInstanceUID")
-    b = pd.read_csv(CONG_KHAI, dtype={"StudyInstanceUID": str}).set_index("StudyInstanceUID")[a.columns]
-    chung = a.index.intersection(b.index)
-    out = ((a.loc[chung] + b.loc[chung]) / 2).reset_index()
-    ra = THU_MUC_NHAN / "llm_labels_trung_binh.csv"
-    out.to_csv(ra, index=False)
-    print(f"trung binh {len(chung):,} ca -> {ra.name}")
-    return ra
 
 
 def main() -> None:
@@ -68,8 +50,6 @@ def main() -> None:
         return
     if not (THU_MUC_NHAN / "llm_labels_cua_minh.csv").exists():
         raise SystemExit("Chua co nhan tu gan - chay scripts/90_gan_nhan_llm.py truoc")
-    if a.nhan == "trung_binh":
-        tao_trung_binh()
     ten_nhan, thu_muc = LAN_CHAY[a.nhan]
 
     # Dataset rieng tu chua MOI file nhan da tao; da co thi them phien ban moi
