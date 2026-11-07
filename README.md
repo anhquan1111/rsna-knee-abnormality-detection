@@ -22,6 +22,21 @@ CNN beats DINOv2 by `+0.120`, paired CI `[+0.084, +0.161]`. Adding DINOv2 to the
 
 The first two Kaggle runs were *Killed* at 10.4 s/step. A diagnostic kernel showed that `nn.DataParallel` on two T4 GPUs is about 20× slower than one GPU (10.7 vs 0.47 s/step). The final run trains one model per GPU in separate processes and finishes in 3.1 hours.
 
+### LLM labels: relabelled from scratch to check them
+
+The LLM labels used for training above are a public set (`stevenleehans/rsna-knee-llm-report-labels`) that states neither the model nor the prompt. To own the labels and check them, `scripts/90_gan_nhan_llm.py` has **Gemini Flash** reread all 4,407 reports with a prompt written and fixed before any scoring; the LLM sees only report text, no UIDs or radiologist labels. `scripts/91_so_sanh_nhan.py` scores each source against the radiologists on the 58 gold studies:
+
+| Label source | Macro AUC vs radiologist | 95% CI | Agreement at 0.5 | Sensitivity | Specificity |
+|---|---:|---|---:|---:|---:|
+| Public LLM labels | 0.893 | [0.857, 0.924] | 81.8% | 84.2% | 80.5% |
+| **Own LLM labels (Gemini Flash)** | **0.857** | [0.823, 0.889] | 81.2% | 83.8% | 79.8% |
+| Own lexicon ("unknown" = 0.5) | 0.731 | [0.692, 0.771] | 44.2% | 98.8% | 15.6% |
+
+- Own labels are **worse** than the public set by `−0.036`, paired CI `[−0.054, −0.019]`, mostly on synovitis (0.679 vs 0.790) and contusion (0.760 vs 0.860).
+- Own labels **beat** the lexicon by `+0.126`, paired CI `[+0.085, +0.166]`.
+- The two LLM label sets agree on **96.9%** of cells (study × finding) across the 4,349 studies without radiologist labels.
+- No label source is "100% correct": both LLM sets agree with the radiologists on about 81% of cells at a 0.5 threshold.
+
 ### Stage 1: frozen DINOv2
 
 **Macro AUC `0.7645`**, 95% CI `[0.715, 0.805]`: out-of-fold AUC on the 58 radiologist-labelled studies, for an ensemble of 5 heads × 3 seeds, each head trained for 9 epochs. The epoch count was fixed in advance without looking at those 58 studies.

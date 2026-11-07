@@ -98,6 +98,21 @@ Tăng mạnh nhất ở **tổn thương nhỏ, khu trú** (ACL +0.28, dập xư
 
 ---
 
+## 4b. Nhãn LLM: tự gắn lại để kiểm chứng
+
+Nhãn LLM dùng để train là bộ công khai, không rõ LLM và prompt. Em cho **Gemini Flash** đọc lại cả 4.407 báo cáo bằng prompt tự viết (chốt trước, LLM chỉ thấy văn bản), rồi so với bác sĩ trên 58 ca:
+
+| Nguồn nhãn | AUC so với bác sĩ | Khớp bác sĩ ở ngưỡng 0.5 |
+|---|---:|---:|
+| LLM công khai | 0.893 | 81.8% |
+| **LLM tự gắn (Gemini Flash)** | **0.857** [0.823, 0.889] | 81.2% |
+| Từ điển tự viết | 0.731 | 44.2% |
+
+- Không nguồn nào đúng 100%: cả hai bộ LLM khớp bác sĩ khoảng 81% số ô.
+- Nhãn tự gắn kém bộ công khai 0.036 (kém thật, KTC không chứa 0), chủ yếu ở viêm màng hoạt dịch và dập xương; hơn từ điển 0.126.
+- Hai bộ LLM khớp nhau 96,9% trên 4.349 ca không có nhãn bác sĩ.
+- Đang train lại CNN bằng nhãn tự gắn để đo ảnh hưởng lên model cuối.
+
 ## 5. Giới hạn (nói trước khi thầy hỏi)
 
 - **Chỉ 58 ca để chấm**, nên khoảng tin cậy rộng khoảng ±0.03. Chênh lệch nhỏ cỡ 0.01 giữa hai model CNN **chưa** kết luận được.
@@ -141,6 +156,15 @@ uv run python scripts/82_cham_cnn_25d.py --tai                  # tải kết qu
 ```bash
 uv run python scripts/70_xuat_bao_cao.py          # -> reports/bao_cao_pbl.html
 uv run python scripts/70_xuat_bao_cao.py --slide  # -> reports/slide/ (PNG, PDF, PPTX; cần Chrome/Edge)
+```
+
+**Nhãn LLM tự gắn và web demo:**
+
+```bash
+uv run python scripts/90_gan_nhan_llm.py          # Gemini Flash gắn nhãn 4.407 báo cáo (chạy tiếp được)
+uv run python scripts/91_so_sanh_nhan.py          # so với bác sĩ, nhãn công khai, từ điển trên 58 ca
+uv sync --extra demo
+uv run python scripts/95_web_demo.py              # mở http://127.0.0.1:8790  (thêm ?mau=mau7 để tự chạy ca mẫu)
 ```
 
 Chi tiết từng bước nằm trong `README.vi.md`. Kết quả số của giai đoạn 2 ở `reports/day14_cnn_25d.json`.

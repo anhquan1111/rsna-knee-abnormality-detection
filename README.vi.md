@@ -22,6 +22,21 @@ CNN hơn DINOv2 `+0.120`, KTC bắt cặp `[+0.084, +0.161]`. Gộp thêm DINOv2
 
 Hai lần chạy Kaggle đầu bị *Killed* ở 10,4 giây/bước. Kernel chẩn đoán cho thấy `nn.DataParallel` trên 2 GPU T4 chậm hơn 1 GPU khoảng 20 lần (10,7 so với 0,47 giây/bước). Bản cuối cho mỗi GPU train một model trong tiến trình riêng, xong trong 3,1 giờ.
 
+### Nhãn LLM: tự gắn lại để kiểm chứng
+
+Nhãn LLM dùng để train ở trên là bộ công khai (`stevenleehans/rsna-knee-llm-report-labels`), không ghi LLM nào, prompt nào. Để có nhãn của riêng mình và kiểm chứng, `scripts/90_gan_nhan_llm.py` cho **Gemini Flash** đọc lại cả 4.407 báo cáo bằng prompt tự viết, chốt trước khi xem điểm. LLM chỉ thấy văn bản báo cáo, không thấy UID hay nhãn bác sĩ. `scripts/91_so_sanh_nhan.py` so với nhãn bác sĩ trên 58 ca gold:
+
+| Nguồn nhãn | Macro AUC so với bác sĩ | KTC 95% | Khớp bác sĩ ở ngưỡng 0.5 | Độ nhạy | Độ đặc hiệu |
+|---|---:|---|---:|---:|---:|
+| LLM công khai | 0.893 | [0.857, 0.924] | 81.8% | 84.2% | 80.5% |
+| **LLM tự gắn (Gemini Flash)** | **0.857** | [0.823, 0.889] | 81.2% | 83.8% | 79.8% |
+| Từ điển tự viết (ô "chưa rõ" = 0.5) | 0.731 | [0.692, 0.771] | 44.2% | 98.8% | 15.6% |
+
+- Tự gắn **kém** bộ công khai `−0.036`, KTC bắt cặp `[−0.054, −0.019]`: kém thật, chủ yếu ở viêm màng hoạt dịch (0.679 so với 0.790) và dập xương (0.760 so với 0.860).
+- Tự gắn **hơn** từ điển `+0.126`, KTC bắt cặp `[+0.085, +0.166]`.
+- Hai bộ LLM khớp nhau ở **96,9%** số ô (ca × bệnh) trên 4.349 ca không có nhãn bác sĩ.
+- Không nhãn nào "đúng 100%": cả hai bộ LLM khớp bác sĩ khoảng 81% số ô ở ngưỡng 0.5.
+
 ### Giai đoạn 1: DINOv2 đóng băng
 
 **Macro AUC `0.7645`**, khoảng tin cậy 95% `[0.715, 0.805]`. Đây là AUC out-of-fold trên 58 ca bác sĩ gán nhãn, của bộ gộp 5 head × 3 seed, mỗi head train 9 epoch. Số epoch được chốt trước mà không nhìn tới 58 ca này.

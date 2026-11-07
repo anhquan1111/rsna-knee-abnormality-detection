@@ -1,0 +1,203 @@
+{
+  "n_gold": 58,
+  "do_phu_tu_dien_tren_gold": 0.4138,
+  "nguon": {
+    "tu_gan": {
+      "ten": "LLM tự gắn (Gemini Flash)",
+      "macro_auc": 0.8572,
+      "ci": [
+        0.8232,
+        0.8885
+      ],
+      "tung_benh": {
+        "ACL": 0.945,
+        "MCL": 0.921,
+        "Medial Meniscus": 0.925,
+        "Lateral Meniscus": 0.865,
+        "Medial OA": 0.884,
+        "Lateral OA": 0.829,
+        "PF OA": 0.896,
+        "Effusion": 0.864,
+        "Synovitis": 0.679,
+        "Baker's": 0.913,
+        "Contusion": 0.76,
+        "Fracture": 0.805
+      },
+      "nguong_05": {
+        "khop": 0.8118,
+        "do_nhay": 0.8375,
+        "do_dac_hieu": 0.7982,
+        "tp": 201,
+        "tn": 364,
+        "fp": 92,
+        "fn": 39,
+        "sai_tung_benh": {
+          "ACL": 6,
+          "MCL": 8,
+          "Medial Meniscus": 8,
+          "Lateral Meniscus": 9,
+          "Medial OA": 8,
+          "Lateral OA": 11,
+          "PF OA": 12,
+          "Effusion": 15,
+          "Synovitis": 18,
+          "Baker's": 6,
+          "Contusion": 17,
+          "Fracture": 13
+        }
+      }
+    },
+    "cong_khai": {
+      "ten": "LLM công khai",
+      "macro_auc": 0.8927,
+      "ci": [
+        0.8569,
+        0.9236
+      ],
+      "tung_benh": {
+        "ACL": 0.987,
+        "MCL": 0.968,
+        "Medial Meniscus": 0.948,
+        "Lateral Meniscus": 0.879,
+        "Medial OA": 0.932,
+        "Lateral OA": 0.833,
+        "PF OA": 0.902,
+        "Effusion": 0.877,
+        "Synovitis": 0.79,
+        "Baker's": 0.944,
+        "Contusion": 0.86,
+        "Fracture": 0.793
+      },
+      "nguong_05": {
+        "khop": 0.8175,
+        "do_nhay": 0.8417,
+        "do_dac_hieu": 0.8048,
+        "tp": 202,
+        "tn": 367,
+        "fp": 89,
+        "fn": 38,
+        "sai_tung_benh": {
+          "ACL": 7,
+          "MCL": 7,
+          "Medial Meniscus": 8,
+          "Lateral Meniscus": 9,
+          "Medial OA": 8,
+          "Lateral OA": 10,
+          "PF OA": 12,
+          "Effusion": 16,
+          "Synovitis": 18,
+          "Baker's": 6,
+          "Contusion": 15,
+          "Fracture": 11
+        }
+      }
+    },
+    "tu_dien": {
+      "ten": "Từ điển tự viết",
+      "macro_auc": 0.7314,
+      "ci": [
+        0.6915,
+        0.7713
+      ],
+      "tung_benh": {
+        "ACL": 0.895,
+        "MCL": 0.837,
+        "Medial Meniscus": 0.776,
+        "Lateral Meniscus": 0.778,
+        "Medial OA": 0.766,
+        "Lateral OA": 0.578,
+        "PF OA": 0.755,
+        "Effusion": 0.562,
+        "Synovitis": 0.639,
+        "Baker's": 0.771,
+        "Contusion": 0.67,
+        "Fracture": 0.749
+      },
+      "nguong_05": {
+        "khop": 0.4425,
+        "do_nhay": 0.9875,
+        "do_dac_hieu": 0.1557,
+        "tp": 237,
+        "tn": 71,
+        "fp": 385,
+        "fn": 3,
+        "sai_tung_benh": {
+          "ACL": 25,
+          "MCL": 36,
+          "Medial Meniscus": 27,
+          "Lateral Meniscus": 27,
+          "Medial OA": 41,
+          "Lateral OA": 46,
+          "PF OA": 25,
+          "Effusion": 18,
+          "Synovitis": 31,
+          "Baker's": 41,
+          "Contusion": 37,
+          "Fracture": 34
+        }
+      }
+    }
+  },
+  "tu_gan_tru_cong_khai": {
+    "chenh": -0.0355,
+    "ci": [
+      -0.0538,
+      -0.019
+    ]
+  },
+  "tu_gan_tru_tu_dien": {
+    "chenh": 0.1258,
+    "ci": [
+      0.0849,
+      0.1657
+    ]
+  },
+  "hai_bo_llm_ngoai_gold": {
+    "n_ca": 4349,
+    "khop_nguong_05": 0.9687,
+    "tuong_quan_hang": {
+      "ACL": 0.858,
+      "MCL": 0.802,
+      "Medial Meniscus": 0.943,
+      "Lateral Meniscus": 0.876,
+      "Medial OA": 0.948,
+      "Lateral OA": 0.929,
+      "PF OA": 0.956,
+      "Effusion": 0.957,
+      "Synovitis": 0.479,
+      "Baker's": 0.959,
+      "Contusion": 0.832,
+      "Fracture": 0.683
+    },
+    "ty_le_duong_05": {
+      "tu_gan": {
+        "ACL": 0.174,
+        "MCL": 0.165,
+        "Medial Meniscus": 0.401,
+        "Lateral Meniscus": 0.152,
+        "Medial OA": 0.383,
+        "Lateral OA": 0.284,
+        "PF OA": 0.461,
+        "Effusion": 0.49,
+        "Synovitis": 0.19,
+        "Baker's": 0.254,
+        "Contusion": 0.172,
+        "Fracture": 0.092
+      },
+      "cong_khai": {
+        "ACL": 0.206,
+        "MCL": 0.152,
+        "Medial Meniscus": 0.404,
+        "Lateral Meniscus": 0.154,
+        "Medial OA": 0.373,
+        "Lateral OA": 0.274,
+        "PF OA": 0.459,
+        "Effusion": 0.594,
+        "Synovitis": 0.124,
+        "Baker's": 0.247,
+        "Contusion": 0.172,
+        "Fracture": 0.068
+      }
+    }
+  }
+}
