@@ -6,7 +6,7 @@
 Moi con so trong bao cao deu TINH LAI tu file ket qua trong reports/ (va du lieu tho de
 dem phan bo nhan/ngon ngu), khong go tay. Chay lai sau moi thi nghiem la bao cao tu khop.
 
-Khung o reports/bao_cao/: khung.html (bao cao), slide.html (15 slide 1920x1080), ve.js
+Khung o reports/bao_cao/: khung.html (bao cao), slide.html (19 slide 1920x1080), ve.js
 (bo ve bieu do dung chung). Script thay `/*__DU_LIEU__*/` bang so lieu va `/*__VE__*/`
 bang ve.js.
 
@@ -38,7 +38,7 @@ from scipy.stats import rankdata
 from rsna_knee.config import LABELS, REPORTS_DIR, SEED
 from rsna_knee.manifest import build_study_manifest, gold_subset, load_raw
 from rsna_knee.metrics import macro_auc
-from rsna_knee.oof import gold_theo_fold, nap_oof
+from rsna_knee.oof import gold_theo_fold, ma_thu_tu, nap_oof
 
 L = list(LABELS)
 KHUNG = REPORTS_DIR / "bao_cao" / "khung.html"
@@ -181,6 +181,30 @@ def main() -> None:
         {"nhan": k, "auc": round(r.per_label[k], 3), "ci": boot_ci_nhan(y, gop_cuoi, j),
          "n_duong": int(np.nansum(y[:, j]))}
         for j, k in enumerate(L)], key=lambda v: -v["auc"])
+
+    # ---------------- giai doan 2: CNN 2.5D (notebook 81, cham bang 82)
+    # So tong (AUC, KTC, chenh bat cap) lay nguyen tu day14_cnn_25d.json de khop README va
+    # TRINH_BAY.md; KTC tung nhan tinh lai o day tu du doan (file khong mang nhan).
+    f_cnn = REPORTS_DIR / "day14_cnn_25d.json"
+    if f_cnn.exists():
+        kc = json.loads(f_cnn.read_text())
+        with np.load(REPORTS_DIR / "day14_cnn_du_doan.npz") as zc:
+            if str(zc["uid_md5"]) != ma_thu_tu(uid):
+                raise SystemExit("day14_cnn_du_doan.npz: thu tu ca khac phep chia hien tai")
+            p_cnn = np.mean([hang(zc[f"{t}__ema"][-1]) for t in kc["tung_model"]], axis=0)
+        rc = macro_auc(y, p_cnn, L)
+        d["cnn"] = {
+            "auc": kc["cnn"]["auc"], "ci": kc["cnn"]["ci"],
+            "gop_50_50": kc["gop_50_50"], "chenh": kc["cnn_tru_dino"],
+            "mo_hinh": [{"ten": t, "backbone": m["backbone"], "auc": m["auc"], "ci": m["ci"], "gio": m["gio"],
+                         "epoch": len(m["theo_epoch"]), "n_train": m["n_train"],
+                         "gold": [e["ema"] for e in m["theo_epoch"]],
+                         "val_llm": [round(e["val_llm"], 4) for e in m["theo_epoch"]]}
+                        for t, m in kc["tung_model"].items()],
+            "tung_nhan": sorted([{"nhan": k, "cnn": round(rc.per_label[k], 3), "ci": boot_ci_nhan(y, p_cnn, j),
+                                  "dino": round(r.per_label[k], 3)} for j, k in enumerate(L)],
+                                key=lambda v: -(v["cnn"] - v["dino"])),
+        }
 
     # ---------------- cac ket qua cu (doc tu file da ghi)
     ls = json.loads((REPORTS_DIR / "day10a_label_source.json").read_text())

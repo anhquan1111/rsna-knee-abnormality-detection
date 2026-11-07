@@ -70,7 +70,7 @@
     // đường
     for (const s of o.series) {
       const d = s.v.map((v, i) => `${i ? "L" : "M"}${X(i + 1).toFixed(1)},${Y(v).toFixed(1)}`).join("");
-      el("path", { d, fill: "none", style: `stroke:${s.mau};stroke-width:${s.day || 2};opacity:${s.mo || 1};stroke-linejoin:round;stroke-linecap:round` }, svg);
+      el("path", { d, fill: "none", style: `stroke:${s.mau};stroke-width:${s.day || 2};opacity:${s.mo || 1};stroke-linejoin:round;stroke-linecap:round${s.net ? `;stroke-dasharray:${s.net}` : ""}` }, svg);
       if (s.nhan) {
         const last = s.v.length;
         el("text", { x: X(last) + 6, y: Y(s.v[last - 1]) + 4, class: "chu-phu" }, svg).textContent = s.nhan;
@@ -117,6 +117,28 @@
       el("circle", { cx: X(r.v), cy: y, r: 5, style: `fill:${r.mau || "var(--chinh)"};stroke:var(--mat);stroke-width:2` }, g);
       el("text", { x: W - m.r + 8, y: y + 4, class: "chu-so" }, g).textContent = f(r.v, 3);
       g.addEventListener("mousemove", e => hien(o.tip(r), e)); g.addEventListener("mouseleave", an);
+    });
+    host.appendChild(svg);
+  };
+
+  // ---------------- quả tạ: mỗi hàng một cặp (trước a → sau b), vd DINOv2 → CNN
+  const quaTa = (host, rows, o = {}) => {
+    const W = o.w || 620, hang = o.hang || 26, m = { l: o.l || 128, r: 104, t: 6, b: 30 };
+    const H = m.t + m.b + rows.length * hang, [x0, x1] = o.x;
+    const X = (v) => m.l + (v - x0) / (x1 - x0) * (W - m.l - m.r);
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": o.aria });
+    for (let v = o.tick[0]; v <= x1 + 1e-9; v += o.tick[1]) {
+      el("line", { x1: X(v), x2: X(v), y1: m.t, y2: H - m.b, style: "stroke:var(--ke);stroke-width:1" }, svg);
+      el("text", { x: X(v), y: H - m.b + 18, "text-anchor": "middle", class: "chu-so" }, svg).textContent = f(v, 1);
+    }
+    rows.forEach((r, i) => {
+      const y = m.t + hang * i + hang / 2, len = r.b >= r.a;
+      el("text", { x: m.l - 10, y: y + 4, "text-anchor": "end", class: "chu-phu" }, svg).textContent = r.ten;
+      el("line", { x1: X(r.a), x2: X(r.b), y1: y, y2: y, style: `stroke:${len ? "var(--chinh)" : "var(--cu)"};stroke-width:2.5;opacity:0.45` }, svg);
+      el("circle", { cx: X(r.a), cy: y, r: 4.5, style: `fill:${o.mauA || "var(--muc-3)"};stroke:var(--mat);stroke-width:1.5` }, svg);
+      el("circle", { cx: X(r.b), cy: y, r: 5.5, style: `fill:${o.mauB || "var(--chinh)"};stroke:var(--mat);stroke-width:2` }, svg);
+      el("text", { x: W - m.r + 8, y: y + 4, class: "chu-so" }, svg).textContent = f(r.b, 3);
+      el("text", { x: W - 6, y: y + 4, "text-anchor": "end", class: "chu-dam", style: `fill:${len ? "var(--chinh)" : "var(--cu)"}` }, svg).textContent = (len ? "+" : "−") + f(Math.abs(r.b - r.a), 3);
     });
     host.appendChild(svg);
   };
