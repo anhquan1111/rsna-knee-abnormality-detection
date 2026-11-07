@@ -35,3 +35,15 @@ trong các phương án làm kết quả chính.
 (đường cong theo epoch, so phương án, chọn CNN thay bản gộp với DINOv2). Vì vậy đây là
 **đánh giá nội bộ có tái sử dụng tập gold**, không phải tập test độc lập hoàn toàn. Chốt
 trước chỉ ngăn lựa chọn tiếp theo, không xoá được các lần xem trước đó.
+
+## Nhật ký sự cố kỹ thuật (ghi khi xảy ra, chưa xem điểm của model bị lỗi)
+
+- **#5 (B3 s42, nhãn tự gắn) và #3 (B3 s123, nhãn công khai)**: tiến trình B3 chết sau
+  epoch 1. Dự đoán của model THÔ (không phải EMA) trên ca gold có NaN, nhiều khả năng do
+  tràn số fp16; hàm AUC theo dõi ném `ValueError: Input contains NaN` và dừng tiến trình.
+  V2-B2 cùng lần chạy (#6, #4) vẫn chạy đủ 12 epoch.
+- Sửa: `macro_auc` trong notebook 81 trả `nan` kèm cảnh báo thay vì ném lỗi (chỉ là số theo
+  dõi, không dùng để chọn gì). Chạy lại ĐÚNG cấu hình cũ (cùng backbone, seed, nhãn, 12 epoch)
+  cho #5 và #3. Đây là sửa lỗi kỹ thuật, không phải chọn lại theo điểm.
+- Trọng số `model_cuoi.pt` của #6 bị ghi đè trên Kaggle khi chạy lại #5 (dự đoán và nhật ký đã
+  tải về trước). #6 vẫn được chấm; chỉ web demo không nạp được #6.

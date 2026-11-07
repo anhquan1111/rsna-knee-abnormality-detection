@@ -106,7 +106,12 @@ def ram() -> str:
 
 
 def macro_auc(y: np.ndarray, p: np.ndarray) -> float:
+    """AUC de THEO DOI trong luc train. Du doan co NaN/inf (tran so fp16 o model tho) thi
+    tra nan va bao, KHONG nem loi: lan chay nhan tu gan dau tien chet o day sau 1 epoch."""
     from sklearn.metrics import roc_auc_score
+    if not np.isfinite(p).all():
+        print(f"  CANH BAO: {int((~np.isfinite(p)).sum())} du doan khong huu han - AUC = nan", flush=True)
+        return float("nan")
     s = [roc_auc_score(y[:, j], p[:, j]) for j in range(y.shape[1])
          if len(np.unique(y[~np.isnan(y[:, j]), j])) == 2 and not np.isnan(y[:, j]).any()]
     return float(np.mean(s)) if s else float("nan")
