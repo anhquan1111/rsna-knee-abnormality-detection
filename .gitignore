@@ -55,6 +55,8 @@ Thumbs.db
 data/kaggle_out/
 # Output notebook 81 tai ve (du doan + trong so CNN), sinh lai bang scripts/82 --tai
 data/kaggle_cnn/
+data/kaggle_cnn_nhan_minh/
+data/kaggle_cnn_seed_moi/
 data/nhan_llm_cua_minh/
 data/web_demo/
 

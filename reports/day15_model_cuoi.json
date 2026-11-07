@@ -1,0 +1,216 @@
+{
+  "danh_sach": [
+    {
+      "so": 1,
+      "kernel": "rsna-knee-train-25d",
+      "mo_hinh": "efficientnet_b3_s42",
+      "nhan": "cong_khai"
+    },
+    {
+      "so": 2,
+      "kernel": "rsna-knee-train-25d",
+      "mo_hinh": "tf_efficientnetv2_b2_s7",
+      "nhan": "cong_khai"
+    },
+    {
+      "so": 3,
+      "kernel": "rsna-knee-train-25d-seed-moi",
+      "mo_hinh": "efficientnet_b3_s123",
+      "nhan": "cong_khai"
+    },
+    {
+      "so": 4,
+      "kernel": "rsna-knee-train-25d-seed-moi",
+      "mo_hinh": "tf_efficientnetv2_b2_s2026",
+      "nhan": "cong_khai"
+    },
+    {
+      "so": 5,
+      "kernel": "rsna-knee-train-25d-nhan-minh",
+      "mo_hinh": "efficientnet_b3_s42",
+      "nhan": "tu_gan"
+    },
+    {
+      "so": 6,
+      "kernel": "rsna-knee-train-25d-nhan-minh",
+      "mo_hinh": "tf_efficientnetv2_b2_s7",
+      "nhan": "tu_gan"
+    }
+  ],
+  "model_hong": {},
+  "tung_model": {
+    "1": {
+      "auc": 0.8741,
+      "ci": [
+        0.8384,
+        0.9066
+      ]
+    },
+    "2": {
+      "auc": 0.8791,
+      "ci": [
+        0.8464,
+        0.9086
+      ]
+    },
+    "3": {
+      "auc": 0.8829,
+      "ci": [
+        0.8491,
+        0.9127
+      ]
+    },
+    "4": {
+      "auc": 0.867,
+      "ci": [
+        0.8303,
+        0.8994
+      ]
+    },
+    "5": {
+      "auc": 0.8879,
+      "ci": [
+        0.8535,
+        0.9167
+      ]
+    },
+    "6": {
+      "auc": 0.8798,
+      "ci": [
+        0.845,
+        0.9112
+      ]
+    }
+  },
+  "nhom": {
+    "gop_6_cnn (chinh)": {
+      "model": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "auc": 0.8961,
+      "ci": [
+        0.8636,
+        0.9248
+      ],
+      "tung_benh": {
+        "ACL": 0.966,
+        "MCL": 0.897,
+        "Medial Meniscus": 0.937,
+        "Lateral Meniscus": 0.879,
+        "Medial OA": 0.983,
+        "Lateral OA": 0.84,
+        "PF OA": 0.862,
+        "Effusion": 0.894,
+        "Synovitis": 0.718,
+        "Baker's": 0.976,
+        "Contusion": 0.949,
+        "Fracture": 0.851
+      }
+    },
+    "gop_4_cnn_cong_khai": {
+      "model": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "auc": 0.8907,
+      "ci": [
+        0.858,
+        0.9193
+      ],
+      "tung_benh": {
+        "ACL": 0.969,
+        "MCL": 0.895,
+        "Medial Meniscus": 0.931,
+        "Lateral Meniscus": 0.875,
+        "Medial OA": 0.978,
+        "Lateral OA": 0.85,
+        "PF OA": 0.853,
+        "Effusion": 0.864,
+        "Synovitis": 0.731,
+        "Baker's": 0.983,
+        "Contusion": 0.946,
+        "Fracture": 0.814
+      }
+    },
+    "gop_2_cnn_tu_gan": {
+      "model": [
+        5,
+        6
+      ],
+      "auc": 0.8917,
+      "ci": [
+        0.8585,
+        0.9208
+      ],
+      "tung_benh": {
+        "ACL": 0.943,
+        "MCL": 0.901,
+        "Medial Meniscus": 0.935,
+        "Lateral Meniscus": 0.871,
+        "Medial OA": 0.98,
+        "Lateral OA": 0.806,
+        "PF OA": 0.866,
+        "Effusion": 0.917,
+        "Synovitis": 0.661,
+        "Baker's": 0.976,
+        "Contusion": 0.945,
+        "Fracture": 0.9
+      }
+    },
+    "gop_2_cnn_cong_khai (moc cu)": {
+      "model": [
+        1,
+        2
+      ],
+      "auc": 0.8848,
+      "ci": [
+        0.8508,
+        0.915
+      ],
+      "tung_benh": {
+        "ACL": 0.966,
+        "MCL": 0.878,
+        "Medial Meniscus": 0.922,
+        "Lateral Meniscus": 0.87,
+        "Medial OA": 0.978,
+        "Lateral OA": 0.873,
+        "PF OA": 0.853,
+        "Effusion": 0.86,
+        "Synovitis": 0.71,
+        "Baker's": 0.968,
+        "Contusion": 0.949,
+        "Fracture": 0.792
+      }
+    }
+  },
+  "so_sanh": {
+    "gop_6_cnn (chinh) - moc cu": {
+      "chenh": 0.0113,
+      "ci": [
+        0.0016,
+        0.0209
+      ]
+    },
+    "gop_4_cnn_cong_khai - moc cu": {
+      "chenh": 0.0059,
+      "ci": [
+        -0.0013,
+        0.0136
+      ]
+    },
+    "gop_2_cnn_tu_gan - moc cu": {
+      "chenh": 0.0069,
+      "ci": [
+        -0.0094,
+        0.0246
+      ]
+    }
+  }
+}

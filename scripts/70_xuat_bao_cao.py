@@ -6,7 +6,7 @@
 Moi con so trong bao cao deu TINH LAI tu file ket qua trong reports/ (va du lieu tho de
 dem phan bo nhan/ngon ngu), khong go tay. Chay lai sau moi thi nghiem la bao cao tu khop.
 
-Khung o reports/bao_cao/: khung.html (bao cao), slide.html (19 slide 1920x1080), ve.js
+Khung o reports/bao_cao/: khung.html (bao cao), slide.html (21 slide 1920x1080), ve.js
 (bo ve bieu do dung chung). Script thay `/*__DU_LIEU__*/` bang so lieu va `/*__VE__*/`
 bang ve.js.
 
@@ -205,6 +205,23 @@ def main() -> None:
                                   "dino": round(r.per_label[k], 3)} for j, k in enumerate(L)],
                                 key=lambda v: -(v["cnn"] - v["dino"])),
         }
+
+    # ---------------- ngay 15: nhan LLM tu gan (script 91) va model cuoi gop 6 CNN (script 93)
+    f_nhan, f_cuoi = REPORTS_DIR / "day15_nhan_llm.json", REPORTS_DIR / "day15_model_cuoi.json"
+    if f_nhan.exists():
+        kn = json.loads(f_nhan.read_text())
+        d["nhan_llm"] = {k: {"ten": v["ten"], "auc": v["macro_auc"], "ci": v["ci"], "khop": v["nguong_05"]["khop"],
+                             "tung_benh": v["tung_benh"]} for k, v in kn["nguon"].items()}
+        d["nhan_llm"]["chenh_cong_khai"] = kn["tu_gan_tru_cong_khai"]
+        d["nhan_llm"]["khop_hai_bo"] = kn["hai_bo_llm_ngoai_gold"]["khop_nguong_05"]
+    if f_cuoi.exists():
+        kf = json.loads(f_cuoi.read_text())
+        d["cuoi"] = {"nhom": {k.split(" ")[0]: {"auc": v["auc"], "ci": v["ci"], "model": v["model"]}
+                              for k, v in kf["nhom"].items()},
+                     "so_sanh": {k.split(" ")[0]: v for k, v in kf["so_sanh"].items()},
+                     "tung_model": [{"so": int(s), **v, **{x: kf["danh_sach"][int(s) - 1][x] for x in ("mo_hinh", "nhan")}}
+                                    for s, v in kf["tung_model"].items()],
+                     "tung_benh": kf["nhom"]["gop_6_cnn (chinh)"]["tung_benh"]}
 
     # ---------------- cac ket qua cu (doc tu file da ghi)
     ls = json.loads((REPORTS_DIR / "day10a_label_source.json").read_text())

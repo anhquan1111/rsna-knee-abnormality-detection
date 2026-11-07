@@ -331,8 +331,8 @@ pre.ma b { font-weight: 500; } pre.ma .cu { color: var(--cu); } pre.ma .chinh { 
     </div>
     <span class="nh">Giao thức, chốt trước khi chấm</span>
     <div class="hang">
-      <div class="b may"><b>Nhãn LLM mềm của <span class="so" id="s13-ntrain"></span> ca</b><span>58 ca gold không vào train; bỏ 1 ca trùng báo cáo gold</span></div><span class="m">→</span>
-      <div class="b may"><b><span id="s13-epoch"></span> epoch, lấy epoch cuối</b><span>Trọng số EMA; không chọn epoch theo điểm gold</span></div><span class="m">→</span>
+      <div class="b may"><b>Nhãn LLM mềm của <span style="font:inherit; color:inherit" id="s13-ntrain"></span> ca</b><span>58 ca gold không vào train; bỏ 1 ca trùng báo cáo gold</span></div><span class="m">→</span>
+      <div class="b may"><b><span style="font:inherit; color:inherit" id="s13-epoch"></span> epoch, lấy epoch cuối</b><span>Trọng số EMA; không chọn epoch theo điểm gold</span></div><span class="m">→</span>
       <div class="b may"><b>Kaggle T4 × 2, mỗi GPU một model</b><span>Hai model train song song, xong trong <span id="s13-gio"></span> giờ</span></div>
     </div>
   </div>
@@ -357,12 +357,12 @@ pre.ma b { font-weight: 500; } pre.ma .cu { color: var(--cu); } pre.ma .chinh { 
 <!-- 15 · GIAI ĐOẠN 2: TỪNG BỆNH -->
 <section class="slide" data-ghi-chu="So từng bệnh, chấm xám là DINOv2 đóng băng, chấm xanh là CNN. Tăng mạnh nhất đúng ở ba bệnh yếu nhất của giai đoạn 1: ACL, dập xương và MCL. Đây là tổn thương nhỏ, nằm trên vài lát: đặc trưng học từ ảnh thường không nhìn ra, CNN train trên chính MRI thì học được. Tràn dịch gần như không đổi, viêm màng hoạt dịch vẫn yếu nhất, khoảng 0.71.">
   <span class="eyebrow">7 · Giai đoạn 2: CNN 2.5D</span>
-  <h2>Tăng mạnh nhất ở tổn thương nhỏ, khu trú</h2>
+  <h2>Tăng mạnh nhất ở tổn thương nhỏ</h2>
   <div class="hai lech2">
     <div class="the"><span class="tt">AUC từng bệnh: DINOv2 đóng băng → CNN 2.5D</span>
       <div class="chu-giai"><span><i class="cham" style="background:var(--muc-3)"></i>DINOv2, giai đoạn 1</span><span><i class="cham" style="background:var(--chinh)"></i>CNN 2.5D</span></div>
       <div class="hinh" id="s15-ta"></div></div>
-    <div style="display:grid; gap:22px; align-content:start" id="s15-the"></div>
+    <div style="display:grid; gap:16px; align-content:start" id="s15-the"></div>
   </div>
   <div class="chan"><span>RSNA KNEE · PBL</span><span class="trang"></span></div>
 </section>
@@ -389,6 +389,37 @@ pre.ma b { font-weight: 500; } pre.ma .cu { color: var(--cu); } pre.ma .chinh { 
   <div class="chan"><span>RSNA KNEE · PBL</span><span class="trang"></span></div>
 </section>
 
+<!-- 17 · NHÃN LLM TỰ GẮN -->
+<section class="slide" data-ghi-chu="Thầy hỏi nhãn LLM có đúng thật không. Em cho Gemini Flash đọc lại cả 4.407 báo cáo bằng prompt tự viết, chốt trước, LLM chỉ thấy văn bản báo cáo. So với nhãn bác sĩ trên 58 ca: không nguồn nào đúng 100%, cả hai bộ LLM khớp bác sĩ khoảng 81% số ô. Nhãn tự gắn kém bộ công khai một chút khi so trực tiếp, nhưng CNN train bằng nhãn tự gắn lại cho kết quả ngang CNN train bằng nhãn công khai. Nghĩa là chất lượng nhãn đo trên giấy không quyết định hết chất lượng model.">
+  <span class="eyebrow">7 · Giai đoạn 2: nhãn của chính mình</span>
+  <h2>Tự gắn lại nhãn LLM để kiểm chứng</h2>
+  <div class="hai lech">
+    <div class="the"><span class="tt">Nhãn so với bác sĩ trên 58 ca gold</span>
+      <table><thead><tr><th>Nguồn nhãn</th><th class="so">AUC</th><th class="so">khớp bác sĩ @0.5</th></tr></thead><tbody id="s17-bang"></tbody></table>
+      <span class="gc" id="s17-gc"></span></div>
+    <div style="display:grid; gap:22px; align-content:start">
+      <div class="luu-y"><b>Không nguồn nào đúng 100%</b><p id="s17-y1"></p></div>
+      <div class="luu-y" style="border-color:var(--phu)"><b>Nhưng CNN học từ nhãn tự gắn vẫn tốt ngang</b><p id="s17-y2"></p></div>
+    </div>
+  </div>
+  <div class="chan"><span>RSNA KNEE · PBL</span><span class="trang"></span></div>
+</section>
+
+<!-- 18 · MODEL CUỐI -->
+<section class="slide" data-ghi-chu="Model cuối là danh sách chốt trước khi xem điểm, ghi trong file CHOT_MODEL_CUOI.md và commit lên GitHub trước khi các lần train cuối có kết quả: gộp theo hạng 6 CNN, 4 model nhãn công khai và 2 model nhãn tự gắn, mỗi model lấy trọng số EMA ở epoch cuối. Kết quả 0.896, hơn mốc 0.885 một chút và khoảng tin cậy bắt cặp không chứa 0. Hai model B3 bị lỗi kỹ thuật NaN sau epoch 1 và được chạy lại đúng cấu hình cũ; sự cố cũng được ghi vào file chốt.">
+  <span class="eyebrow">7 · Giai đoạn 2: model cuối</span>
+  <h2>Model cuối: gộp 6 CNN, chốt trước khi chấm</h2>
+  <div class="hai lech">
+    <div style="display:grid; gap:24px; align-content:start">
+      <div class="so-lon" id="s18-so" style="color:var(--phu)"></div>
+      <p style="font-size:26px; color:var(--muc-2)" id="s18-mt"></p>
+      <div class="luu-y" style="border-color:var(--phu)"><b id="s18-chenh"></b><p>Danh sách 6 model, cách gộp và epoch được ghi vào <code>CHOT_MODEL_CUOI.md</code> và commit <b>trước</b> khi có kết quả các lần train cuối.</p></div>
+    </div>
+    <div class="the"><span class="tt">Macro AUC trên 58 ca gold, kèm khoảng tin cậy 95%</span><div class="hinh" id="s18-cot"></div><span class="gc" id="s18-gc"></span></div>
+  </div>
+  <div class="chan"><span>RSNA KNEE · PBL</span><span class="trang"></span></div>
+</section>
+
 <!-- 13 · LỖI ÂM THẦM -->
 <section class="slide" data-ghi-chu="Phần lớn thời gian dự án dành cho lỗi không báo exception: pipeline vẫn chạy, vẫn ra một con số hợp lý, chỉ có con số đó sai. Chọn ba hoặc bốn thẻ để kể, ví dụ rò rỉ khi chia theo series và bộ nhãn công khai chép nhãn gold. Mỗi lỗi đều có test hoặc chốt chặn; bộ test hiện có 114 test, không cần ảnh.">
   <span class="eyebrow">8 · Những điều đo được</span>
@@ -405,20 +436,20 @@ pre.ma b { font-weight: 500; } pre.ma .cu { color: var(--cu); } pre.ma .chinh { 
 </section>
 
 <!-- 14 · GIỚI HẠN -->
-<section class="slide" data-ghi-chu="Nói thẳng các giới hạn. 58 ca là trần cứng nên khoảng tin cậy vẫn rộng. Mỗi CNN mới train một seed, trong khi ở giai đoạn 1 chỉ đổi seed đã xê dịch khoảng 0.01. Chọn CNN làm kết quả chính thay vì bản gộp 50/50 là chọn một trong hai sau khi thấy điểm; chênh 0.033 nên kết luận không đổi, nhưng phải nói ra. Nhãn train là nhãn LLM của người khác công bố. Hướng tiếp: thêm seed cho CNN, tăng độ phân giải cho tổn thương nhỏ, và một tập kiểm tra lớn hơn.">
+<section class="slide" data-ghi-chu="Nói thẳng các giới hạn. 58 ca là trần cứng nên khoảng tin cậy vẫn rộng. 58 ca này chưa bao giờ vào train nhưng đã được xem nhiều lần khi phát triển, nên đây là đánh giá nội bộ. Chọn CNN làm kết quả chính thay vì bản gộp 50/50 là chọn một trong hai sau khi thấy điểm; chênh 0.033 nên kết luận không đổi, nhưng phải nói ra. Nhãn train là nhãn LLM của người khác công bố. Hướng tiếp: thêm seed cho CNN, tăng độ phân giải cho tổn thương nhỏ, và một tập kiểm tra lớn hơn.">
   <span class="eyebrow">9 · Giới hạn và hướng tiếp</span>
   <h2>Điều bài này chưa làm được</h2>
   <div class="hai">
     <div class="the"><span class="tt">Giới hạn</span>
       <ul class="ds" style="font-size:26px; gap:16px">
         <li><b>58 ca là trần cứng.</b> Khoảng tin cậy rộng khoảng 0.06–0.09; thêm ảnh hay nhãn máy không làm nó hẹp lại.</li>
-        <li><b>Mỗi CNN mới train một seed.</b> Ở giai đoạn 1, chỉ đổi seed đã xê dịch khoảng ±0.01.</li>
+        <li><b>58 ca đã được xem nhiều lần</b> khi phát triển (dù chưa bao giờ vào train): đây là đánh giá nội bộ, không phải test độc lập hoàn toàn.</li>
         <li><b>Chọn CNN thay bản gộp 50/50</b> là chọn 1 trong 2 sau khi xem điểm. Chênh 0.033 nên kết luận không đổi, nhưng ghi rõ.</li>
-        <li><b>Nhãn train là nhãn LLM</b> người khác công bố, khớp bác sĩ ở AUC 0.893. Rò rỉ theo hãng máy chưa chặn.</li>
+        <li><b>Nhãn train là nhãn LLM</b>, khớp bác sĩ khoảng 81% số ô. AUC đo xếp hạng, chưa nói gì về xác suất chuẩn hay dùng lâm sàng. Rò rỉ theo hãng máy chưa chặn.</li>
       </ul></div>
     <div class="the"><span class="tt">Hướng tiếp, theo thứ tự đáng làm</span>
       <ul class="ds" style="font-size:26px; gap:16px">
-        <li><b>Thêm seed cho CNN</b> rồi gộp: mỗi lần khoảng 3 giờ GPU miễn phí trên Kaggle.</li>
+        <li><b>Thêm seed và backbone</b> rồi gộp: 6 CNN đã hơn 2 CNN +0.011; mỗi lần thêm khoảng 3 giờ GPU miễn phí.</li>
         <li><b>Độ phân giải và số lát cao hơn</b> cho tổn thương nhỏ; viêm màng hoạt dịch (0.71) và gãy xương (0.79) còn yếu nhất.</li>
         <li><b>Một tập kiểm tra có nhãn lớn hơn 58 ca</b> để phân xử các chênh lệch nhỏ cỡ 0.01.</li>
       </ul></div>
@@ -439,7 +470,7 @@ pre.ma b { font-weight: 500; } pre.ma .cu { color: var(--cu); } pre.ma .chinh { 
 
 <div id="goi-y" hidden></div>
 <script>
-const D = {"du_lieu": {"n_study": 4407, "n_series": 24371, "n_gold": 58, "series_moi_study": 5.53, "nhan_duong": [{"nhan": "ACL", "n": 24}, {"nhan": "MCL", "n": 9}, {"nhan": "Medial Meniscus", "n": 26}, {"nhan": "Lateral Meniscus", "n": 23}, {"nhan": "Medial OA", "n": 15}, {"nhan": "Lateral OA", "n": 11}, {"nhan": "PF OA", "n": 21}, {"nhan": "Effusion", "n": 35}, {"nhan": "Synovitis", "n": 27}, {"nhan": "Baker's", "n": 12}, {"nhan": "Contusion", "n": 19}, {"nhan": "Fracture", "n": 18}], "ngon_ngu": [{"ma": "en", "ten": "Anh", "n": 1736}, {"ma": "es", "ten": "Tây Ban Nha", "n": 682}, {"ma": "tr", "ten": "Thổ Nhĩ Kỳ", "n": 546}, {"ma": "hr", "ten": "Croatia", "n": 406}, {"ma": "el", "ten": "Hy Lạp", "n": 321}, {"ma": "de", "ten": "Đức", "n": 262}, {"ma": "bg", "ten": "Bulgaria", "n": 220}, {"ma": "nl", "ten": "Hà Lan", "n": 153}, {"ma": "fr", "ten": "Pháp", "n": 81}]}, "duong_epoch": {"gop": [0.7103, 0.7303, 0.7441, 0.7457, 0.7526, 0.761, 0.7523, 0.7662, 0.7593, 0.7593, 0.7616, 0.7726, 0.7709, 0.7617, 0.7593, 0.7543, 0.761, 0.7554, 0.7542, 0.7543, 0.7635, 0.7488, 0.7408, 0.7444, 0.7426], "thanh_phan": {"mp_sagittal": [0.6696, 0.6866, 0.6813, 0.6739, 0.6727, 0.6761, 0.6669, 0.6833, 0.6795, 0.668, 0.6793, 0.6733, 0.6753, 0.6727, 0.6656, 0.6617, 0.6705, 0.6577, 0.6667, 0.6558, 0.6797, 0.6594, 0.6636, 0.6473, 0.6535], "mp_axial": [0.6814, 0.7212, 0.7383, 0.734, 0.7487, 0.7465, 0.7371, 0.7493, 0.7476, 0.748, 0.734, 0.7439, 0.7462, 0.7295, 0.7235, 0.7223, 0.7192, 0.7111, 0.7098, 0.7, 0.7096, 0.6944, 0.6965, 0.6947, 0.6943], "mp_coronal": [0.6676, 0.6871, 0.6979, 0.7083, 0.7195, 0.7306, 0.7175, 0.7227, 0.722, 0.7174, 0.7291, 0.7404, 0.7326, 0.7156, 0.7267, 0.719, 0.7209, 0.713, 0.7229, 0.7121, 0.7223, 0.7158, 0.7057, 0.7002, 0.6944], "chung_s224": [0.6949, 0.7189, 0.7335, 0.7162, 0.7346, 0.7402, 0.7325, 0.734, 0.7329, 0.7195, 0.7247, 0.7279, 0.7269, 0.7084, 0.7177, 0.7094, 0.7177, 0.712, 0.7032, 0.715, 0.7229, 0.7061, 0.6911, 0.695, 0.7081], "chung_b336": [0.7085, 0.7117, 0.7145, 0.7388, 0.7373, 0.7384, 0.7412, 0.7395, 0.7316, 0.7314, 0.735, 0.745, 0.7272, 0.7288, 0.7325, 0.7142, 0.7205, 0.7264, 0.7005, 0.7042, 0.7019, 0.701, 0.6861, 0.6857, 0.6825]}, "chung_s224_dai": [0.6949, 0.7189, 0.7335, 0.7162, 0.7346, 0.7402, 0.7325, 0.734, 0.7329, 0.7195, 0.7247, 0.7279, 0.7269, 0.7084, 0.7177, 0.7094, 0.7177, 0.712, 0.7032, 0.715, 0.7229, 0.7061, 0.6911, 0.695, 0.7081, 0.7033, 0.703, 0.6979, 0.7067, 0.6773, 0.6928, 0.6793, 0.6843, 0.6755, 0.6802, 0.6784, 0.6784, 0.6754, 0.6756, 0.657, 0.6754, 0.6732, 0.6717, 0.6765, 0.6668, 0.674, 0.6676, 0.6704, 0.6668, 0.678, 0.6715, 0.6667, 0.6692, 0.6668, 0.659, 0.6533, 0.6557, 0.664, 0.6594, 0.6663, 0.6666, 0.6614, 0.6694, 0.6705, 0.6572, 0.6567, 0.6517, 0.6661, 0.6654, 0.6613, 0.6718, 0.6689, 0.6666, 0.675, 0.6609, 0.6584, 0.6563, 0.661, 0.655, 0.6736]}, "khong_gold": {"auc": [0.7312, 0.7391, 0.751, 0.7556, 0.7573, 0.7595, 0.7603, 0.7638, 0.7664, 0.7633, 0.7594, 0.7633, 0.7567, 0.7505, 0.7566, 0.7467, 0.7488, 0.7493, 0.7444, 0.7436, 0.7411, 0.7412, 0.7364, 0.7262, 0.7352], "dinh": 9}, "chon_epoch": {"cu": 0.7933, "chot": 0.7593, "dai": 0.7426, "n_ep_dai": 25, "epoch_chot": 9, "ci_chot": [0.7113, 0.7982], "cv_cu_bao_cao": 0.8112, "chenh_chot_dai": 0.0167, "ci_chenh": [-0.0086, 0.0409], "p_duong": 0.9, "epoch_chon_tung_fold": {"mp_sagittal": [2, 5, 8, 22, 3], "mp_axial": [9, 13, 13, 7, 2], "mp_coronal": [12, 15, 22, 16, 2], "chung_s224": [7, 3, 2, 17, 4], "chung_b336": [2, 12, 6, 6, 9]}}, "thanh_phan": [{"ten": "mp_sagittal", "cv_cu": 0.7106, "cv_chot": 0.6795}, {"ten": "mp_axial", "cv_cu": 0.7691, "cv_chot": 0.7476}, {"ten": "mp_coronal", "cv_cu": 0.7394, "cv_chot": 0.722}, {"ten": "chung_s224", "cv_cu": 0.7698, "cv_chot": 0.7329}, {"ten": "chung_b336", "cv_cu": 0.7481, "cv_chot": 0.7316}], "seed": {"moi_seed": [{"seed": 42, "auc": 0.7593}, {"seed": 7, "auc": 0.769}, {"seed": 2026, "auc": 0.7461}], "gop": 0.7645, "ci_gop": [0.7154, 0.8054], "n": 3, "do_lech": 0.0115}, "tung_nhan": [{"nhan": "Baker's", "auc": 0.899, "ci": [0.795, 0.971], "n_duong": 12}, {"nhan": "Medial OA", "auc": 0.896, "ci": [0.792, 0.969], "n_duong": 15}, {"nhan": "Effusion", "auc": 0.868, "ci": [0.772, 0.948], "n_duong": 35}, {"nhan": "PF OA", "auc": 0.786, "ci": [0.661, 0.907], "n_duong": 21}, {"nhan": "Medial Meniscus", "auc": 0.778, "ci": [0.65, 0.885], "n_duong": 26}, {"nhan": "Lateral Meniscus", "auc": 0.777, "ci": [0.654, 0.889], "n_duong": 23}, {"nhan": "Lateral OA", "auc": 0.743, "ci": [0.554, 0.897], "n_duong": 11}, {"nhan": "Contusion", "auc": 0.709, "ci": [0.546, 0.858], "n_duong": 19}, {"nhan": "Synovitis", "auc": 0.701, "ci": [0.561, 0.822], "n_duong": 27}, {"nhan": "ACL", "auc": 0.683, "ci": [0.532, 0.816], "n_duong": 24}, {"nhan": "Fracture", "auc": 0.672, "ci": [0.496, 0.819], "n_duong": 18}, {"nhan": "MCL", "auc": 0.662, "ci": [0.434, 0.861], "n_duong": 9}], "cnn": {"auc": 0.8848, "ci": [0.8508, 0.915], "gop_50_50": {"auc": 0.8519, "ci": [0.8153, 0.8833]}, "chenh": {"chenh": 0.1203, "ci": [0.0841, 0.1614]}, "mo_hinh": [{"ten": "efficientnet_b3_s42", "backbone": "efficientnet_b3", "auc": 0.8741, "ci": [0.8384, 0.9066], "gio": 2.32, "epoch": 12, "n_train": 4136, "gold": [0.6608, 0.778, 0.8273, 0.8471, 0.8665, 0.8742, 0.876, 0.8757, 0.8734, 0.8741, 0.8763, 0.8741], "val_llm": [0.6541, 0.798, 0.8349, 0.8541, 0.8661, 0.8687, 0.8694, 0.8698, 0.8683, 0.8666, 0.8654, 0.864]}, {"ten": "tf_efficientnetv2_b2_s7", "backbone": "tf_efficientnetv2_b2", "auc": 0.8791, "ci": [0.8464, 0.9086], "gio": 1.27, "epoch": 12, "n_train": 4136, "gold": [0.6074, 0.7656, 0.8292, 0.862, 0.8801, 0.8827, 0.8818, 0.8834, 0.8854, 0.8837, 0.8817, 0.8791], "val_llm": [0.5955, 0.7833, 0.8324, 0.8539, 0.8666, 0.8715, 0.8733, 0.8744, 0.872, 0.8688, 0.8667, 0.8651]}], "tung_nhan": [{"nhan": "ACL", "cnn": 0.966, "ci": [0.916, 0.997], "dino": 0.683}, {"nhan": "Contusion", "cnn": 0.949, "ci": [0.883, 0.996], "dino": 0.709}, {"nhan": "MCL", "cnn": 0.878, "ci": [0.751, 0.975], "dino": 0.662}, {"nhan": "Medial Meniscus", "cnn": 0.922, "ci": [0.852, 0.979], "dino": 0.778}, {"nhan": "Lateral OA", "cnn": 0.873, "ci": [0.717, 0.982], "dino": 0.743}, {"nhan": "Fracture", "cnn": 0.792, "ci": [0.654, 0.9], "dino": 0.672}, {"nhan": "Lateral Meniscus", "cnn": 0.87, "ci": [0.763, 0.961], "dino": 0.777}, {"nhan": "Medial OA", "cnn": 0.978, "ci": [0.938, 1.0], "dino": 0.896}, {"nhan": "Baker's", "cnn": 0.968, "ci": [0.918, 1.0], "dino": 0.899}, {"nhan": "PF OA", "cnn": 0.853, "ci": [0.721, 0.961], "dino": 0.786}, {"nhan": "Synovitis", "cnn": 0.71, "ci": [0.57, 0.835], "dino": 0.701}, {"nhan": "Effusion", "cnn": 0.86, "ci": [0.751, 0.959], "dino": 0.868}]}, "nguon_nhan": {"A": 0.6266, "B": 0.6923, "D": 0.7467, "E": 0.7179, "auc_tu_dien": 0.7362, "auc_llm": 0.8927, "chenh": 0.0544, "ci": [0.0086, 0.0907]}, "seed_cu": {"diem": [0.7407, 0.7447, 0.734, 0.7468, 0.7431], "do_lech": 0.0049, "be_rong": 0.0128}, "hang_may": [{"hang": "GE", "n": 16, "auc": 0.7818, "ci": [0.7, 0.874]}, {"hang": "PHILIPS", "n": 18, "auc": 0.6985, "ci": [0.578, 0.789]}, {"hang": "SIEMENS", "n": 22, "auc": 0.7598, "ci": [0.704, 0.817]}], "tu_dien": [{"nhan": "ACL", "phu": 0.586, "precision": 0.84}, {"nhan": "MCL", "phu": 0.397, "precision": 0.6}, {"nhan": "Medial Meniscus", "phu": 0.466, "precision": 0.773}, {"nhan": "Lateral Meniscus", "phu": 0.483, "precision": 0.778}, {"nhan": "Medial OA", "phu": 0.19, "precision": 0.889}, {"nhan": "Lateral OA", "phu": 0.086, "precision": 0.5}, {"nhan": "PF OA", "phu": 0.534, "precision": 0.733}, {"nhan": "Effusion", "phu": 0.776, "precision": 0.625}, {"nhan": "Synovitis", "phu": 0.259, "precision": 0.733}, {"nhan": "Baker's", "phu": 0.276, "precision": 0.636}, {"nhan": "Contusion", "phu": 0.552, "precision": 0.467}, {"nhan": "Fracture", "phu": 0.362, "precision": 0.667}]};
+const D = {"du_lieu": {"n_study": 4407, "n_series": 24371, "n_gold": 58, "series_moi_study": 5.53, "nhan_duong": [{"nhan": "ACL", "n": 24}, {"nhan": "MCL", "n": 9}, {"nhan": "Medial Meniscus", "n": 26}, {"nhan": "Lateral Meniscus", "n": 23}, {"nhan": "Medial OA", "n": 15}, {"nhan": "Lateral OA", "n": 11}, {"nhan": "PF OA", "n": 21}, {"nhan": "Effusion", "n": 35}, {"nhan": "Synovitis", "n": 27}, {"nhan": "Baker's", "n": 12}, {"nhan": "Contusion", "n": 19}, {"nhan": "Fracture", "n": 18}], "ngon_ngu": [{"ma": "en", "ten": "Anh", "n": 1736}, {"ma": "es", "ten": "Tây Ban Nha", "n": 682}, {"ma": "tr", "ten": "Thổ Nhĩ Kỳ", "n": 546}, {"ma": "hr", "ten": "Croatia", "n": 406}, {"ma": "el", "ten": "Hy Lạp", "n": 321}, {"ma": "de", "ten": "Đức", "n": 262}, {"ma": "bg", "ten": "Bulgaria", "n": 220}, {"ma": "nl", "ten": "Hà Lan", "n": 153}, {"ma": "fr", "ten": "Pháp", "n": 81}]}, "duong_epoch": {"gop": [0.7103, 0.7303, 0.7441, 0.7457, 0.7526, 0.761, 0.7523, 0.7662, 0.7593, 0.7593, 0.7616, 0.7726, 0.7709, 0.7617, 0.7593, 0.7543, 0.761, 0.7554, 0.7542, 0.7543, 0.7635, 0.7488, 0.7408, 0.7444, 0.7426], "thanh_phan": {"mp_sagittal": [0.6696, 0.6866, 0.6813, 0.6739, 0.6727, 0.6761, 0.6669, 0.6833, 0.6795, 0.668, 0.6793, 0.6733, 0.6753, 0.6727, 0.6656, 0.6617, 0.6705, 0.6577, 0.6667, 0.6558, 0.6797, 0.6594, 0.6636, 0.6473, 0.6535], "mp_axial": [0.6814, 0.7212, 0.7383, 0.734, 0.7487, 0.7465, 0.7371, 0.7493, 0.7476, 0.748, 0.734, 0.7439, 0.7462, 0.7295, 0.7235, 0.7223, 0.7192, 0.7111, 0.7098, 0.7, 0.7096, 0.6944, 0.6965, 0.6947, 0.6943], "mp_coronal": [0.6676, 0.6871, 0.6979, 0.7083, 0.7195, 0.7306, 0.7175, 0.7227, 0.722, 0.7174, 0.7291, 0.7404, 0.7326, 0.7156, 0.7267, 0.719, 0.7209, 0.713, 0.7229, 0.7121, 0.7223, 0.7158, 0.7057, 0.7002, 0.6944], "chung_s224": [0.6949, 0.7189, 0.7335, 0.7162, 0.7346, 0.7402, 0.7325, 0.734, 0.7329, 0.7195, 0.7247, 0.7279, 0.7269, 0.7084, 0.7177, 0.7094, 0.7177, 0.712, 0.7032, 0.715, 0.7229, 0.7061, 0.6911, 0.695, 0.7081], "chung_b336": [0.7085, 0.7117, 0.7145, 0.7388, 0.7373, 0.7384, 0.7412, 0.7395, 0.7316, 0.7314, 0.735, 0.745, 0.7272, 0.7288, 0.7325, 0.7142, 0.7205, 0.7264, 0.7005, 0.7042, 0.7019, 0.701, 0.6861, 0.6857, 0.6825]}, "chung_s224_dai": [0.6949, 0.7189, 0.7335, 0.7162, 0.7346, 0.7402, 0.7325, 0.734, 0.7329, 0.7195, 0.7247, 0.7279, 0.7269, 0.7084, 0.7177, 0.7094, 0.7177, 0.712, 0.7032, 0.715, 0.7229, 0.7061, 0.6911, 0.695, 0.7081, 0.7033, 0.703, 0.6979, 0.7067, 0.6773, 0.6928, 0.6793, 0.6843, 0.6755, 0.6802, 0.6784, 0.6784, 0.6754, 0.6756, 0.657, 0.6754, 0.6732, 0.6717, 0.6765, 0.6668, 0.674, 0.6676, 0.6704, 0.6668, 0.678, 0.6715, 0.6667, 0.6692, 0.6668, 0.659, 0.6533, 0.6557, 0.664, 0.6594, 0.6663, 0.6666, 0.6614, 0.6694, 0.6705, 0.6572, 0.6567, 0.6517, 0.6661, 0.6654, 0.6613, 0.6718, 0.6689, 0.6666, 0.675, 0.6609, 0.6584, 0.6563, 0.661, 0.655, 0.6736]}, "khong_gold": {"auc": [0.7312, 0.7391, 0.751, 0.7556, 0.7573, 0.7595, 0.7603, 0.7638, 0.7664, 0.7633, 0.7594, 0.7633, 0.7567, 0.7505, 0.7566, 0.7467, 0.7488, 0.7493, 0.7444, 0.7436, 0.7411, 0.7412, 0.7364, 0.7262, 0.7352], "dinh": 9}, "chon_epoch": {"cu": 0.7933, "chot": 0.7593, "dai": 0.7426, "n_ep_dai": 25, "epoch_chot": 9, "ci_chot": [0.7113, 0.7982], "cv_cu_bao_cao": 0.8112, "chenh_chot_dai": 0.0167, "ci_chenh": [-0.0086, 0.0409], "p_duong": 0.9, "epoch_chon_tung_fold": {"mp_sagittal": [2, 5, 8, 22, 3], "mp_axial": [9, 13, 13, 7, 2], "mp_coronal": [12, 15, 22, 16, 2], "chung_s224": [7, 3, 2, 17, 4], "chung_b336": [2, 12, 6, 6, 9]}}, "thanh_phan": [{"ten": "mp_sagittal", "cv_cu": 0.7106, "cv_chot": 0.6795}, {"ten": "mp_axial", "cv_cu": 0.7691, "cv_chot": 0.7476}, {"ten": "mp_coronal", "cv_cu": 0.7394, "cv_chot": 0.722}, {"ten": "chung_s224", "cv_cu": 0.7698, "cv_chot": 0.7329}, {"ten": "chung_b336", "cv_cu": 0.7481, "cv_chot": 0.7316}], "seed": {"moi_seed": [{"seed": 42, "auc": 0.7593}, {"seed": 7, "auc": 0.769}, {"seed": 2026, "auc": 0.7461}], "gop": 0.7645, "ci_gop": [0.7154, 0.8054], "n": 3, "do_lech": 0.0115}, "tung_nhan": [{"nhan": "Baker's", "auc": 0.899, "ci": [0.795, 0.971], "n_duong": 12}, {"nhan": "Medial OA", "auc": 0.896, "ci": [0.792, 0.969], "n_duong": 15}, {"nhan": "Effusion", "auc": 0.868, "ci": [0.772, 0.948], "n_duong": 35}, {"nhan": "PF OA", "auc": 0.786, "ci": [0.661, 0.907], "n_duong": 21}, {"nhan": "Medial Meniscus", "auc": 0.778, "ci": [0.65, 0.885], "n_duong": 26}, {"nhan": "Lateral Meniscus", "auc": 0.777, "ci": [0.654, 0.889], "n_duong": 23}, {"nhan": "Lateral OA", "auc": 0.743, "ci": [0.554, 0.897], "n_duong": 11}, {"nhan": "Contusion", "auc": 0.709, "ci": [0.546, 0.858], "n_duong": 19}, {"nhan": "Synovitis", "auc": 0.701, "ci": [0.561, 0.822], "n_duong": 27}, {"nhan": "ACL", "auc": 0.683, "ci": [0.532, 0.816], "n_duong": 24}, {"nhan": "Fracture", "auc": 0.672, "ci": [0.496, 0.819], "n_duong": 18}, {"nhan": "MCL", "auc": 0.662, "ci": [0.434, 0.861], "n_duong": 9}], "cnn": {"auc": 0.8848, "ci": [0.8508, 0.915], "gop_50_50": {"auc": 0.8519, "ci": [0.8153, 0.8833]}, "chenh": {"chenh": 0.1203, "ci": [0.0841, 0.1614]}, "mo_hinh": [{"ten": "efficientnet_b3_s42", "backbone": "efficientnet_b3", "auc": 0.8741, "ci": [0.8384, 0.9066], "gio": 2.32, "epoch": 12, "n_train": 4136, "gold": [0.6608, 0.778, 0.8273, 0.8471, 0.8665, 0.8742, 0.876, 0.8757, 0.8734, 0.8741, 0.8763, 0.8741], "val_llm": [0.6541, 0.798, 0.8349, 0.8541, 0.8661, 0.8687, 0.8694, 0.8698, 0.8683, 0.8666, 0.8654, 0.864]}, {"ten": "tf_efficientnetv2_b2_s7", "backbone": "tf_efficientnetv2_b2", "auc": 0.8791, "ci": [0.8464, 0.9086], "gio": 1.27, "epoch": 12, "n_train": 4136, "gold": [0.6074, 0.7656, 0.8292, 0.862, 0.8801, 0.8827, 0.8818, 0.8834, 0.8854, 0.8837, 0.8817, 0.8791], "val_llm": [0.5955, 0.7833, 0.8324, 0.8539, 0.8666, 0.8715, 0.8733, 0.8744, 0.872, 0.8688, 0.8667, 0.8651]}], "tung_nhan": [{"nhan": "ACL", "cnn": 0.966, "ci": [0.916, 0.997], "dino": 0.683}, {"nhan": "Contusion", "cnn": 0.949, "ci": [0.883, 0.996], "dino": 0.709}, {"nhan": "MCL", "cnn": 0.878, "ci": [0.751, 0.975], "dino": 0.662}, {"nhan": "Medial Meniscus", "cnn": 0.922, "ci": [0.852, 0.979], "dino": 0.778}, {"nhan": "Lateral OA", "cnn": 0.873, "ci": [0.717, 0.982], "dino": 0.743}, {"nhan": "Fracture", "cnn": 0.792, "ci": [0.654, 0.9], "dino": 0.672}, {"nhan": "Lateral Meniscus", "cnn": 0.87, "ci": [0.763, 0.961], "dino": 0.777}, {"nhan": "Medial OA", "cnn": 0.978, "ci": [0.938, 1.0], "dino": 0.896}, {"nhan": "Baker's", "cnn": 0.968, "ci": [0.918, 1.0], "dino": 0.899}, {"nhan": "PF OA", "cnn": 0.853, "ci": [0.721, 0.961], "dino": 0.786}, {"nhan": "Synovitis", "cnn": 0.71, "ci": [0.57, 0.835], "dino": 0.701}, {"nhan": "Effusion", "cnn": 0.86, "ci": [0.751, 0.959], "dino": 0.868}]}, "nhan_llm": {"tu_gan": {"ten": "LLM tự gắn (Gemini Flash)", "auc": 0.8572, "ci": [0.8232, 0.8885], "khop": 0.8118, "tung_benh": {"ACL": 0.945, "MCL": 0.921, "Medial Meniscus": 0.925, "Lateral Meniscus": 0.865, "Medial OA": 0.884, "Lateral OA": 0.829, "PF OA": 0.896, "Effusion": 0.864, "Synovitis": 0.679, "Baker's": 0.913, "Contusion": 0.76, "Fracture": 0.805}}, "cong_khai": {"ten": "LLM công khai", "auc": 0.8927, "ci": [0.8569, 0.9236], "khop": 0.8175, "tung_benh": {"ACL": 0.987, "MCL": 0.968, "Medial Meniscus": 0.948, "Lateral Meniscus": 0.879, "Medial OA": 0.932, "Lateral OA": 0.833, "PF OA": 0.902, "Effusion": 0.877, "Synovitis": 0.79, "Baker's": 0.944, "Contusion": 0.86, "Fracture": 0.793}}, "tu_dien": {"ten": "Từ điển tự viết", "auc": 0.7314, "ci": [0.6915, 0.7713], "khop": 0.4425, "tung_benh": {"ACL": 0.895, "MCL": 0.837, "Medial Meniscus": 0.776, "Lateral Meniscus": 0.778, "Medial OA": 0.766, "Lateral OA": 0.578, "PF OA": 0.755, "Effusion": 0.562, "Synovitis": 0.639, "Baker's": 0.771, "Contusion": 0.67, "Fracture": 0.749}}, "chenh_cong_khai": {"chenh": -0.0355, "ci": [-0.0538, -0.019]}, "khop_hai_bo": 0.9687}, "cuoi": {"nhom": {"gop_6_cnn": {"auc": 0.8961, "ci": [0.8636, 0.9248], "model": [1, 2, 3, 4, 5, 6]}, "gop_4_cnn_cong_khai": {"auc": 0.8907, "ci": [0.858, 0.9193], "model": [1, 2, 3, 4]}, "gop_2_cnn_tu_gan": {"auc": 0.8917, "ci": [0.8585, 0.9208], "model": [5, 6]}, "gop_2_cnn_cong_khai": {"auc": 0.8848, "ci": [0.8508, 0.915], "model": [1, 2]}}, "so_sanh": {"gop_6_cnn": {"chenh": 0.0113, "ci": [0.0016, 0.0209]}, "gop_4_cnn_cong_khai": {"chenh": 0.0059, "ci": [-0.0013, 0.0136]}, "gop_2_cnn_tu_gan": {"chenh": 0.0069, "ci": [-0.0094, 0.0246]}}, "tung_model": [{"so": 1, "auc": 0.8741, "ci": [0.8384, 0.9066], "mo_hinh": "efficientnet_b3_s42", "nhan": "cong_khai"}, {"so": 2, "auc": 0.8791, "ci": [0.8464, 0.9086], "mo_hinh": "tf_efficientnetv2_b2_s7", "nhan": "cong_khai"}, {"so": 3, "auc": 0.8829, "ci": [0.8491, 0.9127], "mo_hinh": "efficientnet_b3_s123", "nhan": "cong_khai"}, {"so": 4, "auc": 0.867, "ci": [0.8303, 0.8994], "mo_hinh": "tf_efficientnetv2_b2_s2026", "nhan": "cong_khai"}, {"so": 5, "auc": 0.8879, "ci": [0.8535, 0.9167], "mo_hinh": "efficientnet_b3_s42", "nhan": "tu_gan"}, {"so": 6, "auc": 0.8798, "ci": [0.845, 0.9112], "mo_hinh": "tf_efficientnetv2_b2_s7", "nhan": "tu_gan"}], "tung_benh": {"ACL": 0.966, "MCL": 0.897, "Medial Meniscus": 0.937, "Lateral Meniscus": 0.879, "Medial OA": 0.983, "Lateral OA": 0.84, "PF OA": 0.862, "Effusion": 0.894, "Synovitis": 0.718, "Baker's": 0.976, "Contusion": 0.949, "Fracture": 0.851}}, "nguon_nhan": {"A": 0.6266, "B": 0.6923, "D": 0.7467, "E": 0.7179, "auc_tu_dien": 0.7362, "auc_llm": 0.8927, "chenh": 0.0544, "ci": [0.0086, 0.0907]}, "seed_cu": {"diem": [0.7407, 0.7447, 0.734, 0.7468, 0.7431], "do_lech": 0.0049, "be_rong": 0.0128}, "hang_may": [{"hang": "GE", "n": 16, "auc": 0.7818, "ci": [0.7, 0.874]}, {"hang": "PHILIPS", "n": 18, "auc": 0.6985, "ci": [0.578, 0.789]}, {"hang": "SIEMENS", "n": 22, "auc": 0.7598, "ci": [0.704, 0.817]}], "tu_dien": [{"nhan": "ACL", "phu": 0.586, "precision": 0.84}, {"nhan": "MCL", "phu": 0.397, "precision": 0.6}, {"nhan": "Medial Meniscus", "phu": 0.466, "precision": 0.773}, {"nhan": "Lateral Meniscus", "phu": 0.483, "precision": 0.778}, {"nhan": "Medial OA", "phu": 0.19, "precision": 0.889}, {"nhan": "Lateral OA", "phu": 0.086, "precision": 0.5}, {"nhan": "PF OA", "phu": 0.534, "precision": 0.733}, {"nhan": "Effusion", "phu": 0.776, "precision": 0.625}, {"nhan": "Synovitis", "phu": 0.259, "precision": 0.733}, {"nhan": "Baker's", "phu": 0.276, "precision": 0.636}, {"nhan": "Contusion", "phu": 0.552, "precision": 0.467}, {"nhan": "Fracture", "phu": 0.362, "precision": 0.667}]};
 (() => {
   // Bo ve bieu do dung chung cho bao cao (khung.html) va slide (slide.html).
 // scripts/70_xuat_bao_cao.py chen nguyen van file nay vao cho `/*__VE__*/` BEN TRONG IIFE
@@ -618,7 +649,7 @@ const D = {"du_lieu": {"n_study": 4407, "n_series": 24371, "n_gold": 58, "series
 
 
 
-  const du = D.du_lieu, ce = D.chon_epoch, sd = D.seed, nn = D.nguon_nhan, cn = D.cnn;
+  const du = D.du_lieu, ce = D.chon_epoch, sd = D.seed, nn = D.nguon_nhan, cn = D.cnn, nl = D.nhan_llm, cf = D.cuoi.nhom.gop_6_cnn;
   const cuoi = sd.n > 1 ? sd.gop : ce.chot, ciCuoi = sd.n > 1 ? sd.ci_gop : ce.ci_chot;
   const set = (sel, html) => document.querySelectorAll(sel).forEach(e => { e.innerHTML = html; });
 
@@ -629,13 +660,13 @@ const D = {"du_lieu": {"n_study": 4407, "n_series": 24371, "n_gold": 58, "series
   if (m) { document.body.classList.add("mot"); tat[+m[1] - 1]?.classList.add("hien"); }
 
   set(".g-du-lieu", `${vn(du.n_study)} CA · ${vn(du.n_series)} SERIES · ${du.n_gold} CA GOLD`);
-  set(".g-test", "114 TEST HỎNG ÂM THẦM");
+  set(".g-test", "116 TEST HỎNG ÂM THẦM");
 
   // 1
   $("#bia-so").innerHTML = `
     <div><span class="gt cu so">${f(ce.cv_cu_bao_cao, 3)}</span><span class="mt">CV từng báo cáo. Chọn epoch trên chính tập đang chấm, nên lạc quan.</span></div>
     <div><span class="gt chinh so">${f(cuoi, 3)}</span><span class="mt">Giai đoạn 1, DINOv2 đóng băng, đo lại đúng cách. KTC 95%: ${f(ciCuoi[0], 3)}–${f(ciCuoi[1], 3)}.</span></div>
-    <div><span class="gt so" style="color:#5fd3a6">${f(cn.auc, 3)}</span><span class="mt">Giai đoạn 2, CNN 2.5D train cả mạng. KTC 95%: ${f(cn.ci[0], 3)}–${f(cn.ci[1], 3)}.</span></div>`;
+    <div><span class="gt so" style="color:#5fd3a6">${f(cf.auc, 3)}</span><span class="mt">Model cuối: gộp 6 CNN 2.5D train cả mạng, chốt trước. KTC 95%: ${f(cf.ci[0], 3)}–${f(cf.ci[1], 3)}.</span></div>`;
 
   // 2
   $("#s2-series").textContent = String(du.series_moi_study).replace(".", ",");
@@ -666,10 +697,11 @@ const D = {"du_lieu": {"n_study": 4407, "n_series": 24371, "n_gold": 58, "series
     { ten: "+ nhãn từ điển\n9 ngôn ngữ", v: 0.6923, mau: "var(--muc-3)" },
     { ten: "+ nhãn LLM\nthay từ điển", v: nn.D, mau: "var(--muc-3)" },
     { ten: "+ attention\nriêng từng bệnh", v: 0.7698, mau: "var(--muc-3)" },
-    { ten: "Gộp 5 head\ncách đo cũ", v: ce.cv_cu_bao_cao, mau: "var(--cu)" },
-    { ten: `Gộp 5 head × ${sd.n} seed\nđo đúng cách`, v: cuoi, ci: ciCuoi, mau: "var(--chinh)" },
-    { ten: "CNN 2.5D\ntrain cả mạng", v: cn.auc, ci: cn.ci, mau: "var(--phu)" },
-  ], { y: [0.45, 0.95], tick: [0.45, 0.05], w: 1000, h: 380, b: 52, bw: 70, d: 3, aria: "Macro AUC qua từng bước" });
+    { ten: "5 head\ncách đo cũ", v: ce.cv_cu_bao_cao, mau: "var(--cu)" },
+    { ten: `5 head × ${sd.n} seed\nđo đúng`, v: cuoi, ci: ciCuoi, mau: "var(--chinh)" },
+    { ten: "CNN 2.5D\n2 model", v: cn.auc, ci: cn.ci, mau: "var(--phu)" },
+    { ten: "Model cuối\ngộp 6 CNN", v: cf.auc, ci: cf.ci, mau: "var(--phu)" },
+  ], { y: [0.45, 0.95], tick: [0.45, 0.05], w: 1000, h: 380, b: 52, bw: 64, d: 3, aria: "Macro AUC qua từng bước" });
 
   // 7, 8
   const allChon = Object.values(ce.epoch_chon_tung_fold).flat();
@@ -742,7 +774,7 @@ const D = {"du_lieu": {"n_study": 4407, "n_series": 24371, "n_gold": 58, "series
         { x: [0.6, 1.0], tick: [0.6, 0.1], hang: 25, w: 640, aria: "AUC từng bệnh, DINOv2 so với CNN" });
   const tang = cn.tung_nhan.slice(0, 3), yeu = [...cn.tung_nhan].sort((a, b) => a.cnn - b.cnn)[0];
   const VI = { ACL: "Dây chằng chéo trước (ACL)", Contusion: "Dập xương", MCL: "Dây chằng bên trong (MCL)", Synovitis: "Viêm màng hoạt dịch" };
-  $("#s15-the").innerHTML = tang.map(r => `<div class="the"><span class="gt so" style="font:500 50px/1 var(--f-so); color:var(--chinh)">+${f(r.cnn - r.dino, 3)}</span><span class="tt">${VI[r.nhan] || r.nhan}</span><span class="gc"><span class="so">${f(r.dino, 3)} → ${f(r.cnn, 3)}</span> · tổn thương nằm trên vài lát</span></div>`).join("")
+  $("#s15-the").innerHTML = tang.map(r => `<div class="the" style="padding:20px 28px; gap:8px"><span class="gt so" style="font:500 44px/1 var(--f-so); color:var(--chinh)">+${f(r.cnn - r.dino, 3)}</span><span class="tt">${VI[r.nhan] || r.nhan}</span><span class="gc"><span class="so">${f(r.dino, 3)} → ${f(r.cnn, 3)}</span></span></div>`).join("")
     + `<div class="luu-y"><b>Còn yếu nhất: ${VI[yeu.nhan] || yeu.nhan}, <span class="so">${f(yeu.cnn, 3)}</span></b><p>Gần như không đổi so với DINOv2 (<span class="so">${f(yeu.dino, 3)}</span>).</p></div>`;
 
   const nE = m1.gold.length;
@@ -756,9 +788,31 @@ const D = {"du_lieu": {"n_study": 4407, "n_series": 24371, "n_gold": 58, "series
            { e: nE, v: m2.gold[nE - 1], mau: "var(--phu)", r: 5, nhan: "chốt: epoch cuối", dx: -10, dy: -14, anchor: "end", dam: true }],
   });
 
+  // 17 · nhãn tự gắn
+  const TN = { tu_gan: "LLM tự gắn (Gemini Flash)", cong_khai: "LLM công khai", tu_dien: "Từ điển tự viết" };
+  $("#s17-bang").innerHTML = ["cong_khai", "tu_gan", "tu_dien"].map(k => `<tr${k === "tu_gan" ? ' style="font-weight:600"' : ""}><td>${TN[k]}</td><td class="so">${f(nl[k].auc, 3)}</td><td class="so">${f(nl[k].khop * 100, 1)}%</td></tr>`).join("");
+  $("#s17-gc").innerHTML = `Tự gắn − công khai: <span class="so">${f(nl.chenh_cong_khai.chenh, 3)}</span>, KTC bắt cặp <span class="so">[${f(nl.chenh_cong_khai.ci[0], 3)}, ${f(nl.chenh_cong_khai.ci[1], 3)}]</span>. Hai bộ LLM khớp nhau <span class="so">${f(nl.khop_hai_bo * 100, 1)}%</span> số ô trên 4.349 ca không có nhãn bác sĩ.`;
+  $("#s17-y1").innerHTML = `Cả hai bộ LLM khớp bác sĩ khoảng <span class="so">${f(nl.tu_gan.khop * 100, 0)}%</span> số ô (ca × bệnh). Nhãn tự gắn yếu nhất ở viêm màng hoạt dịch và dập xương.`;
+  const g2 = D.cuoi.nhom;
+  $("#s17-y2").innerHTML = `Cùng kiến trúc, cùng seed, chỉ đổi nhãn: CNN nhãn tự gắn <span class="so">${f(g2.gop_2_cnn_tu_gan.auc, 3)}</span>, CNN nhãn công khai <span class="so">${f(g2.gop_2_cnn_cong_khai.auc, 3)}</span>.`;
+
+  // 18 · model cuối
+  $("#s18-so").textContent = f(cf.auc, 3);
+  $("#s18-mt").innerHTML = `Gộp theo hạng 6 CNN: 4 model nhãn công khai + 2 model nhãn tự gắn, mỗi model EMA epoch cuối.<br><br>Khoảng tin cậy 95%:<br><span class="so" style="font-size:40px; color:var(--muc)">${f(cf.ci[0], 3)} – ${f(cf.ci[1], 3)}</span>`;
+  const ss = D.cuoi.so_sanh.gop_6_cnn;
+  $("#s18-chenh").innerHTML = `Hơn 2 CNN cũ: <span class="so">+${f(ss.chenh, 3)}</span>, KTC bắt cặp <span class="so">[+${f(ss.ci[0], 3)}, +${f(ss.ci[1], 3)}]</span>`;
+  cot($("#s18-cot"), [
+    { ten: "DINOv2\ngiai đoạn 1", v: cuoi, ci: ciCuoi, mau: "var(--muc-3)" },
+    { ten: "2 CNN\nnhãn công khai", v: g2.gop_2_cnn_cong_khai.auc, ci: g2.gop_2_cnn_cong_khai.ci, mau: "var(--chinh-nhat)" },
+    { ten: "2 CNN\nnhãn tự gắn", v: g2.gop_2_cnn_tu_gan.auc, ci: g2.gop_2_cnn_tu_gan.ci, mau: "var(--chinh-nhat)" },
+    { ten: "4 CNN\nnhãn công khai", v: g2.gop_4_cnn_cong_khai.auc, ci: g2.gop_4_cnn_cong_khai.ci, mau: "var(--chinh-nhat)" },
+    { ten: "Model cuối\ngộp 6 CNN", v: cf.auc, ci: cf.ci, mau: "var(--phu)" },
+  ], { y: [0.65, 0.95], tick: [0.65, 0.05], w: 620, h: 330, b: 40, bw: 62, d: 3, aria: "Model cuối so với các nhóm" });
+  $("#s18-gc").innerHTML = `Từng model đơn: <span class="so">${D.cuoi.tung_model.map(m => f(m.auc, 3)).join(" · ")}</span>. Không model nào bị loại vì điểm thấp.`;
+
   // kết luận
   $("#k1").textContent = `Chỉ 58 ca: ${f(nn.A, 3)}. Thêm nhãn LLM cho 4.349 ca: ${f(nn.D, 3)}.`;
-  $("#k2").textContent = `DINOv2 đóng băng ${f(cuoi, 3)} → CNN 2.5D ${f(cn.auc, 3)}, hơn +${f(cn.chenh.chenh, 3)} với khoảng tin cậy bắt cặp không chứa 0.`;
+  $("#k2").textContent = `DINOv2 đóng băng ${f(cuoi, 3)} → CNN 2.5D ${f(cn.auc, 3)} → gộp 6 CNN ${f(cf.auc, 3)}; nhãn tự gắn bằng Gemini Flash cho CNN tốt ngang nhãn công khai.`;
   $("#k3").textContent = `Đo lại khiến điểm giảm từ ${f(ce.cv_cu_bao_cao, 3)} xuống ${f(cuoi, 3)}; ở giai đoạn 2 mọi lựa chọn được chốt trước khi chấm.`;
   document.body.dataset.xong = "1";
 })();

@@ -10,6 +10,20 @@ Full pipeline built from raw DICOM to predictions. No one else's fine-tuned chec
 
 ## Results
 
+**Final model: rank average of 6 2.5D CNNs, macro AUC `0.896`**, 95% CI `[0.864, 0.925]` on the 58 radiologist-labelled studies. The list of 6 models, the blending rule and the epoch were written to [`reports/CHOT_MODEL_CUOI.md`](reports/CHOT_MODEL_CUOI.md) and committed **before** the last training runs produced results (scored by `scripts/93_cham_model_cuoi.py`, numbers in `reports/day15_model_cuoi.json`).
+
+| Group (each model: EMA weights, epoch 12) | Macro AUC | 95% CI |
+|---|---:|---|
+| **6-CNN blend (final)** | **0.896** | [0.864, 0.925] |
+| 4 CNNs on public labels (B3 s42, s123 + V2-B2 s7, s2026) | 0.891 | [0.858, 0.919] |
+| 2 CNNs on **own** labels (B3 s42 + V2-B2 s7) | 0.892 | [0.859, 0.921] |
+| 2 CNNs on public labels (B3 s42 + V2-B2 s7, previous) | 0.885 | [0.851, 0.915] |
+
+- The 6-CNN blend beats the previous result by `+0.011`, paired CI `[+0.002, +0.021]`.
+- Same architecture and seeds, only the labels changed: own labels `0.892` vs public `0.885`, `+0.007`, CI `[−0.009, +0.025]` (not distinguishable).
+- Two B3 runs failed technically (NaN after epoch 1) and were rerun with the same configuration; logged in the declaration file.
+- **Limitation:** the 58 studies never entered training but were looked at many times during development, so this is an **internal evaluation**, not a fully independent test. AUC measures ranking, not calibration or clinical usefulness.
+
 **Stage 2, 2.5D CNN fine-tuned end to end: macro AUC `0.8848`**, 95% CI `[0.851, 0.915]`, on the 58 radiologist-labelled studies, which never enter training. It is a rank average of two models, EfficientNet-B3 (`0.8741`) and EfficientNetV2-B2 (`0.8791`), each trained for 12 epochs on LLM labels of 4,136 studies, using the EMA weights of the last epoch. Every choice was fixed before scoring (`scripts/81_kaggle_train_25d.py`, scored by `scripts/82_cham_cnn_25d.py`, numbers in `reports/day14_cnn_25d.json`).
 
 | | Macro AUC | 95% CI |
@@ -290,7 +304,7 @@ Versions are **pinned in `uv.lock`**. Several documented numbers depend on the e
 | **Own LLM labels** for all 4,407 reports (Gemini Flash via `agy`, prompt in the script, resumable) | `python scripts/90_gan_nhan_llm.py` | local, needs `agy` |
 | Compare own labels with radiologist, public LLM and lexicon labels on the 58 gold studies | `python scripts/91_so_sanh_nhan.py` | local |
 | Retrain the 2.5D CNN on own labels | `python scripts/92_day_train_nhan_minh.py` | **Kaggle GPU T4×2** |
-| Score the CNN trained on own labels | `python scripts/82_cham_cnn_25d.py --nhan-minh --tai` | local |
+| **Score the final model** (6-CNN blend, pre-declared list) | `python scripts/93_cham_model_cuoi.py --tai` | local |
 | **Web demo** (sample studies + DICOM upload, 12 probabilities, attention map) | `python scripts/95_web_demo.py` → http://127.0.0.1:8790 | local |
 
 ### Why feature extraction runs on Kaggle

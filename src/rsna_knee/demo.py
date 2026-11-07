@@ -55,7 +55,7 @@ class MayDoan:
         self.dev = "cuda" if torch.cuda.is_available() else "cpu"
         self.models = []
         for f in sorted(THU_MUC_MODEL.glob("*/model_cuoi.pt")):
-            backbone = f.parent.name.rsplit("_s", 1)[0]
+            backbone = f.parent.name.split("__")[0].rsplit("_s", 1)[0]   # <backbone>_s<seed>[__<nhan>]
             net = self.nb.Mang25D(backbone, pretrained=False)
             net.load_state_dict({k: v.float() for k, v in torch.load(f, map_location="cpu").items()})
             self.models.append((f.parent.name, net.to(self.dev).eval()))

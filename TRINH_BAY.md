@@ -88,6 +88,21 @@ Tăng mạnh nhất ở **tổn thương nhỏ, khu trú** (ACL +0.28, dập xư
 
 ---
 
+## 3b. Model cuối: gộp 6 CNN = 0.896
+
+Danh sách model được **chốt và commit trước** khi có kết quả các lần train cuối (`reports/CHOT_MODEL_CUOI.md`).
+
+| Nhóm | Macro AUC | KTC 95% |
+|---|---:|---|
+| **Gộp 6 CNN (model chính)** | **0.896** | [0.864, 0.925] |
+| 4 CNN nhãn công khai | 0.891 | [0.858, 0.919] |
+| 2 CNN nhãn tự gắn (Gemini Flash) | 0.892 | [0.859, 0.921] |
+| 2 CNN nhãn công khai (mốc cũ) | 0.885 | [0.851, 0.915] |
+
+- Hơn mốc cũ +0.011, KTC bắt cặp [+0.002, +0.021].
+- Nhãn tự gắn kém bộ công khai khi so trực tiếp với bác sĩ (0.857 so với 0.893), nhưng CNN train bằng nó lại tốt ngang (0.892 so với 0.885, chênh không phân định được).
+- Hai lần B3 lỗi kỹ thuật (NaN sau epoch 1) được chạy lại đúng cấu hình, có ghi lại.
+
 ## 4. Những phát hiện quan trọng (tìm ra nhờ đo, không nhờ đoán)
 
 1. **Điểm 0.8112 ban đầu là ảo.** Lúc đo CV, epoch tốt nhất được chọn ngay trên fold đang chấm. Còn model cuối thì âm thầm train tới khoảng epoch 80: nhãn mềm làm AUC thành `nan`, nên code lùi về chọn theo loss mà không báo. Sửa bằng cách chốt 9 epoch từ trước, chọn bằng một tập nhãn LLM giữ riêng, không nhìn gold. Điểm thật là **0.7645**.
@@ -111,12 +126,13 @@ Nhãn LLM dùng để train là bộ công khai, không rõ LLM và prompt. Em c
 - Không nguồn nào đúng 100%: cả hai bộ LLM khớp bác sĩ khoảng 81% số ô.
 - Nhãn tự gắn kém bộ công khai 0.036 (kém thật, KTC không chứa 0), chủ yếu ở viêm màng hoạt dịch và dập xương; hơn từ điển 0.126.
 - Hai bộ LLM khớp nhau 96,9% trên 4.349 ca không có nhãn bác sĩ.
-- Đang train lại CNN bằng nhãn tự gắn để đo ảnh hưởng lên model cuối.
+- CNN train bằng nhãn tự gắn đạt 0.892, ngang CNN nhãn công khai (0.885): nhãn của mình dùng được thật.
 
 ## 5. Giới hạn (nói trước khi thầy hỏi)
 
+- **58 ca chưa bao giờ vào train nhưng đã được xem nhiều lần** khi phát triển, nên đây là đánh giá nội bộ, không phải test độc lập hoàn toàn. AUC đo khả năng xếp hạng, chưa nói gì về xác suất chuẩn hay dùng lâm sàng. Kết luận ở mức chứng minh ý tưởng.
+- "CNN nhìn ra tổn thương nhỏ" là giả thuyết giải thích, chưa được chứng minh.
 - **Chỉ 58 ca để chấm**, nên khoảng tin cậy rộng khoảng ±0.03. Chênh lệch nhỏ cỡ 0.01 giữa hai model CNN **chưa** kết luận được.
-- Mỗi model CNN mới train **1 lần (1 seed)**. Ở giai đoạn 1, đổi seed làm điểm dao động với độ lệch chuẩn khoảng 0.01.
 - Chọn CNN làm kết quả chính thay vì bản gộp 50/50 là chọn 1 trong 2 sau khi xem điểm. Chênh 0.033 nên kết luận không đổi, nhưng ghi rõ ra đây.
 - Nhãn train là **nhãn LLM** (khớp nhãn bác sĩ ở mức AUC 0.893), nên model bị giới hạn bởi chất lượng nhãn đó.
 - Viêm màng hoạt dịch (0.71) và gãy xương (0.79) vẫn còn yếu.
@@ -149,6 +165,7 @@ uv run python scripts/48_do_theo_epoch.py --cham  # chấm bộ gộp 5 head × 
 uv run kaggle kernels push -p kaggle/81_train                   # đẩy notebook train lên Kaggle
 uv run kaggle kernels status votrananhquan/rsna-knee-train-25d  # khoảng 3 giờ thì COMPLETE
 uv run python scripts/82_cham_cnn_25d.py --tai                  # tải kết quả, chấm 58 ca gold -> 0.8848
+uv run python scripts/93_cham_model_cuoi.py --tai               # model cuối gộp 6 CNN -> 0.896
 ```
 
 **Xuất báo cáo và slide:**

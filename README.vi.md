@@ -10,6 +10,20 @@ Toàn bộ pipeline tự dựng từ file DICOM thô tới dự đoán, không d
 
 ## Kết quả
 
+**Model cuối: gộp theo hạng 6 CNN 2.5D, macro AUC `0.896`**, KTC 95% `[0.864, 0.925]` trên 58 ca bác sĩ gán nhãn. Danh sách 6 model, cách gộp và epoch được ghi vào [`reports/CHOT_MODEL_CUOI.md`](reports/CHOT_MODEL_CUOI.md) và commit **trước** khi các lần train cuối có kết quả (chấm bằng `scripts/93_cham_model_cuoi.py`, số liệu ở `reports/day15_model_cuoi.json`).
+
+| Nhóm (mỗi model: EMA epoch 12) | Macro AUC | KTC 95% |
+|---|---:|---|
+| **Gộp 6 CNN (model chính)** | **0.896** | [0.864, 0.925] |
+| Gộp 4 CNN nhãn công khai (B3 s42, s123 + V2-B2 s7, s2026) | 0.891 | [0.858, 0.919] |
+| Gộp 2 CNN nhãn **tự gắn** (B3 s42 + V2-B2 s7) | 0.892 | [0.859, 0.921] |
+| Gộp 2 CNN nhãn công khai (B3 s42 + V2-B2 s7, mốc cũ) | 0.885 | [0.851, 0.915] |
+
+- Gộp 6 hơn mốc cũ `+0.011`, KTC bắt cặp `[+0.002, +0.021]`.
+- Cùng kiến trúc và seed, chỉ đổi nhãn: CNN nhãn tự gắn `0.892` so với nhãn công khai `0.885`, chênh `+0.007`, KTC `[−0.009, +0.025]` (không phân định được).
+- Hai lần train B3 bị lỗi kỹ thuật NaN sau epoch 1 và được chạy lại đúng cấu hình; sự cố ghi trong file chốt.
+- **Giới hạn:** 58 ca chưa bao giờ vào train nhưng đã được xem nhiều lần khi phát triển, nên đây là **đánh giá nội bộ**, không phải test độc lập hoàn toàn. AUC đo khả năng xếp hạng, chưa nói gì về xác suất chuẩn hay dùng lâm sàng.
+
 **Giai đoạn 2, CNN 2.5D train toàn bộ mạng: macro AUC `0.8848`**, khoảng tin cậy 95% `[0.851, 0.915]`, trên 58 ca bác sĩ gán nhãn. 58 ca này không bao giờ vào train. Đây là gộp theo hạng hai model, EfficientNet-B3 (`0.8741`) và EfficientNetV2-B2 (`0.8791`), mỗi model train 12 epoch trên nhãn LLM của 4.136 ca, lấy trọng số EMA ở epoch cuối. Mọi lựa chọn đều chốt trước khi chấm (`scripts/81_kaggle_train_25d.py`, chấm bằng `scripts/82_cham_cnn_25d.py`, số liệu ở `reports/day14_cnn_25d.json`).
 
 | | Macro AUC | KTC 95% |
@@ -289,7 +303,7 @@ Phiên bản **ghim trong `uv.lock`**. Nhiều con số trong tài liệu gắn 
 | **Tự gắn nhãn LLM** cho 4.407 báo cáo (Gemini Flash qua `agy`, prompt trong script, chạy tiếp được) | `python scripts/90_gan_nhan_llm.py` | máy, cần `agy` |
 | So nhãn tự gắn với nhãn bác sĩ, nhãn công khai, từ điển trên 58 ca gold | `python scripts/91_so_sanh_nhan.py` | máy |
 | Train lại CNN 2.5D bằng nhãn tự gắn | `python scripts/92_day_train_nhan_minh.py` | **Kaggle GPU T4×2** |
-| Chấm CNN train bằng nhãn tự gắn | `python scripts/82_cham_cnn_25d.py --nhan-minh --tai` | máy |
+| **Chấm model cuối** (gộp 6 CNN theo danh sách đã chốt) | `python scripts/93_cham_model_cuoi.py --tai` | máy |
 | **Web demo** (ca mẫu + tải DICOM lên, 12 xác suất, bản đồ chú ý) | `python scripts/95_web_demo.py` → http://127.0.0.1:8790 | máy |
 
 ### Vì sao trích đặc trưng phải chạy trên Kaggle

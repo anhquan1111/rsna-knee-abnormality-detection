@@ -387,6 +387,37 @@ pre.ma b { font-weight: 500; } pre.ma .cu { color: var(--cu); } pre.ma .chinh { 
   <div class="chan"><span>RSNA KNEE · PBL</span><span class="trang"></span></div>
 </section>
 
+<!-- 17 · NHÃN LLM TỰ GẮN -->
+<section class="slide" data-ghi-chu="Thầy hỏi nhãn LLM có đúng thật không. Em cho Gemini Flash đọc lại cả 4.407 báo cáo bằng prompt tự viết, chốt trước, LLM chỉ thấy văn bản báo cáo. So với nhãn bác sĩ trên 58 ca: không nguồn nào đúng 100%, cả hai bộ LLM khớp bác sĩ khoảng 81% số ô. Nhãn tự gắn kém bộ công khai một chút khi so trực tiếp, nhưng CNN train bằng nhãn tự gắn lại cho kết quả ngang CNN train bằng nhãn công khai. Nghĩa là chất lượng nhãn đo trên giấy không quyết định hết chất lượng model.">
+  <span class="eyebrow">7 · Giai đoạn 2: nhãn của chính mình</span>
+  <h2>Tự gắn lại nhãn LLM để kiểm chứng</h2>
+  <div class="hai lech">
+    <div class="the"><span class="tt">Nhãn so với bác sĩ trên 58 ca gold</span>
+      <table><thead><tr><th>Nguồn nhãn</th><th class="so">AUC</th><th class="so">khớp bác sĩ @0.5</th></tr></thead><tbody id="s17-bang"></tbody></table>
+      <span class="gc" id="s17-gc"></span></div>
+    <div style="display:grid; gap:22px; align-content:start">
+      <div class="luu-y"><b>Không nguồn nào đúng 100%</b><p id="s17-y1"></p></div>
+      <div class="luu-y" style="border-color:var(--phu)"><b>Nhưng CNN học từ nhãn tự gắn vẫn tốt ngang</b><p id="s17-y2"></p></div>
+    </div>
+  </div>
+  <div class="chan"><span>RSNA KNEE · PBL</span><span class="trang"></span></div>
+</section>
+
+<!-- 18 · MODEL CUỐI -->
+<section class="slide" data-ghi-chu="Model cuối là danh sách chốt trước khi xem điểm, ghi trong file CHOT_MODEL_CUOI.md và commit lên GitHub trước khi các lần train cuối có kết quả: gộp theo hạng 6 CNN, 4 model nhãn công khai và 2 model nhãn tự gắn, mỗi model lấy trọng số EMA ở epoch cuối. Kết quả 0.896, hơn mốc 0.885 một chút và khoảng tin cậy bắt cặp không chứa 0. Hai model B3 bị lỗi kỹ thuật NaN sau epoch 1 và được chạy lại đúng cấu hình cũ; sự cố cũng được ghi vào file chốt.">
+  <span class="eyebrow">7 · Giai đoạn 2: model cuối</span>
+  <h2>Model cuối: gộp 6 CNN, chốt trước khi chấm</h2>
+  <div class="hai lech">
+    <div style="display:grid; gap:24px; align-content:start">
+      <div class="so-lon" id="s18-so" style="color:var(--phu)"></div>
+      <p style="font-size:26px; color:var(--muc-2)" id="s18-mt"></p>
+      <div class="luu-y" style="border-color:var(--phu)"><b id="s18-chenh"></b><p>Danh sách 6 model, cách gộp và epoch được ghi vào <code>CHOT_MODEL_CUOI.md</code> và commit <b>trước</b> khi có kết quả các lần train cuối.</p></div>
+    </div>
+    <div class="the"><span class="tt">Macro AUC trên 58 ca gold, kèm khoảng tin cậy 95%</span><div class="hinh" id="s18-cot"></div><span class="gc" id="s18-gc"></span></div>
+  </div>
+  <div class="chan"><span>RSNA KNEE · PBL</span><span class="trang"></span></div>
+</section>
+
 <!-- 13 · LỖI ÂM THẦM -->
 <section class="slide" data-ghi-chu="Phần lớn thời gian dự án dành cho lỗi không báo exception: pipeline vẫn chạy, vẫn ra một con số hợp lý, chỉ có con số đó sai. Chọn ba hoặc bốn thẻ để kể, ví dụ rò rỉ khi chia theo series và bộ nhãn công khai chép nhãn gold. Mỗi lỗi đều có test hoặc chốt chặn; bộ test hiện có 114 test, không cần ảnh.">
   <span class="eyebrow">8 · Những điều đo được</span>
@@ -403,20 +434,20 @@ pre.ma b { font-weight: 500; } pre.ma .cu { color: var(--cu); } pre.ma .chinh { 
 </section>
 
 <!-- 14 · GIỚI HẠN -->
-<section class="slide" data-ghi-chu="Nói thẳng các giới hạn. 58 ca là trần cứng nên khoảng tin cậy vẫn rộng. Mỗi CNN mới train một seed, trong khi ở giai đoạn 1 chỉ đổi seed đã xê dịch khoảng 0.01. Chọn CNN làm kết quả chính thay vì bản gộp 50/50 là chọn một trong hai sau khi thấy điểm; chênh 0.033 nên kết luận không đổi, nhưng phải nói ra. Nhãn train là nhãn LLM của người khác công bố. Hướng tiếp: thêm seed cho CNN, tăng độ phân giải cho tổn thương nhỏ, và một tập kiểm tra lớn hơn.">
+<section class="slide" data-ghi-chu="Nói thẳng các giới hạn. 58 ca là trần cứng nên khoảng tin cậy vẫn rộng. 58 ca này chưa bao giờ vào train nhưng đã được xem nhiều lần khi phát triển, nên đây là đánh giá nội bộ. Chọn CNN làm kết quả chính thay vì bản gộp 50/50 là chọn một trong hai sau khi thấy điểm; chênh 0.033 nên kết luận không đổi, nhưng phải nói ra. Nhãn train là nhãn LLM của người khác công bố. Hướng tiếp: thêm seed cho CNN, tăng độ phân giải cho tổn thương nhỏ, và một tập kiểm tra lớn hơn.">
   <span class="eyebrow">9 · Giới hạn và hướng tiếp</span>
   <h2>Điều bài này chưa làm được</h2>
   <div class="hai">
     <div class="the"><span class="tt">Giới hạn</span>
       <ul class="ds" style="font-size:26px; gap:16px">
         <li><b>58 ca là trần cứng.</b> Khoảng tin cậy rộng khoảng 0.06–0.09; thêm ảnh hay nhãn máy không làm nó hẹp lại.</li>
-        <li><b>Mỗi CNN mới train một seed.</b> Ở giai đoạn 1, chỉ đổi seed đã xê dịch khoảng ±0.01.</li>
+        <li><b>58 ca đã được xem nhiều lần</b> khi phát triển (dù chưa bao giờ vào train): đây là đánh giá nội bộ, không phải test độc lập hoàn toàn.</li>
         <li><b>Chọn CNN thay bản gộp 50/50</b> là chọn 1 trong 2 sau khi xem điểm. Chênh 0.033 nên kết luận không đổi, nhưng ghi rõ.</li>
-        <li><b>Nhãn train là nhãn LLM</b> người khác công bố, khớp bác sĩ ở AUC 0.893. Rò rỉ theo hãng máy chưa chặn.</li>
+        <li><b>Nhãn train là nhãn LLM</b>, khớp bác sĩ khoảng 81% số ô. AUC đo xếp hạng, chưa nói gì về xác suất chuẩn hay dùng lâm sàng. Rò rỉ theo hãng máy chưa chặn.</li>
       </ul></div>
     <div class="the"><span class="tt">Hướng tiếp, theo thứ tự đáng làm</span>
       <ul class="ds" style="font-size:26px; gap:16px">
-        <li><b>Thêm seed cho CNN</b> rồi gộp: mỗi lần khoảng 3 giờ GPU miễn phí trên Kaggle.</li>
+        <li><b>Thêm seed và backbone</b> rồi gộp: 6 CNN đã hơn 2 CNN +0.011; mỗi lần thêm khoảng 3 giờ GPU miễn phí.</li>
         <li><b>Độ phân giải và số lát cao hơn</b> cho tổn thương nhỏ; viêm màng hoạt dịch (0.71) và gãy xương (0.79) còn yếu nhất.</li>
         <li><b>Một tập kiểm tra có nhãn lớn hơn 58 ca</b> để phân xử các chênh lệch nhỏ cỡ 0.01.</li>
       </ul></div>
@@ -441,7 +472,7 @@ pre.ma b { font-weight: 500; } pre.ma .cu { color: var(--cu); } pre.ma .chinh { 
 (() => {
   /*__VE__*/
 
-  const du = D.du_lieu, ce = D.chon_epoch, sd = D.seed, nn = D.nguon_nhan, cn = D.cnn;
+  const du = D.du_lieu, ce = D.chon_epoch, sd = D.seed, nn = D.nguon_nhan, cn = D.cnn, nl = D.nhan_llm, cf = D.cuoi.nhom.gop_6_cnn;
   const cuoi = sd.n > 1 ? sd.gop : ce.chot, ciCuoi = sd.n > 1 ? sd.ci_gop : ce.ci_chot;
   const set = (sel, html) => document.querySelectorAll(sel).forEach(e => { e.innerHTML = html; });
 
@@ -452,13 +483,13 @@ pre.ma b { font-weight: 500; } pre.ma .cu { color: var(--cu); } pre.ma .chinh { 
   if (m) { document.body.classList.add("mot"); tat[+m[1] - 1]?.classList.add("hien"); }
 
   set(".g-du-lieu", `${vn(du.n_study)} CA · ${vn(du.n_series)} SERIES · ${du.n_gold} CA GOLD`);
-  set(".g-test", "114 TEST HỎNG ÂM THẦM");
+  set(".g-test", "116 TEST HỎNG ÂM THẦM");
 
   // 1
   $("#bia-so").innerHTML = `
     <div><span class="gt cu so">${f(ce.cv_cu_bao_cao, 3)}</span><span class="mt">CV từng báo cáo. Chọn epoch trên chính tập đang chấm, nên lạc quan.</span></div>
     <div><span class="gt chinh so">${f(cuoi, 3)}</span><span class="mt">Giai đoạn 1, DINOv2 đóng băng, đo lại đúng cách. KTC 95%: ${f(ciCuoi[0], 3)}–${f(ciCuoi[1], 3)}.</span></div>
-    <div><span class="gt so" style="color:#5fd3a6">${f(cn.auc, 3)}</span><span class="mt">Giai đoạn 2, CNN 2.5D train cả mạng. KTC 95%: ${f(cn.ci[0], 3)}–${f(cn.ci[1], 3)}.</span></div>`;
+    <div><span class="gt so" style="color:#5fd3a6">${f(cf.auc, 3)}</span><span class="mt">Model cuối: gộp 6 CNN 2.5D train cả mạng, chốt trước. KTC 95%: ${f(cf.ci[0], 3)}–${f(cf.ci[1], 3)}.</span></div>`;
 
   // 2
   $("#s2-series").textContent = String(du.series_moi_study).replace(".", ",");
@@ -489,10 +520,11 @@ pre.ma b { font-weight: 500; } pre.ma .cu { color: var(--cu); } pre.ma .chinh { 
     { ten: "+ nhãn từ điển\n9 ngôn ngữ", v: 0.6923, mau: "var(--muc-3)" },
     { ten: "+ nhãn LLM\nthay từ điển", v: nn.D, mau: "var(--muc-3)" },
     { ten: "+ attention\nriêng từng bệnh", v: 0.7698, mau: "var(--muc-3)" },
-    { ten: "Gộp 5 head\ncách đo cũ", v: ce.cv_cu_bao_cao, mau: "var(--cu)" },
-    { ten: `Gộp 5 head × ${sd.n} seed\nđo đúng cách`, v: cuoi, ci: ciCuoi, mau: "var(--chinh)" },
-    { ten: "CNN 2.5D\ntrain cả mạng", v: cn.auc, ci: cn.ci, mau: "var(--phu)" },
-  ], { y: [0.45, 0.95], tick: [0.45, 0.05], w: 1000, h: 380, b: 52, bw: 70, d: 3, aria: "Macro AUC qua từng bước" });
+    { ten: "5 head\ncách đo cũ", v: ce.cv_cu_bao_cao, mau: "var(--cu)" },
+    { ten: `5 head × ${sd.n} seed\nđo đúng`, v: cuoi, ci: ciCuoi, mau: "var(--chinh)" },
+    { ten: "CNN 2.5D\n2 model", v: cn.auc, ci: cn.ci, mau: "var(--phu)" },
+    { ten: "Model cuối\ngộp 6 CNN", v: cf.auc, ci: cf.ci, mau: "var(--phu)" },
+  ], { y: [0.45, 0.95], tick: [0.45, 0.05], w: 1000, h: 380, b: 52, bw: 64, d: 3, aria: "Macro AUC qua từng bước" });
 
   // 7, 8
   const allChon = Object.values(ce.epoch_chon_tung_fold).flat();
@@ -579,9 +611,31 @@ pre.ma b { font-weight: 500; } pre.ma .cu { color: var(--cu); } pre.ma .chinh { 
            { e: nE, v: m2.gold[nE - 1], mau: "var(--phu)", r: 5, nhan: "chốt: epoch cuối", dx: -10, dy: -14, anchor: "end", dam: true }],
   });
 
+  // 17 · nhãn tự gắn
+  const TN = { tu_gan: "LLM tự gắn (Gemini Flash)", cong_khai: "LLM công khai", tu_dien: "Từ điển tự viết" };
+  $("#s17-bang").innerHTML = ["cong_khai", "tu_gan", "tu_dien"].map(k => `<tr${k === "tu_gan" ? ' style="font-weight:600"' : ""}><td>${TN[k]}</td><td class="so">${f(nl[k].auc, 3)}</td><td class="so">${f(nl[k].khop * 100, 1)}%</td></tr>`).join("");
+  $("#s17-gc").innerHTML = `Tự gắn − công khai: <span class="so">${f(nl.chenh_cong_khai.chenh, 3)}</span>, KTC bắt cặp <span class="so">[${f(nl.chenh_cong_khai.ci[0], 3)}, ${f(nl.chenh_cong_khai.ci[1], 3)}]</span>. Hai bộ LLM khớp nhau <span class="so">${f(nl.khop_hai_bo * 100, 1)}%</span> số ô trên 4.349 ca không có nhãn bác sĩ.`;
+  $("#s17-y1").innerHTML = `Cả hai bộ LLM khớp bác sĩ khoảng <span class="so">${f(nl.tu_gan.khop * 100, 0)}%</span> số ô (ca × bệnh). Nhãn tự gắn yếu nhất ở viêm màng hoạt dịch và dập xương.`;
+  const g2 = D.cuoi.nhom;
+  $("#s17-y2").innerHTML = `Cùng kiến trúc, cùng seed, chỉ đổi nhãn: CNN nhãn tự gắn <span class="so">${f(g2.gop_2_cnn_tu_gan.auc, 3)}</span>, CNN nhãn công khai <span class="so">${f(g2.gop_2_cnn_cong_khai.auc, 3)}</span>.`;
+
+  // 18 · model cuối
+  $("#s18-so").textContent = f(cf.auc, 3);
+  $("#s18-mt").innerHTML = `Gộp theo hạng 6 CNN: 4 model nhãn công khai + 2 model nhãn tự gắn, mỗi model EMA epoch cuối.<br><br>Khoảng tin cậy 95%:<br><span class="so" style="font-size:40px; color:var(--muc)">${f(cf.ci[0], 3)} – ${f(cf.ci[1], 3)}</span>`;
+  const ss = D.cuoi.so_sanh.gop_6_cnn;
+  $("#s18-chenh").innerHTML = `Hơn 2 CNN cũ: <span class="so">+${f(ss.chenh, 3)}</span>, KTC bắt cặp <span class="so">[+${f(ss.ci[0], 3)}, +${f(ss.ci[1], 3)}]</span>`;
+  cot($("#s18-cot"), [
+    { ten: "DINOv2\ngiai đoạn 1", v: cuoi, ci: ciCuoi, mau: "var(--muc-3)" },
+    { ten: "2 CNN\nnhãn công khai", v: g2.gop_2_cnn_cong_khai.auc, ci: g2.gop_2_cnn_cong_khai.ci, mau: "var(--chinh-nhat)" },
+    { ten: "2 CNN\nnhãn tự gắn", v: g2.gop_2_cnn_tu_gan.auc, ci: g2.gop_2_cnn_tu_gan.ci, mau: "var(--chinh-nhat)" },
+    { ten: "4 CNN\nnhãn công khai", v: g2.gop_4_cnn_cong_khai.auc, ci: g2.gop_4_cnn_cong_khai.ci, mau: "var(--chinh-nhat)" },
+    { ten: "Model cuối\ngộp 6 CNN", v: cf.auc, ci: cf.ci, mau: "var(--phu)" },
+  ], { y: [0.65, 0.95], tick: [0.65, 0.05], w: 620, h: 330, b: 40, bw: 62, d: 3, aria: "Model cuối so với các nhóm" });
+  $("#s18-gc").innerHTML = `Từng model đơn: <span class="so">${D.cuoi.tung_model.map(m => f(m.auc, 3)).join(" · ")}</span>. Không model nào bị loại vì điểm thấp.`;
+
   // kết luận
   $("#k1").textContent = `Chỉ 58 ca: ${f(nn.A, 3)}. Thêm nhãn LLM cho 4.349 ca: ${f(nn.D, 3)}.`;
-  $("#k2").textContent = `DINOv2 đóng băng ${f(cuoi, 3)} → CNN 2.5D ${f(cn.auc, 3)}, hơn +${f(cn.chenh.chenh, 3)} với khoảng tin cậy bắt cặp không chứa 0.`;
+  $("#k2").textContent = `DINOv2 đóng băng ${f(cuoi, 3)} → CNN 2.5D ${f(cn.auc, 3)} → gộp 6 CNN ${f(cf.auc, 3)}; nhãn tự gắn bằng Gemini Flash cho CNN tốt ngang nhãn công khai.`;
   $("#k3").textContent = `Đo lại khiến điểm giảm từ ${f(ce.cv_cu_bao_cao, 3)} xuống ${f(cuoi, 3)}; ở giai đoạn 2 mọi lựa chọn được chốt trước khi chấm.`;
   document.body.dataset.xong = "1";
 })();
