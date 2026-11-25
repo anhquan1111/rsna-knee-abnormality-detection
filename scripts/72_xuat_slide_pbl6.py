@@ -1,12 +1,15 @@
-"""Xuat bo slide thuyet trinh PBL6 (20 trang) tu bo 21 slide cua scripts/70.
+"""Xuat bo slide thuyet trinh PBL6 (25 trang) tu bo 21 slide cua scripts/70.
 
     uv run --extra bao-cao python scripts/70_xuat_bao_cao.py --slide   # (neu chua co reports/slide/slide.html)
     uv run --extra bao-cao python scripts/72_xuat_slide_pbl6.py        # -> reports/pbl6/slide/ (PNG, PDF, PPTX)
 
 Lay reports/slide/slide.html (da dien so lieu), giu 12 slide noi dung theo GIU, thay bia bang bia
 theo khuon truong (logo lay tu file mau Word, ten sinh vien va GVHD tu reports/pbl6/thong_tin.json),
-them 7 slide moi: muc luc, du lieu, phan tich anh, quy trinh, tien xu ly, ROC, web demo. Anh va so
-lieu cua slide moi do scripts/71 tao o reports/pbl6/hinh/ (web.png, slide/*.png, slide/thong_ke.json). Slide bi bo van nam
+them slide moi: muc luc, nghien cuu lien quan, du lieu, phan tich anh, quy trinh, tien xu ly, cong thuc
+attention, giao thuc giai doan 2 (tach tu slide CNN 2.5D), ROC, phan tich ca, web demo, gioi han va huong tiep
+(tach doi slide gioi han cu). Anh va so lieu cua slide moi do scripts/71 tao o reports/pbl6/hinh/ (web.png,
+slide/*.png, slide/thong_ke.json) va data/web_demo/phan_tich_ca/. Ghi chu moi slide mo dau bang ten nguoi
+trinh bay (NGUOI_NOI, ten lay tu thong_tin.json). Slide bi bo van nam
 trong trang nhung doi thanh <div hidden> de doan JS ve bieu do khong gap phan tu thieu.
 Ket qua o reports/pbl6/ - khong len git (ten, MSSV, anh MRI cua cuoc thi).
 """
@@ -30,37 +33,23 @@ ANH_WEB = REPO / "reports" / "pbl6" / "hinh" / "web.png"
 ANH_SLIDE = REPO / "reports" / "pbl6" / "hinh" / "slide"
 
 # So thu tu (1-based) trong bo 21 slide; chu la slide moi. Bia moi luon dung dau.
-GIU = ["muc_luc", 2, "du_lieu", "eda", 3, "quy_trinh", "tien_xu_ly", 4, 5, 6, 13, 14, 15, 17, 18, "roc", "web", 20, 21]
+GIU = ["muc_luc", 2, "lien_quan", "du_lieu", "eda", 3, "quy_trinh", "tien_xu_ly", 4, 5, 6, 13, "attention", "giao_thuc",
+       14, 15, 17, 18, "roc", "phan_tich_ca", "web", "gioi_han", "huong_tiep", 21]
+# Nguoi trinh bay theo so slide cuoi (1-based, tinh ca bia): sinh vien 1 tu bia toi het lan do lai (muc 1-6),
+# sinh vien 2 tu giai doan 2 toi ket luan (muc 7-9). Chia o ranh gioi muc, 12 / 13 slide.
+NGUOI_NOI = (range(1, 13), range(13, 26))
 # Muc lon tren dong eyebrow: so cu -> so moi (them muc 2 Du lieu, 3 Quy trinh nen danh lai)
-MUC = {"1": "1", "2": "4", "3": "5", "4": "6", "7": "7", "9": "9"}   # slide cu muc 5, 6, 8 khong giu
+MUC = {"1": "1", "2": "4", "3": "5", "4": "6", "7": "7"}   # slide cu muc 5, 6, 8, 9 khong giu
 MUC_WEB = "8"
 CHON_SERIES = "96,9"   # % ca du series nhay dich o ca 3 mat phang (SO_NHAT_KY cua scripts/71)
-MUC_LUC = [("Bài toán", "12 bất thường, macro AUC"), ("Dữ liệu và phân tích", "4.407 ca, ảnh và báo cáo"),
+MUC_LUC = [("Bài toán", "12 bất thường, nghiên cứu liên quan"), ("Dữ liệu và phân tích", "4.407 ca, ảnh và báo cáo"),
            ("Quy trình, tiền xử lý", "8 bước, DICOM → khối ảnh"), ("Giai đoạn 1", "DINOv2 đóng băng"),
            ("Nhãn từ báo cáo", "từ điển, LLM"), ("Hành trình và đo lại", "0,811 → 0,764"),
-           ("Giai đoạn 2", "CNN 2.5D, model cuối 0,896"), ("Web demo", "chạy cục bộ"),
+           ("Giai đoạn 2", "CNN 2.5D, attention, model cuối 0,896"), ("Web demo", "chạy cục bộ"),
            ("Giới hạn, kết luận", "điều chưa làm được")]
 
 # Sua chu trong slide cu cho dung voi bao cao PBL6 (tim -> thay, moi cap phai khop dung 1 lan)
 SUA = [
-    # slide gioi han: them tap gold lech, loi tat hang may; huong tiep xep tap kiem tra doc lap len dau (khop muc 6.3)
-    ("<li><b>58 ca là trần cứng.</b> Khoảng tin cậy rộng khoảng 0.06–0.09; thêm ảnh hay nhãn máy không làm nó hẹp lại.</li>",
-     ("<li><b>58 ca là trần cứng.</b> Khoảng tin cậy rộng khoảng 0,06–0,09, và tập này lệch: không ca nào lành, "
-     "trung bình 4,1 bệnh mỗi ca.</li>")),
-    (("<li><b>58 ca đã được xem nhiều lần</b> khi phát triển (dù chưa bao giờ vào train): đây là đánh giá nội bộ, "
-     "không phải test độc lập hoàn toàn.</li>"),
-     ("<li><b>58 ca đã được xem nhiều lần</b> khi phát triển (giai đoạn 1 dùng để kiểm định chéo): đây là đánh giá "
-     "nội bộ, không phải test độc lập.</li>")),
-    ("AUC đo xếp hạng, chưa nói gì về xác suất chuẩn hay dùng lâm sàng. Rò rỉ theo hãng máy chưa chặn.</li>",
-     "Xác suất chưa hiệu chỉnh; mô hình có thể học lối tắt theo hãng máy, chưa đo được ảnh hưởng.</li>"),
-    ('<span class="tt">Hướng tiếp, theo thứ tự đáng làm</span>', '<span class="tt">Hướng tiếp</span>'),
-    (("<li><b>Thêm seed và backbone</b> rồi gộp: 6 CNN đã hơn 2 CNN +0.011; mỗi lần thêm khoảng 3 giờ GPU miễn phí.</li>\n"
-     "        <li><b>Độ phân giải và số lát cao hơn</b> cho tổn thương nhỏ; viêm màng hoạt dịch (0.71) và gãy xương (0.79) "
-     "còn yếu nhất.</li>\n        <li><b>Một tập kiểm tra có nhãn lớn hơn 58 ca</b> để phân xử các chênh lệch nhỏ cỡ 0.01.</li>"),
-     ("<li><b>Một tập kiểm tra có nhãn lớn hơn và độc lập</b> để phân xử các chênh lệch nhỏ cỡ 0,01.</li>\n"
-     "        <li><b>Độ phân giải và số lát cao hơn</b> cho tổn thương nhỏ; viêm màng hoạt dịch (0,718) và thoái hoá "
-     "khoang ngoài (0,840) còn yếu nhất.</li>\n        <li><b>Thêm seed và backbone</b> rồi gộp: 6 CNN hơn 2 CNN "
-     "+0,011; mỗi lần thêm khoảng 3 giờ GPU miễn phí.</li>")),
     # tieu de, cau ket: noi thang so lieu thay vi an du; "don bay lon nhat" khong dung (nhan +0.12, CNN +0.12)
     ("<h2>Mười hai câu hỏi cho mỗi ca chụp, gần như không có đáp án mẫu</h2>",
      "<h2>12 xác suất cho mỗi ca chụp, chỉ 1,3% số ca có nhãn bác sĩ</h2>"),
@@ -81,12 +70,12 @@ SUA = [
     ("rồi gộp theo thứ hạng.", "rồi gộp theo hạng."),
     ("Khoảng tin cậy bắt cặp không cắt qua 0.", "Khoảng tin cậy bắt cặp không chứa 0."),
     ("Em tự viết lại hướng đó, không dùng checkpoint của ai.",
-     "Em tự viết lại hướng đó, chỉ dùng trọng số ImageNet công khai, không dùng mô hình người khác đã huấn luyện cho bài này."),
+     "Nhóm tự viết lại hướng đó, chỉ dùng trọng số ImageNet công khai, không dùng mô hình người khác đã huấn luyện cho bài này."),
     ("nên báo cáo nguyên như vậy.", "nhóm vẫn báo cáo đúng số đo."),
     ("Đây là tổn thương nhỏ, nằm trên vài lát: đặc trưng học từ ảnh thường không nhìn ra, CNN train trên chính MRI thì học được.",
      ("Đây là tổn thương nhỏ, nằm trên vài lát. Giả thuyết của nhóm là đặc trưng học từ ảnh thường không nhìn ra các "
      "tổn thương này, còn CNN huấn luyện trên chính MRI thì học được.")),
-    ("Thầy hỏi nhãn LLM có đúng thật không. Em cho", "Để kiểm tra nhãn LLM có đúng không, em cho"),
+    ("Thầy hỏi nhãn LLM có đúng thật không. Em cho", "Để kiểm tra nhãn LLM có đúng không, nhóm cho"),
     ("Nghĩa là chất lượng nhãn đo trên giấy không quyết định hết chất lượng model.",
      "Ít nhất trong thí nghiệm này, chất lượng nhãn đo trực tiếp chưa phản ánh hết chất lượng mô hình."),
     # slide 3 cu (nhan, ngon ngu) nay thuoc muc Du lieu
@@ -111,13 +100,6 @@ SUA = [
      "theo loss và train tới khoảng epoch 80, trong khi head đạt đỉnh quanh epoch 5. Cách sửa: chốt 9 epoch bằng 10% "
      "ca nhãn LLM giữ riêng, không nhìn ca bác sĩ, và gộp 3 seed."),
 ]
-GHI_CHU_GIOI_HAN = ("Giới hạn đầu tiên là 58 ca: khoảng tin cậy vẫn rộng, và tập này lệch so với toàn bộ dữ liệu vì "
-                    "không ca nào lành. 58 ca không vào huấn luyện ở giai đoạn 2 nhưng đã dùng để kiểm định chéo ở giai "
-                    "đoạn 1 và được xem nhiều lần khi phát triển, nên đây là đánh giá nội bộ. Chọn CNN làm kết quả chính "
-                    "thay vì bản gộp 50/50 là chọn một trong hai sau khi thấy điểm; chênh 0,033 nên kết luận không đổi, "
-                    "nhưng nhóm ghi rõ. Nhãn huấn luyện là nhãn LLM, chỉ khớp bác sĩ khoảng 81% số ô, và mô hình có thể "
-                    "học lối tắt theo hãng máy mà nhóm chưa đo. Hướng tiếp theo: một tập kiểm tra có nhãn lớn hơn và độc "
-                    "lập, tăng độ phân giải cho tổn thương nhỏ, rồi thêm seed để gộp.")
 GHI_CHU_KET = ("Ba ý mang về. Một: khi chỉ 1,3% số ca có nhãn bác sĩ, rút nhãn từ báo cáo cho phép dùng gần hết phần "
                "còn lại, nâng điểm từ 0,627 lên 0,747. Hai: huấn luyện cả mạng trên "
                "chính ảnh MRI vượt hẳn backbone đóng băng, từ 0,764 lên 0,885 với 2 CNN và 0,896 với bản cuối 6 CNN. "
@@ -138,7 +120,9 @@ def bia(tt: dict, logo: list[str]) -> str:
     ghi_chu = ("Kính chào thầy. Nhóm em trình bày đề tài phát hiện 12 bất thường đầu gối trên ảnh MRI, dùng bộ dữ liệu "
                "do Hội Điện quang Bắc Mỹ RSNA công bố, trong đó chỉ 58 trên 4.407 ca có nhãn bác sĩ. Bài đi từ bài "
                "toán và dữ liệu, quy trình xử lý, cách rút nhãn từ báo cáo, hai giai đoạn mô hình, tới kết quả, web "
-               "demo và giới hạn.")
+               "demo và giới hạn. "
+               f"Em là {tt['sinh_vien'][0]['ten']}, trình bày từ bài toán tới lần đo lại; bạn {tt['sinh_vien'][1]['ten']} "
+               "trình bày giai đoạn 2, web demo, giới hạn và kết luận.")
     return f'''<section class="slide toi" data-ghi-chu="{h.escape(ghi_chu)}">
   <div class="goc" style="align-items:center">
     <div style="display:flex; gap:22px; align-items:center">
@@ -367,6 +351,171 @@ def slide_roc(D: dict) -> str:
 </section>'''
 
 
+def slide_lien_quan() -> str:
+    """Muc 1.2 cua bao cao, rut gon: chi so lieu da co trong bao cao (da doi chieu nguon)."""
+    goi = [("KneeMRI", "917 chuỗi Sagittal, 1 nhãn (ACL)", "HOG + SVM trên vùng khoanh tay; AUC 0,894"),
+           ("MRNet", "1.370 ca, 3 mặt phẳng, 3 nhãn", "CNN 2D mỗi mặt phẳng, max pooling, hồi quy logistic"),
+           ("ELNet", "KneeMRI và MRNet", "CNN nhỏ dưới 1 MB, huấn luyện từ đầu")]
+    nhan = [("ChestX-ray8", "X-quang ngực, hơn 100.000 ảnh, 8 nhãn", "NLP rút nhãn từ báo cáo"),
+            ("CheXpert", "X-quang ngực, 14 nhãn", "Bộ luật, xử lý câu phủ định và không chắc chắn"),
+            ("CheXbert", "X-quang ngực, 14 nhãn", "BERT học từ bộ luật và ít nhãn chuyên gia, vượt bộ luật"),
+            ("GPT-4", "Báo cáo nhiều ngôn ngữ", "LLM chuyển báo cáo tự do thành dữ liệu có cấu trúc")]
+    bang = lambda dong: "".join(f"<tr><td><b>{a}</b></td><td>{b}</td><td>{c}</td></tr>" for a, b, c in dong)
+    ghi_chu = ("Trước khi làm, nhóm xem các công trình gần nhất. Với MRI gối có KneeMRI, MRNet và ELNet: cả ba đều có "
+               "nhãn đầy đủ cho mọi ca và chỉ dự đoán một đến ba nhãn. Hướng rút nhãn từ báo cáo chẩn đoán thì đã có ở "
+               "X-quang ngực: ChestX-ray8 dùng xử lý ngôn ngữ tự nhiên, CheXpert dùng bộ luật, CheXbert thay bộ luật bằng "
+               "BERT, và gần đây GPT-4 được thử trên báo cáo nhiều ngôn ngữ. Đồ án khác ở hai điểm: 12 nhãn cùng lúc, và "
+               "chỉ 1,32% số ca có nhãn bác sĩ. Nhóm đi đúng chuỗi trên: từ điển luật trước, LLM sau.")
+    return f'''<section class="slide" data-ghi-chu="{h.escape(ghi_chu)}">
+  <span class="eyebrow">1 · Bài toán</span>
+  <h2>Nghiên cứu liên quan: MRI gối và nhãn rút từ báo cáo</h2>
+  <div style="display:grid; gap:26px; min-height:0; align-content:start">
+    <div class="hai lq">
+      <div class="the"><span class="tt">MRI gối: nhãn đầy đủ, 1–3 nhãn</span><table>{bang(goi)}</table></div>
+      <div class="the"><span class="tt">Nhãn rút từ báo cáo chẩn đoán</span><table>{bang(nhan)}</table></div>
+    </div>
+    <div class="luu-y"><b>Đồ án khác ở hai điểm</b><p>12 nhãn cùng lúc, và chỉ 1,32% số ca có nhãn bác sĩ. Nhóm đi theo chuỗi trên: từ điển luật trước, LLM sau, cho báo cáo MRI gối viết bằng 9 ngôn ngữ.</p></div>
+  </div>
+  {chan()}
+</section>'''
+
+
+def slide_attention() -> str:
+    """Cong thuc 3.1-3.4 cua bao cao (muc 3.4)."""
+    ct = [("Đặc trưng cửa sổ k", "f<sub>k</sub> = LayerNorm( E(x<sub>k</sub>) + e<sub>p(k)</sub> )"),
+          ("Điểm chú ý, 12 bệnh cùng lúc", "s<sub>k</sub> = U · tanh( W f<sub>k</sub> + b ) + c"),
+          ("Softmax theo cửa sổ, riêng bệnh l", "a<sub>k,l</sub> = exp(s<sub>k,l</sub>) / Σ<sub>j</sub> exp(s<sub>j,l</sub>)"),
+          ("Gộp rồi dự đoán", "g<sub>l</sub> = Σ<sub>k</sub> a<sub>k,l</sub> f<sub>k</sub>,&nbsp;&nbsp; p<sub>l</sub> = σ( w<sub>l</sub> · g<sub>l</sub> + b<sub>l</sub> )")]
+    o = "".join(f'<div><span>{t}</span><code class="ct">{c}</code></div>' for t, c in ct)
+    ghi_chu = ("Đây là phần đầu attention của giai đoạn 2. Mỗi cửa sổ 2.5D qua EfficientNet thành một vector, cộng vector "
+               "nhúng của mặt phẳng. Một mạng nhỏ hai lớp cho điểm chú ý của 12 bệnh cùng lúc, rồi softmax lấy theo chiều "
+               "cửa sổ, riêng cho từng bệnh. Khác với attention pooling gốc, mỗi bệnh có một cột trọng số và một vector "
+               "riêng, nên lát quan trọng của bệnh phổ biến không lấn lát của bệnh hiếm. Hàm mất mát là binary "
+               "cross-entropy trên nhãn mềm. Trọng số a này cũng là thứ web demo dùng để chỉ lát mô hình chú ý.")
+    return f'''<section class="slide" data-ghi-chu="{h.escape(ghi_chu)}" data-k="attention">
+  <span class="eyebrow">7 · Giai đoạn 2: CNN 2.5D</span>
+  <h2>Attention riêng từng bệnh: mỗi bệnh tự chọn lát của mình</h2>
+  <div class="hai" style="min-height:0">
+    <div class="the ct-the">{o}</div>
+    <div class="the"><span class="tt">Đọc công thức</span>
+      <ul class="ds" style="font-size:27px; gap:20px">
+        <li><b>K cửa sổ mỗi ca:</b> huấn luyện 3 × 8 = 24, suy luận 3 × 24 = 72 (mỗi lát làm tâm một cửa sổ).</li>
+        <li><b>Mỗi bệnh một cột trọng số riêng:</b> xác suất bệnh l chỉ phụ thuộc vector gộp của chính nó, nên bệnh phổ biến không lấn bệnh hiếm.</li>
+        <li><b>Mặt phẳng thiếu</b> nhận điểm −∞ trước softmax, trọng số bằng 0.</li>
+        <li><b>Mất mát:</b> binary cross-entropy trên nhãn mềm (nhãn LLM chia 100).</li>
+      </ul></div>
+  </div>
+  {chan()}
+</section>'''
+
+
+def slide_giao_thuc(hang: str) -> str:
+    ghi_chu = ("Bài học từ lần đo lại được đưa thành giao thức cho giai đoạn 2, chốt trước khi chấm. Huấn luyện bằng nhãn "
+               "LLM mềm, 58 ca bác sĩ không vào huấn luyện, và bỏ cả ca có báo cáo trùng với ca bác sĩ. Số epoch cố định, "
+               "lấy trọng số EMA ở epoch cuối, không chọn epoch theo điểm ca bác sĩ. Hai mô hình chạy song song trên hai "
+               "GPU T4 đám mây. Khoảng tin cậy tính bằng bootstrap 2.000 lần trên 58 ca.")
+    return f'''<section class="slide" data-ghi-chu="{h.escape(ghi_chu)}" data-k="giao_thuc">
+  <span class="eyebrow">7 · Giai đoạn 2: CNN 2.5D</span>
+  <h2>Chốt cách huấn luyện trước khi chấm 58 ca bác sĩ</h2>
+  <div style="display:grid; gap:44px; min-height:0; align-content:start">
+    <div class="ong">{hang}
+    </div>
+    <div class="luu-y"><b>Rút kinh nghiệm từ lần đo lại</b><p>Ở giai đoạn 1, chọn epoch theo điểm của chính các ca đang chấm làm điểm lạc quan: 0,811 đo lại chỉ còn 0,764. Ở giai đoạn 2, số epoch, trọng số EMA và cách gộp các CNN đều chốt trước; khoảng tin cậy tính bằng bootstrap 2.000 lần.</p></div>
+  </div>
+  {chan()}
+</section>'''
+
+
+# Ca 1 la ca mau 1 tren web; ca 3 khong len web (mo hinh bat 1/3) - cung hai ca voi hinh 5.x cua bao cao
+CA_PHAN_TICH = ((1, "Baker's", "Nang Baker"), (3, "Synovitis", "Viêm màng hoạt dịch"))
+
+
+def slide_phan_tich_ca(D: dict) -> str:
+    """Trong so chu y cua 1 benh tren 72 cua so, ve bang HTML (cung so voi muc 5.6 cua bao cao)."""
+    import pandas as pd
+    goc = REPO / "data" / "web_demo"
+    uid = dict(enumerate((goc / "ca_mau" / "danh_sach.txt").read_text().split(), 1))
+    tr = pd.read_csv(REPO / "data" / "raw" / "train.csv", dtype={"StudyInstanceUID": str}).set_index("StudyInstanceUID")
+    mau = ("var(--chinh)", "var(--phu)", "var(--cu)")
+    ca = []
+    for k, ma, ten in CA_PHAN_TICH:
+        f = goc / "phan_tich_ca" / f"ca_{k}.json"
+        if not f.exists():
+            raise SystemExit(f"Thieu {f.relative_to(REPO)}: chay scripts/71_xuat_word_pbl6.py truoc (web demo dang chay)")
+        d = json.loads(f.read_text(encoding="utf-8"))
+        b = next(x for x in d["benh"] if x["ma"] == ma)
+        tong = sum(map(sum, b["chu_y"]))
+        a = [[v / tong for v in hang] for hang in b["chu_y"]]
+        j, t = b["lat_chinh"]["mat_phang"], b["lat_chinh"]["lat"]
+        ca.append(dict(ten=ten, p=b["p"], bac_si=int(tr.loc[uid[k], ma]), a=a, j=j, t=t, w=b["lat_chinh"]["trong_so"],
+                       anh=d["mat_phang"][j]["lat"][t], mp=d["mat_phang"][j]["mat_phang"]))
+    cao = max(max(map(max, c["a"])) for c in ca) * 1.08
+    deu = 1 / 72
+    hang = []
+    for i, c in enumerate(ca):
+        cot = "".join(f'<i style="height:{100 * v / cao:.2f}%; background:{mau[jj]}"></i>'
+                      for jj in range(3) for v in c["a"][jj])
+        gap = round(c["w"] * 72)
+        y = (f"Chú ý dồn vào vài lát liền nhau; lát mạnh nhất nặng gấp khoảng {gap} lần mức chia đều." if i == 0 else
+             f"Chú ý trải gần đều trên cả ba mặt phẳng. Đây cũng là bệnh có AUC thấp nhất "
+             f"({so_vn(D['cuoi']['tung_benh'][CA_PHAN_TICH[1][1]], 3)}).")
+        hang.append(f'''<div class="pt-hang">
+      <figure><img src="data:image/jpeg;base64,{c["anh"]}" alt=""><figcaption>{c["mp"]}, lát {c["t"] + 1}</figcaption></figure>
+      <div class="pt-bd"><b>Ca {"AB"[i]} · {c["ten"]}</b><span>bác sĩ ghi {"có" if c["bac_si"] else "không"}, mô hình {so_vn(c["p"], 2)}</span>
+        <div class="pt-cot">{cot}<em style="bottom:{100 * deu / cao:.2f}%">{"<s>chia đều (1/72)</s>" if i == 0 else ""}</em></div>
+        <div class="pt-truc"><span>Sagittal</span><span>Coronal</span><span>Axial</span></div></div>
+      <p>{y}</p>
+    </div>''')
+    ghi_chu = ("Macro AUC cho biết mô hình xếp hạng tốt đến đâu nhưng không cho biết mô hình nhìn vào đâu. Mỗi cột là trọng "
+               "số chú ý của một bệnh trên 72 cửa sổ, ba màu là ba mặt phẳng; vạch chấm là mức chia đều. Ca A là ca mẫu "
+               "trên web: với nang Baker, chú ý dồn vào hai cụm vài lát ở Sagittal và Coronal. Ca B: với viêm màng hoạt "
+               "dịch, chú ý trải gần đều, mô hình chỉ cho 0,39 dù bác sĩ ghi có. Tám ca mẫu quá ít để kết luận chung, nên "
+               "đây là quan sát, chưa phải kiểm định.")
+    return f'''<section class="slide" data-ghi-chu="{h.escape(ghi_chu)}" data-k="phan_tich_ca">
+  <span class="eyebrow">7 · Giai đoạn 2: model cuối</span>
+  <h2>Mô hình nhìn vào đâu: trọng số chú ý trên 72 cửa sổ</h2>
+  <div class="pt">{"".join(hang)}</div>
+  {chan()}
+</section>'''
+
+
+def slide_gioi_han() -> str:
+    ghi_chu = ("Giới hạn đầu tiên là 58 ca: khoảng tin cậy vẫn rộng, và tập này lệch so với toàn bộ dữ liệu vì không ca "
+               "nào lành. 58 ca không vào huấn luyện ở giai đoạn 2 nhưng đã dùng để kiểm định chéo ở giai đoạn 1 và được "
+               "xem nhiều lần khi phát triển, nên đây là đánh giá nội bộ. Chọn CNN làm kết quả chính thay vì bản gộp "
+               "50/50 là chọn một trong hai sau khi thấy điểm; chênh 0,033 nên kết luận không đổi, nhưng nhóm ghi rõ. "
+               "Nhãn huấn luyện là nhãn LLM, chỉ khớp bác sĩ khoảng 81% số ô, và mô hình có thể học lối tắt theo hãng "
+               "máy mà nhóm chưa đo.")
+    return f'''<section class="slide" data-ghi-chu="{h.escape(ghi_chu)}" data-k="gioi_han">
+  <span class="eyebrow">9 · Giới hạn và hướng tiếp</span>
+  <h2>Điều bài này chưa làm được</h2>
+  <div class="the" style="align-self:start; padding:38px 44px">
+    <ul class="ds" style="font-size:30px; gap:26px">
+      <li><b>58 ca là trần cứng.</b> Khoảng tin cậy rộng khoảng 0,06–0,09, và tập này lệch: không ca nào lành, trung bình 4,1 bệnh mỗi ca.</li>
+      <li><b>58 ca đã được xem nhiều lần</b> khi phát triển (giai đoạn 1 dùng để kiểm định chéo): đây là đánh giá nội bộ, không phải test độc lập.</li>
+      <li><b>Chọn CNN thay bản gộp 50/50</b> là chọn 1 trong 2 sau khi xem điểm. Chênh 0,033 nên kết luận không đổi, nhưng ghi rõ.</li>
+      <li><b>Nhãn huấn luyện là nhãn LLM</b>, khớp bác sĩ khoảng 81% số ô. Xác suất chưa hiệu chỉnh; mô hình có thể học lối tắt theo hãng máy, chưa đo được ảnh hưởng.</li>
+    </ul></div>
+  {chan()}
+</section>'''
+
+
+def slide_huong_tiep() -> str:
+    the = [("01", "Tập kiểm tra lớn hơn, độc lập", "Có nhãn bác sĩ, chưa từng xem khi phát triển, để phân xử các chênh lệch nhỏ cỡ 0,01."),
+           ("02", "Độ phân giải và số lát cao hơn", "Cho tổn thương nhỏ; viêm màng hoạt dịch (0,718) và thoái hoá khoang ngoài (0,840) còn yếu nhất."),
+           ("03", "Thêm seed và backbone rồi gộp", "6 CNN hơn 2 CNN +0,011; mỗi mô hình thêm khoảng 3 giờ GPU miễn phí.")]
+    o = "".join(f'<div class="b"><span class="so">{s}</span><b>{t}</b><span>{m}</span></div>' for s, t, m in the)
+    ghi_chu = ("Hướng tiếp theo, xếp theo thứ tự nên làm. Quan trọng nhất là một tập kiểm tra có nhãn lớn hơn và độc lập, "
+               "vì với 58 ca thì các chênh lệch cỡ 0,01 chưa phân xử được. Sau đó tăng độ phân giải và số lát cho các tổn "
+               "thương nhỏ, rồi thêm seed và backbone để gộp.")
+    return f'''<section class="slide" data-ghi-chu="{h.escape(ghi_chu)}" data-k="huong_tiep">
+  <span class="eyebrow">9 · Giới hạn và hướng tiếp</span>
+  <h2>Hướng tiếp, theo thứ tự nên làm</h2>
+  <div class="qt ht">{o}</div>
+  {chan()}
+</section>'''
+
+
 def roc_svg(D: dict) -> str:
     """Ve lai dung ROC cua scripts/71, bang SVG: chu >= 18px, so kieu Viet.
 
@@ -508,17 +657,54 @@ ul.ds { padding-left:0; list-style:none; }
 ul.ds > li { position:relative; padding-left:1.05em; }
 ul.ds > li::before { content:"•"; position:absolute; left:0; top:0; color:var(--muc-3); }
 
-/* Selector theo so slide cuoi: khong anh huong cac slide cu duoc giu an. */
-.slide:nth-of-type(4) > .hai { align-self:start; }
+/* Selector theo ten slide (data-k), khong theo vi tri: them, bot slide khong lam lech. */
+.slide[data-k="du_lieu"] > .hai { align-self:start; }
 .ba-anh { align-content:stretch; grid-template-rows:minmax(0,1fr); }
 .ba-anh figure { grid-template-rows:minmax(0,1fr) auto; }
 .ba-anh img { height:100%; min-height:0; aspect-ratio:auto; object-fit:contain; }
-.slide:nth-of-type(6) .thanh .dong { grid-template-columns:190px minmax(0,1fr) 70px; gap:12px; }
+.slide[data-k="c3"] .thanh .dong { grid-template-columns:190px minmax(0,1fr) 70px; gap:12px; }
 .qt { align-content:start; padding-top:12px; }
-.slide:nth-of-type(12) .ong > .hang:last-child > .m { visibility:hidden; }
-.slide:nth-of-type(15) > .hai, .slide:nth-of-type(19) > .hai { align-self:start; align-items:start; }
-.slide:nth-of-type(17) > .hai { grid-template-columns:1040px minmax(0,1fr); align-self:start; align-items:start; }
-.slide:nth-of-type(17) .the { align-self:start; }
+.slide[data-k="giao_thuc"] .ong .m { visibility:hidden; }
+.slide[data-k="giao_thuc"] .ong .b { padding:28px 30px; gap:12px; min-height:220px; }
+.slide[data-k="giao_thuc"] .ong .b b { font-size:30px; }
+.slide[data-k="giao_thuc"] .ong .b span { font-size:24px; }
+.slide[data-k="c13"] .ong { gap:22px; align-content:start; }
+.slide[data-k="c13"] .ong .b { min-height:200px; padding:24px 26px; }
+.slide[data-k="c13"] .ong .b b { font-size:28px; }
+.slide[data-k="c13"] .ong .b span { font-size:23px; }
+.slide[data-k="c17"] > .hai { align-self:start; align-items:start; }
+.slide[data-k="roc"] > .hai { grid-template-columns:1040px minmax(0,1fr); align-self:start; align-items:start; }
+.slide[data-k="roc"] .the { align-self:start; }
+.hai.lq { grid-template-columns: minmax(0,1fr) minmax(0,1.15fr); align-items:start; }
+.hai.lq table { font-size:21px; }
+.hai.lq td { padding:10px 14px 10px 0; vertical-align:top; line-height:1.35; }
+.hai.lq td:first-child { white-space:nowrap; }
+.ct-the { gap:30px; align-self:start; padding:34px 40px; }
+.ct-the > div { display:grid; gap:8px; }
+.ct-the > div > span { font-size:23px; color:var(--muc-2); }
+code.ct { font:400 40px/1.4 var(--f-tieu-de); background:none; border:0; padding:0; color:var(--muc); }
+code.ct sub { font-size:0.62em; }
+.slide[data-k="attention"] > .hai { align-self:start; align-items:start; }
+.pt { display:grid; gap:30px; align-content:start; min-height:0; }
+.pt-hang { display:grid; grid-template-columns: 300px minmax(0,1fr) 400px; gap:40px; align-items:center; }
+.pt figure { margin:0; display:grid; gap:8px; }
+.pt img { width:300px; height:300px; object-fit:cover; border-radius:8px; display:block; background:#000; }
+.pt figcaption { font-size:20px; color:var(--muc-3); }
+.pt-bd { display:grid; gap:4px; }
+.pt-bd > b { font-size:27px; }
+.pt-bd > span { font-size:22px; color:var(--muc-2); }
+.pt-cot { position:relative; height:200px; display:flex; align-items:flex-end; gap:2px; border-bottom:1.5px solid var(--muc-2); margin-top:12px; }
+.pt-cot i { flex:1; display:block; min-height:1px; }
+.pt-cot em { position:absolute; left:0; right:0; border-top:2px dotted var(--muc-3); font-style:normal; }
+.pt-cot em s { position:absolute; right:0; bottom:4px; text-decoration:none; font-size:19px; color:var(--muc-3); }
+.pt-truc { display:grid; grid-template-columns:repeat(3,1fr); text-align:center; font-size:20px; color:var(--muc-2); padding-top:6px; }
+.pt-hang > p { font-size:25px; color:var(--muc-2); line-height:1.45; }
+.slide[data-k="gioi_han"] > .the { max-width:1500px; }
+.qt.ht { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.qt.ht .b { min-height:300px; padding:32px 34px; gap:14px; }
+.qt.ht .b b { font-size:32px; }
+.qt.ht .b span:last-child { font-size:25px; }
+.qt.ht .b:not(:nth-child(4n))::after { content:none; }
 """
 
 
@@ -543,15 +729,30 @@ def main() -> None:
 
     D = json.loads(re.search(r"const D = (\{.*?\});\n", goc, re.DOTALL).group(1))
     T = json.loads((ANH_SLIDE / "thong_ke.json").read_text(encoding="utf-8"))
-    moi = {"muc_luc": slide_muc_luc, "du_lieu": lambda: slide_du_lieu(D, T), "eda": lambda: slide_eda(D, T),
-           "quy_trinh": slide_quy_trinh, "tien_xu_ly": lambda: slide_tien_xu_ly(T), "roc": lambda: slide_roc(D),
-           "web": lambda: slide_web(ANH_WEB)}
+    # Slide CNN 2.5D cu (13) qua day: tach hang "Giao thuc" sang slide rieng; cac id s13-* JS van dien theo id.
+    gd2 = sua_slide(cu[12])
+    m_gt = re.search(r'\n    <span class="nh">Giao thức, chốt trước khi chấm</span>\n    <div class="hang">\n.*?\n    </div>', gd2, re.S)
+    if not m_gt:
+        raise SystemExit("Khong tim thay hang Giao thuc trong slide CNN 2.5D")
+    hang_gt = m_gt.group(0).replace('<span class="nh">Giao thức, chốt trước khi chấm</span>\n    ', "")
+    gd2 = gd2.replace(m_gt.group(0), "")
+    moi = {"muc_luc": slide_muc_luc, "lien_quan": slide_lien_quan, "du_lieu": lambda: slide_du_lieu(D, T),
+           "eda": lambda: slide_eda(D, T), "quy_trinh": slide_quy_trinh, "tien_xu_ly": lambda: slide_tien_xu_ly(T),
+           "attention": slide_attention, "giao_thuc": lambda: slide_giao_thuc(hang_gt), "roc": lambda: slide_roc(D),
+           "phan_tich_ca": lambda: slide_phan_tich_ca(D), "web": lambda: slide_web(ANH_WEB),
+           "gioi_han": slide_gioi_han, "huong_tiep": slide_huong_tiep}
     hien = [bia(tt, logo_tu_mau(tt["mau_docx"]))]
     for g in GIU:
-        hien.append(moi[g]() if isinstance(g, str) else sua_slide(cu[g - 1]))
+        s = moi[g]() if isinstance(g, str) else (gd2 if g == 13 else sua_slide(cu[g - 1]))
+        # khoa CSS theo ten slide (khong theo vi tri): .slide[data-k="c13"], [data-k="roc"]...
+        k = g if isinstance(g, str) else f"c{g}"
+        if 'data-k="' not in s[:s.index(">")]:
+            s = re.sub(r'^(<section class="slide[^"]*" data-ghi-chu="[^"]*")', rf'\1 data-k="{k}"', s, count=1)
+        hien.append(s)
+    if len(hien) != max(NGUOI_NOI[-1]):
+        raise SystemExit(f"{len(hien)} slide nhung NGUOI_NOI chia cho {max(NGUOI_NOI[-1])}: sua NGUOI_NOI")
     # slide ket luan: ghi chu cap nhat 0.896
     hien[-1] = re.sub(r'data-ghi-chu="[^"]*"', f'data-ghi-chu="{h.escape(GHI_CHU_KET)}"', hien[-1], count=1)
-    hien[-2] = re.sub(r'data-ghi-chu="[^"]*"', f'data-ghi-chu="{h.escape(GHI_CHU_GIOI_HAN)}"', hien[-2], count=1)
     an = [re.sub(r'^<section class="slide[^"]*"', '<div hidden data-bo="1"', s).replace("</section>", "</div>")
           for i, s in enumerate(cu, 1) if i not in GIU and i != 1]
     an.append(re.sub(r'^<section class="slide[^"]*"', '<div hidden data-bo="1"', cu[0]).replace("</section>", "</div>")
@@ -568,12 +769,24 @@ def main() -> None:
         g = re.sub(r"\bModel\b", "Mô hình", re.sub(r"\bmodel\b", "mô hình", g))
         return 'data-ghi-chu="' + re.sub(r"\btrain\b(?![._])", "huấn luyện", g) + '"'
     than = re.sub(r'data-ghi-chu="([^"]*)"', viet_hoa, than)
+    # Ghi chu GD2 cu noi ca phan giao thuc (nay o slide sau): bo cau cuoi
+    than = thay_dung_mot(than, " Giao thức chốt trước: 12 epoch, trọng số EMA ở epoch cuối, 58 ca bác sĩ không bao giờ vào train.\"",
+                         " Cách huấn luyện được chốt trước, ở slide sau.\"")
     # Xu ly tung nut chu/ghi chu, khong doi thuoc tinh width, du lieu D hay cu phap JS.
     for m in list(re.finditer(r'data-ghi-chu="[^"]*"|>[^<>]+<', than)):
         tim = m.group(0)
         thay = so_viet_trong_chu(tim)
         if tim != thay:
             than = thay_dung_mot(than, tim, thay)
+    # Ghi chu moi slide mo dau bang [ten nguoi trinh bay]; slide cuoi phan dau co cau chuyen loi.
+    goi = [sv["ten"].split()[-1] for sv in tt["sinh_vien"]]
+    khoi_moi = list(re.finditer(r'<section class="slide[^"]*"[^>]*?data-ghi-chu="', than))
+    for i, m in reversed(list(enumerate(khoi_moi, 1))):
+        ai = next(n for n, r in enumerate(NGUOI_NOI) if i in r)
+        than = than[:m.end()] + f"[{h.escape(goi[ai])}] " + than[m.end():]
+    cuoi_phan_1 = max(NGUOI_NOI[0])
+    m = list(re.finditer(r'<section class="slide[^"]*"[^>]*?data-ghi-chu="[^"]*', than))[cuoi_phan_1 - 1]
+    than = than[:m.end()] + f" Phần tiếp theo, bạn {h.escape(goi[1])} trình bày giai đoạn 2." + than[m.end():]
     dau = thay_dung_mot(dau, "</style>", CSS_THEM + "</style>")
     dau = thay_dung_mot(dau, "<title>Slide MRI gối 58 nhãn</title>", "<title>Slide PBL6 MRI gối</title>")
     trang_html = dau + than + "\n\n" + "\n".join(an) + cuoi
