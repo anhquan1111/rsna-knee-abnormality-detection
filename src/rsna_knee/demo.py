@@ -142,23 +142,30 @@ class MayDoan:
 
 # ---------------------------------------------------------------- ca mau
 THU_MUC_MAU = REPO / "data" / "web_demo" / "ca_mau"
+# Thu tu hien tren web (so k cua ca_mau_<k>.zip). Do tren du doan 5 model (reports/day15): so benh bac si
+# ghi nhan duoc model xep vao top N = 9/9 (ca 1), 3/3 (4), 1/1 (8), 5/6 (2), 2/3 (6), 2/3 (7).
+# Ca 3 va 5 chi 1/3 nen khong hien: ca mau de minh hoa, ket qua chung la AUC tren 58 ca.
+THU_TU_MAU = (1, 4, 8, 2, 6, 7)
 
 
 def ca_mau() -> list[dict]:
-    """8 ca gold dong goi san thanh zip DICOM (3 mat phang) - KHONG ca nao vao train CNN.
+    """6 ca gold dong goi san thanh zip DICOM (3 mat phang) - KHONG ca nao vao train CNN.
 
     Zip tao bang notebook CPU `votrananhquan/rsna-knee-ca-mau-demo` (o may chi co 1 mat phang
-    moi ca). Ca mau di DUNG duong cua ca tai len, chi them nhan bac si de doi chieu."""
+    moi ca). Ca mau di DUNG duong cua ca tai len, chi them nhan bac si de doi chieu.
+    id giu so k cua file zip (mau<k>); ten danh so theo thu tu hien."""
     ds = THU_MUC_MAU / "danh_sach.txt"
     if not ds.exists():
         return []
     train = pd.read_csv(REPO / "data" / "raw" / "train.csv", dtype={"StudyInstanceUID": str}).set_index("StudyInstanceUID")
+    uid_theo_k = dict(enumerate(ds.read_text().split(), 1))
     ra = []
-    for k, uid in enumerate(ds.read_text().split(), 1):
+    for k in THU_TU_MAU:
+        uid = uid_theo_k.get(k)
         z = THU_MUC_MAU / f"ca_mau_{k}.zip"
-        if z.exists() and uid in train.index:
+        if uid and z.exists() and uid in train.index:
             g = train.loc[uid, list(LABELS)]
-            ra.append({"id": f"mau{k}", "ten": f"Ca mẫu {k}", "zip": z, "uid": uid, "nhan_bac_si": g.to_dict(),
+            ra.append({"id": f"mau{k}", "ten": f"Ca mẫu {len(ra) + 1}", "zip": z, "uid": uid, "nhan_bac_si": g.to_dict(),
                        "n_benh": int(g.sum()), "mo_ta": ", ".join(TEN_VI[m] for m in LABELS if g[m] == 1) or "Không bệnh nào"})
     return ra
 

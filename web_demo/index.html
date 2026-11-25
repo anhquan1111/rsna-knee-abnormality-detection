@@ -49,6 +49,7 @@
       --doctor-pos-text: #991b1b;
       --doctor-neg: #f1f5f9;
       --doctor-neg-text: #475569;
+      --hit: #16a34a;
 
       /* Màn hình PACS */
       --pacs-bg: #090d16;
@@ -106,6 +107,7 @@
         --doctor-pos-text: #fca5a5;
         --doctor-neg: #1e293b;
         --doctor-neg-text: #94a3b8;
+        --hit: #4ade80;
 
         --pacs-bg: #030712;
         --pacs-border: #1f293d;
@@ -762,6 +764,7 @@
       font-weight: 600;
       border-bottom: 1px solid var(--surface-border);
       font-size: 0.74rem;
+      white-space: nowrap;
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
@@ -780,8 +783,17 @@
       background-color: var(--primary-light);
     }
 
+    .disease-row.trung td:first-child {
+      box-shadow: inset 3px 0 0 var(--hit);
+    }
+
+    .doc-chip .tick {
+      color: var(--hit);
+      font-weight: 800;
+    }
+
     .disease-row td {
-      padding: 10px 12px;
+      padding: 7px 12px;
       border-bottom: 1px solid var(--surface-border-subtle);
       vertical-align: middle;
     }
@@ -792,9 +804,9 @@
 
     .disease-name-wrap {
       display: flex;
-      flex-direction: column;
-      gap: 2px;
-      max-width: 200px;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
     }
 
     .disease-name {
@@ -806,6 +818,7 @@
     }
 
     .disease-tier-tag {
+      flex: none;
       display: inline-block;
       width: fit-content;
       font-size: 0.68rem;
@@ -833,7 +846,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      min-width: 120px;
+      min-width: 0;
     }
 
     .prob-bar-bg {
@@ -923,8 +936,8 @@
     }
 
     .mri-screen img {
-      max-width: 100%;
-      max-height: 100%;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
       image-rendering: -webkit-optimize-contrast;
       user-select: none;
@@ -1402,9 +1415,9 @@
               <table class="disease-table">
                 <thead>
                   <tr>
-                    <th style="width: 40%;">Bệnh lý</th>
-                    <th style="width: 36%;">Xác suất dự đoán</th>
-                    <th style="width: 24%; text-align: right;">Nhãn bác sĩ</th>
+                    <th style="width: 52%;">Bệnh lý</th>
+                    <th style="width: 28%;">Xác suất</th>
+                    <th style="width: 20%; text-align: right;">Bác sĩ</th>
                   </tr>
                 </thead>
                 <tbody id="diseaseTableBody">
@@ -1414,7 +1427,7 @@
             </div>
             <div class="table-disclaimer">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-              <span>Dải màu phân tầng hỗ trợ nhận diện nhanh mức nghi ngờ, không thay thế ngưỡng chẩn đoán lâm sàng chuyên khoa.</span>
+              <span>Mức: Cao ≥ 70%, Vừa 40–70%, Thấp &lt; 40%. Xác suất chưa hiệu chỉnh, nên đọc theo thứ hạng; ✓ là bệnh bác sĩ ghi nhận và mô hình xếp vào nhóm đầu. Không thay thế chẩn đoán lâm sàng.</span>
             </div>
           </div>
 
@@ -1740,7 +1753,9 @@
       if (N > 0) {
         const topN = diseases.slice(0, N);
         const X = topN.filter(d => d.nhan_bac_si === 1).length;
-        el.docComparisonText.textContent = `Bác sĩ ghi nhận ${N} bệnh · Model xếp ${X}/${N} bệnh đó vào top ${N} xác suất`;
+        const sot = diseases.slice(N).filter(d => d.nhan_bac_si === 1).map(d => d.ten);
+        el.docComparisonText.textContent = `Bác sĩ ghi nhận ${N} bệnh · Mô hình xếp ${X}/${N} bệnh đó vào top ${N} xác suất`
+          + (sot.length ? ` · Chưa bắt được: ${sot.join(', ')}` : '');
         el.docComparisonBadge.classList.remove('hidden');
       } else {
         el.docComparisonBadge.classList.add('hidden');
@@ -1754,7 +1769,10 @@
 
       diseases.forEach((d, idx) => {
         const row = document.createElement('tr');
-        row.className = 'disease-row' + (idx === state.selectedDiseaseIndex ? ' active' : '');
+        // Trung = bac si ghi co benh va model xep benh do vao top N (N = so benh bac si ghi nhan)
+        const nBacSi = diseases.filter(x => x.nhan_bac_si === 1).length;
+        const trung = d.nhan_bac_si === 1 && idx < nBacSi;
+        row.className = 'disease-row' + (trung ? ' trung' : '') + (idx === state.selectedDiseaseIndex ? ' active' : '');
         
         // Tooltip p_tung_model
         let tooltip = `Xác suất chung: ${(d.p * 100).toFixed(1)}%`;
@@ -1777,18 +1795,19 @@
 
         if (pct >= 70) {
           tierClass = 'tier-high';
-          tierLabel = 'Nghi ngờ cao';
+          tierLabel = 'Cao';
           barColor = 'var(--tier-high-bar)';
         } else if (pct >= 40) {
           tierClass = 'tier-mid';
-          tierLabel = 'Cân nhắc';
+          tierLabel = 'Vừa';
           barColor = 'var(--tier-mid-bar)';
         }
 
         // Chip nhãn bác sĩ
         let docChipHtml = '<span style="color:var(--text-soft);font-size:0.75rem;">—</span>';
         if (d.nhan_bac_si === 1) {
-          docChipHtml = '<span class="doc-chip doc-pos">Có bệnh</span>';
+          docChipHtml = trung ? '<span class="doc-chip doc-pos"><span class="tick">✓</span>Có bệnh</span>'
+                              : '<span class="doc-chip doc-pos">Có bệnh</span>';
         } else if (d.nhan_bac_si === 0) {
           docChipHtml = '<span class="doc-chip doc-neg">Không</span>';
         }

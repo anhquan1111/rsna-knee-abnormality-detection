@@ -41,7 +41,47 @@ MUC_LUC = [("Bài toán", "12 bất thường, macro AUC"), ("Dữ liệu và ph
 
 # Sua chu trong slide cu cho dung voi bao cao PBL6 (tim -> thay, moi cap phai khop dung 1 lan)
 SUA = [
-    ("khi phát triển (dù chưa bao giờ vào train)", "khi phát triển (giai đoạn 2 không train trên 58 ca này)"),
+    # slide gioi han: them tap gold lech, loi tat hang may; huong tiep xep tap kiem tra doc lap len dau (khop muc 6.3)
+    ("<li><b>58 ca là trần cứng.</b> Khoảng tin cậy rộng khoảng 0.06–0.09; thêm ảnh hay nhãn máy không làm nó hẹp lại.</li>",
+     ("<li><b>58 ca là trần cứng.</b> Khoảng tin cậy rộng khoảng 0.06–0.09, và tập này lệch: không ca nào lành, "
+     "trung bình 4,1 bệnh mỗi ca.</li>")),
+    (("<li><b>58 ca đã được xem nhiều lần</b> khi phát triển (dù chưa bao giờ vào train): đây là đánh giá nội bộ, "
+     "không phải test độc lập hoàn toàn.</li>"),
+     ("<li><b>58 ca đã được xem nhiều lần</b> khi phát triển (giai đoạn 1 dùng để kiểm định chéo): đây là đánh giá "
+     "nội bộ, không phải test độc lập.</li>")),
+    ("AUC đo xếp hạng, chưa nói gì về xác suất chuẩn hay dùng lâm sàng. Rò rỉ theo hãng máy chưa chặn.</li>",
+     "Xác suất chưa hiệu chỉnh; mô hình có thể học lối tắt theo hãng máy, chưa đo được ảnh hưởng.</li>"),
+    ('<span class="tt">Hướng tiếp, theo thứ tự đáng làm</span>', '<span class="tt">Hướng tiếp</span>'),
+    (("<li><b>Thêm seed và backbone</b> rồi gộp: 6 CNN đã hơn 2 CNN +0.011; mỗi lần thêm khoảng 3 giờ GPU miễn phí.</li>\n"
+     "        <li><b>Độ phân giải và số lát cao hơn</b> cho tổn thương nhỏ; viêm màng hoạt dịch (0.71) và gãy xương (0.79) "
+     "còn yếu nhất.</li>\n        <li><b>Một tập kiểm tra có nhãn lớn hơn 58 ca</b> để phân xử các chênh lệch nhỏ cỡ 0.01.</li>"),
+     ("<li><b>Một tập kiểm tra có nhãn lớn hơn và độc lập</b> để phân xử các chênh lệch nhỏ cỡ 0.01.</li>\n"
+     "        <li><b>Độ phân giải và số lát cao hơn</b> cho tổn thương nhỏ; viêm màng hoạt dịch (0.718) và thoái hoá "
+     "khoang ngoài (0.840) còn yếu nhất.</li>\n        <li><b>Thêm seed và backbone</b> rồi gộp: 6 CNN hơn 2 CNN "
+     "+0.011; mỗi lần thêm khoảng 3 giờ GPU miễn phí.</li>")),
+    # tieu de, cau ket: noi thang so lieu thay vi an du; "don bay lon nhat" khong dung (nhan +0.12, CNN +0.12)
+    ("<h2>Mười hai câu hỏi cho mỗi ca chụp, gần như không có đáp án mẫu</h2>",
+     "<h2>12 xác suất cho mỗi ca chụp, chỉ 1,3% số ca có nhãn bác sĩ</h2>"),
+    ("<h2>Từng bước cải tiến, một lần đo lại, rồi một bước nhảy</h2>",
+     "<h2>Đo lại: 0.811 còn 0.764; giai đoạn 2 lên 0.885</h2>"),
+    ("<h2>Vượt hẳn backbone đóng băng</h2>", "<h2>CNN 2.5D đạt 0.885, hơn DINOv2 đóng băng 0.120</h2>"),
+    ("<p>Nhãn rút từ báo cáo là đòn bẩy lớn nhất khi chỉ 1,3% dữ liệu có nhãn.",
+     "<p>Nhãn rút từ báo cáo cho phép dùng 98,7% số ca chưa có nhãn bác sĩ."),
+    ("<p>Train cả mạng trên chính ảnh MRI vượt hẳn backbone đóng băng.",
+     "<p>Huấn luyện cả mạng trên chính ảnh MRI vượt hẳn backbone đóng băng."),
+    # ghi chu: bo cau dan dat, cau noi qua
+    ("Khó nhất: chỉ 1,32%", "Khó nhất là chỉ 1,32%"),
+    ("rồi gộp theo thứ hạng.", "rồi gộp theo hạng."),
+    ("Khoảng tin cậy bắt cặp không cắt qua 0.", "Khoảng tin cậy bắt cặp không chứa 0."),
+    ("Em tự viết lại hướng đó, không dùng checkpoint của ai.",
+     "Em tự viết lại hướng đó, chỉ dùng trọng số ImageNet công khai, không dùng mô hình người khác đã huấn luyện cho bài này."),
+    ("nên báo cáo nguyên như vậy.", "nhóm vẫn báo cáo đúng số đo."),
+    ("Đây là tổn thương nhỏ, nằm trên vài lát: đặc trưng học từ ảnh thường không nhìn ra, CNN train trên chính MRI thì học được.",
+     ("Đây là tổn thương nhỏ, nằm trên vài lát. Giả thuyết của nhóm là đặc trưng học từ ảnh thường không nhìn ra các "
+     "tổn thương này, còn CNN huấn luyện trên chính MRI thì học được.")),
+    ("Thầy hỏi nhãn LLM có đúng thật không. Em cho", "Để kiểm tra nhãn LLM có đúng không, em cho"),
+    ("Nghĩa là chất lượng nhãn đo trên giấy không quyết định hết chất lượng model.",
+     "Ít nhất trong thí nghiệm này, chất lượng nhãn đo trực tiếp chưa phản ánh hết chất lượng mô hình."),
     # slide 3 cu (nhan, ngon ngu) nay thuoc muc Du lieu
     ('<span class="eyebrow">1 · Bài toán</span>\n  <h2>Nhãn hiếm', '<span class="eyebrow">2 · Dữ liệu</span>\n  <h2>Nhãn hiếm'),
     # so do lai (scripts/71 thong_ke_du_lieu): trung vi 30 lat/series; doan "khong benh" dung 65,5% so o
@@ -51,7 +91,7 @@ SUA = [
     ("Một series mỗi mặt phẳng; đọc cả JPEG Lossless và JPEG 2000", "Một series nhạy dịch mỗi mặt phẳng; sắp lát theo InstanceNumber"),
     ("Dùng được 98,7% dữ liệu không nhãn nhờ đọc báo cáo", "Tận dụng 98,7% số ca chưa có nhãn nhờ đọc báo cáo"),
     # chu nhan: khong gioi thieu la cuoc thi Kaggle
-    ("các lời giải điểm cao của cuộc thi đều train cả backbone trên MRI", "các nghiên cứu như MRNet đều train cả mạng trên MRI"),
+    ("các lời giải điểm cao của cuộc thi đều train cả backbone trên MRI", "MRNet cũng huấn luyện cả mạng trên MRI"),
     ("<b>Kaggle T4 × 2, mỗi GPU một model</b>", "<b>2 GPU T4 đám mây, mỗi GPU một model</b>"),
     # giai doan 1 co train tren 4/5 so ca gold (kiem dinh cheo), khong phai "chi de cham"
     ("<b>58 ca gold giữ riêng</b><span>Chỉ để chấm; chia fold theo ca chụp</span>",
@@ -64,7 +104,15 @@ SUA = [
      "theo loss và train tới khoảng epoch 80, trong khi head đạt đỉnh quanh epoch 5. Cách sửa: chốt 9 epoch bằng 10% "
      "ca nhãn LLM giữ riêng, không nhìn ca bác sĩ, và gộp 3 seed."),
 ]
-GHI_CHU_KET = ("Ba ý mang về. Một: với 1,3% nhãn, nhãn rút từ báo cáo là đòn bẩy lớn nhất. Hai: huấn luyện cả mạng trên "
+GHI_CHU_GIOI_HAN = ("Giới hạn đầu tiên là 58 ca: khoảng tin cậy vẫn rộng, và tập này lệch so với toàn bộ dữ liệu vì "
+                    "không ca nào lành. 58 ca không vào huấn luyện ở giai đoạn 2 nhưng đã dùng để kiểm định chéo ở giai "
+                    "đoạn 1 và được xem nhiều lần khi phát triển, nên đây là đánh giá nội bộ. Chọn CNN làm kết quả chính "
+                    "thay vì bản gộp 50/50 là chọn một trong hai sau khi thấy điểm; chênh 0.033 nên kết luận không đổi, "
+                    "nhưng nhóm ghi rõ. Nhãn huấn luyện là nhãn LLM, chỉ khớp bác sĩ khoảng 81% số ô, và mô hình có thể "
+                    "học lối tắt theo hãng máy mà nhóm chưa đo. Hướng tiếp theo: một tập kiểm tra có nhãn lớn hơn và độc "
+                    "lập, tăng độ phân giải cho tổn thương nhỏ, rồi thêm seed để gộp.")
+GHI_CHU_KET = ("Ba ý mang về. Một: khi chỉ 1,3% số ca có nhãn bác sĩ, rút nhãn từ báo cáo cho phép dùng gần hết phần "
+               "còn lại, nâng điểm từ 0.627 lên 0.747. Hai: huấn luyện cả mạng trên "
                "chính ảnh MRI vượt hẳn backbone đóng băng, từ 0.764 lên 0.885 với 2 CNN và 0.896 với bản cuối 6 CNN. "
                "Ba: con số chỉ đáng tin khi cách đo đúng; đo lại khiến điểm giảm từ 0.811 xuống 0.764, và ở giai đoạn 2 "
                "mọi lựa chọn được chốt trước khi chấm. Cảm ơn thầy và mời câu hỏi.")
@@ -364,6 +412,7 @@ def main() -> None:
         hien.append(moi[g]() if isinstance(g, str) else sua_slide(cu[g - 1]))
     # slide ket luan: ghi chu cap nhat 0.896
     hien[-1] = re.sub(r'data-ghi-chu="[^"]*"', f'data-ghi-chu="{h.escape(GHI_CHU_KET)}"', hien[-1], count=1)
+    hien[-2] = re.sub(r'data-ghi-chu="[^"]*"', f'data-ghi-chu="{h.escape(GHI_CHU_GIOI_HAN)}"', hien[-2], count=1)
     an = [re.sub(r'^<section class="slide[^"]*"', '<div hidden data-bo="1"', s).replace("</section>", "</div>")
           for i, s in enumerate(cu, 1) if i not in GIU and i != 1]
     an.append(re.sub(r'^<section class="slide[^"]*"', '<div hidden data-bo="1"', cu[0]).replace("</section>", "</div>")
@@ -374,6 +423,14 @@ def main() -> None:
         if than.count(tim) != 1:
             raise SystemExit(f"Chu can sua khong khop dung 1 lan: {tim}")
         than = than.replace(tim, thay)
+    # thong nhat thuat ngu voi bao cao: "ca gold" -> "ca bac si"; ghi chu thuyet trinh doc bang tieng Viet
+    than = than.replace("58 ca gold", "58 ca bác sĩ").replace("ca gold", "ca bác sĩ").replace("báo cáo gold", "báo cáo ca bác sĩ")
+
+    def viet_hoa(m: re.Match) -> str:
+        g = m.group(1).replace("chấm CV", "kiểm định chéo")
+        g = re.sub(r"\bModel\b", "Mô hình", re.sub(r"\bmodel\b", "mô hình", g))
+        return 'data-ghi-chu="' + re.sub(r"\btrain\b(?![._])", "huấn luyện", g) + '"'
+    than = re.sub(r'data-ghi-chu="([^"]*)"', viet_hoa, than)
     trang_html = (dau.replace("</style>", CSS_THEM + "</style>", 1)
                   .replace("<title>Slide MRI gối 58 nhãn</title>", "<title>Slide PBL6 MRI gối</title>")
                   + than + "\n\n" + "\n".join(an) + cuoi)
@@ -382,6 +439,9 @@ def main() -> None:
     if trang_html.count(nhan_cu) != 1:
         raise SystemExit("Khong thay nhan truc DINOv2 trong bieu do hanh trinh")
     trang_html = trang_html.replace(nhan_cu, 'ten: "DINOv2\\n58 ca, 1 mặt phẳng"')
+    # chu do JS dien (chan trang, dong phu slide ket luan) cung thong nhat thuat ngu
+    trang_html = (trang_html.replace("58 ca gold", "58 ca bác sĩ").replace("tự gắn", "tự gán")
+                  .replace("điểm gold", "điểm ca bác sĩ").replace("CA GOLD`", "CA BÁC SĨ`"))
     RA.mkdir(parents=True, exist_ok=True)
     trang = RA / "slide.html"
     trang.write_text(trang_html, encoding="utf-8")
