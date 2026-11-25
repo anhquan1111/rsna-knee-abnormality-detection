@@ -36,10 +36,9 @@ ANH_SLIDE = REPO / "reports" / "pbl6" / "hinh" / "slide"
 GIU = ["muc_luc", 2, "lien_quan", "du_lieu", "eda", 3, "quy_trinh", "tien_xu_ly", 4, 5, 6, 13, "attention", "giao_thuc",
        14, 15, 17, 18, "roc", "phan_tich_ca", "web", "gioi_han", "huong_tiep", 21]
 # Nguoi trinh bay theo so slide cuoi (1-based, tinh ca bia): (so thu tu trong thong_tin.json sinh_vien, cac slide,
-# cau chuyen loi cho nguoi ke tiep). Sinh vien 1 giu phan kho (giai doan 1, nhan LLM, do lai, giai doan 2, attention,
-# phan tich ca, gioi han): 14 slide; sinh vien 2 mo dau, du lieu, roi chot huong tiep va ket luan: 11 slide.
-NGUOI_NOI = ((1, range(1, 10), "giai đoạn 1 và phần mô hình"), (0, range(10, 24), "hướng tiếp và kết luận"),
-             (1, range(24, 26), ""))
+# cau chuyen loi cho nguoi ke tiep). Moi nguoi noi mot mach, doi nguoi 1 lan: sinh vien 2 mo dau, bai toan, du lieu,
+# quy trinh (slide 1-9); sinh vien 1 giu phan kho tu giai doan 1 toi ket luan (slide 10-25).
+NGUOI_NOI = ((1, range(1, 10), "từ giai đoạn 1 tới kết luận"), (0, range(10, 26), ""))
 # Muc lon tren dong eyebrow: so cu -> so moi (them muc 2 Du lieu, 3 Quy trinh nen danh lai)
 MUC = {"1": "1", "2": "4", "3": "5", "4": "6", "7": "7"}   # slide cu muc 5, 6, 8, 9 khong giu
 MUC_WEB = "8"
@@ -123,8 +122,8 @@ def bia(tt: dict, logo: list[str]) -> str:
                "do Hội Điện quang Bắc Mỹ RSNA công bố, trong đó chỉ 58 trên 4.407 ca có nhãn bác sĩ. Bài đi từ bài "
                "toán và dữ liệu, quy trình xử lý, cách rút nhãn từ báo cáo, hai giai đoạn mô hình, tới kết quả, web "
                "demo và giới hạn. "
-               f"Em là {tt['sinh_vien'][1]['ten']}, trình bày bài toán và dữ liệu; bạn {tt['sinh_vien'][0]['ten']} "
-               "trình bày hai giai đoạn mô hình, web demo và giới hạn; cuối cùng em trình bày hướng tiếp và kết luận.")
+               f"Em là {tt['sinh_vien'][1]['ten']}, trình bày bài toán, dữ liệu và quy trình; bạn {tt['sinh_vien'][0]['ten']} "
+               "trình bày từ giai đoạn 1 tới kết luận.")
     return f'''<section class="slide toi" data-ghi-chu="{h.escape(ghi_chu)}">
   <div class="goc" style="align-items:center">
     <div style="display:flex; gap:22px; align-items:center">
