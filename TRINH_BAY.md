@@ -1,6 +1,6 @@
 # Trình bày PBL: Phát hiện 12 bất thường đầu gối từ MRI
 
-Võ Trần Anh Quân · Dữ liệu: cuộc thi *RSNA Knee Abnormality Detection* (Kaggle)
+Dữ liệu: cuộc thi *RSNA Knee Abnormality Detection* (Kaggle)
 
 ---
 
