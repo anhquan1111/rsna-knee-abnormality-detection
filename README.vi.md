@@ -107,7 +107,7 @@ Rút ra được ba điều:
 
 ## Bài toán khó ở đâu
 
-- **Input:** một study MRI (trung bình 5,53 series: sagittal / coronal / axial, mỗi series ~26 lát DICOM). Toàn bộ dataset 569 GB.
+- **Input:** một study MRI (trung bình 5,53 series: sagittal / coronal / axial, mỗi series ~30 lát DICOM, trung vị). Toàn bộ dataset 569 GB.
 - **Output:** 12 xác suất mỗi study. Đa nhãn, không loại trừ nhau → 12 logit + `BCEWithLogitsLoss`.
 - **Metric:** macro AUC trên 12 nhãn.
 - **Chỉ 58/4.407 study (1,32%) có nhãn bác sĩ.** 4.349 study còn lại chỉ có `Report` — văn bản tự do, **9 ngôn ngữ**.

@@ -3,7 +3,8 @@
     uv run --extra bao-cao python scripts/71_xuat_word_pbl6.py          # -> reports/pbl6/Bao_Cao_PBL6.docx
     uv run --extra bao-cao python scripts/71_xuat_word_pbl6.py --pdf    # them PDF qua Word tren Windows
 
-Thong tin sinh vien, GVHD, ten hoc phan va duong dan file mau nam o reports/pbl6/thong_tin.json.
+Thong tin sinh vien, GVHD, ten hoc phan, duong dan file mau va cac cau trich bao cao vi du (Bang 2.1:
+[cau, nghia, nhan|null]) nam o reports/pbl6/thong_tin.json.
 Thu muc reports/pbl6/ KHONG len git (repo cong khai: bao cao co ten, MSSV va anh MRI cua cuoc thi).
 
 So lieu doc tu reports/slide/slide.html (khoi `const D = {...}` do scripts/70 tinh tu reports/*.json)
@@ -53,6 +54,10 @@ SO_NHAT_KY = {
     "auc_journey_1mp": 0.5256,     # day8_experiment.csv: DINOv2, 58 ca, 1 mat phang
     "n_test": 116,                 # uv run pytest --co
     "web_giay": "0,2",             # thoi gian suy luan mot ca tren GPU (web demo)
+    "n_file_tai": "1.500",         # README.vi.md: tai thu ~1.500 file .dcm + >4.000 request liet ke ...
+    "n_lenh_liet_ke": "4.000",
+    "giay_cho_429": "179.280",     # ... thi bi HTTP 429, retry-after 179280 s (~50 gio)
+    "chi_dung_tap": "96,9",        # = chon_series (cache notebook 81)
 }
 
 TEN_VI = {
@@ -65,9 +70,9 @@ TEN_VI = {
 }
 
 TAI_LIEU = {
-    "rsna": 'Radiological Society of North America, "RSNA Knee Abnormality Detection," Kaggle '
-            "competition. [Online]. Available: https://www.kaggle.com/competitions/"
-            "rsna-knee-abnormality-detection. [Accessed: Nov. 2026].",
+    # Chu nhan: bao cao khong gioi thieu day la cuoc thi, chi mo ta du lieu -> khong ghi trang cuoc thi
+    "rsna": 'Radiological Society of North America (RSNA), "RSNA Knee Abnormality Detection," bộ dữ liệu '
+            "MRI khớp gối kèm báo cáo chẩn đoán, 2026.",
     "mrnet": 'N. Bien et al., "Deep-learning-assisted diagnosis for knee magnetic resonance imaging: '
              'Development and retrospective validation of MRNet," PLOS Medicine, vol. 15, no. 11, '
              "Art. no. e1002699, 2018.",
@@ -142,7 +147,7 @@ def chuan_bi_matplotlib():
     matplotlib.use("Agg")
     from matplotlib import font_manager
     import matplotlib.pyplot as plt
-    for ten in ("times.ttf", "timesbd.ttf", "timesi.ttf"):
+    for ten in ("times.ttf", "timesbd.ttf", "timesi.ttf", "arial.ttf", "arialbd.ttf"):
         p = Path("/mnt/c/Windows/Fonts") / ten
         if p.exists():
             font_manager.fontManager.addfont(str(p))
@@ -168,7 +173,7 @@ def mui_ten(ax, x0, y0, x1, y1):
 
 
 def hinh_tong_quan(plt, D, ra: Path):
-    fig, ax = plt.subplots(figsize=(6.4, 4.1))
+    fig, ax = plt.subplots(figsize=(6.4, 3.75))
     ax.set_xlim(0, 10), ax.set_ylim(0, 5.6), ax.axis("off")
     n_khong = D["du_lieu"]["n_study"] - D["du_lieu"]["n_gold"]
     so = lambda n: f"{n:,}".replace(",", ".")
@@ -229,7 +234,7 @@ def hinh_hanh_trinh(plt, D, ra: Path):
         ("5 head\n× 3 seed\n(đo lại)", D["seed"]["gop"], D["seed"]["ci_gop"], XANH),
         ("CNN\n2.5D,\n2 model", cn["auc"], cn["ci"], LUC), ("Cuối:\n6 CNN", cf["auc"], cf["ci"], LUC),
     ]
-    fig, ax = plt.subplots(figsize=(6.4, 3.3))
+    fig, ax = plt.subplots(figsize=(6.4, 2.95))
     for i, (ten, v, c, mau) in enumerate(buoc):
         ax.bar(i, v, color=mau, width=0.66)
         if c:
@@ -243,7 +248,7 @@ def hinh_hanh_trinh(plt, D, ra: Path):
 
 
 def hinh_epoch(plt, D, ra: Path):
-    fig, ax = plt.subplots(figsize=(6.2, 3.1))
+    fig, ax = plt.subplots(figsize=(6.2, 2.75))
     ten = {"efficientnet_b3": "EfficientNet-B3", "tf_efficientnetv2_b2": "EfficientNetV2-B2"}
     for mh, mau in zip(D["cnn"]["mo_hinh"], (XANH, LUC)):
         x = range(1, len(mh["gold"]) + 1)
@@ -263,7 +268,7 @@ def hinh_tung_benh(plt, D, ra: Path):
     dino = {r["nhan"]: r["dino"] for r in D["cnn"]["tung_nhan"]}
     cuoi = D["cuoi"]["tung_benh"]
     thu_tu = sorted(cuoi, key=lambda k: cuoi[k] - dino[k])
-    fig, ax = plt.subplots(figsize=(6.2, 4.0))
+    fig, ax = plt.subplots(figsize=(6.2, 3.25))
     for i, k in enumerate(thu_tu):
         ax.plot([dino[k], cuoi[k]], [i, i], color="#bbb", lw=2, zorder=1)
         ax.scatter(dino[k], i, color=XAM, s=26, zorder=2, label="DINOv2 đóng băng (GĐ 1)" if i == 0 else None)
@@ -277,6 +282,323 @@ def hinh_tung_benh(plt, D, ra: Path):
     ax.xaxis.set_major_formatter(lambda x, _: f(x, 1))
     ax.legend(fontsize=8.5, frameon=False, loc="lower center", bbox_to_anchor=(0.45, 1.0), ncol=2)
     fig.savefig(ra), plt.close(fig)
+
+
+# ------------------------------------------------------------ chuong du lieu
+def thong_ke_du_lieu() -> dict:
+    """So lieu kham pha du lieu, tinh lai tu cac bang o data/ (khong go tay).
+
+    competition_files.csv la danh sach file lay qua API truoc khi tai khoan bi chan (khong du het
+    24.371 series), nen so lat moi series tinh tren phan da liet ke va ghi ro co mau."""
+    import pandas as pd
+    dl = REPO / "data"
+    L = list(TEN_VI)
+    s = pd.read_csv(dl / "raw" / "train_series.csv")
+    hd = pd.read_csv(dl / "manifest" / "dicom_headers.csv")
+    ds = pd.read_csv(dl / "manifest" / "competition_files.csv")
+    ds = ds[ds.name.str.startswith("train_series/")].name.str.split("/", expand=True)
+    lat = ds.groupby(2).size()
+    sm = pd.read_csv(dl / "interim" / "study_manifest.csv")
+    gold = sm[sm.provenance == "human"]
+    llm = pd.read_csv(dl / "external" / "rsna-knee-llm-report-labels" / "llm_labels_v4_blend.csv")
+    vd = pd.read_csv(dl / "raw" / "train.csv").iloc[0]   # bao cao vi du: dong dau cua train.csv
+    llm_vd = llm.set_index("StudyInstanceUID").loc[vd.StudyInstanceUID]
+    llm = llm[~llm.StudyInstanceUID.isin(gold.StudyInstanceUID)]
+    tt = s.groupby("StudyInstanceUID").size()
+    tu = hd.MagneticFieldStrength.round(1)
+    return {
+        "series_moi_ca": tt.value_counts().sort_index().to_dict(), "series_mode_ti_le": float((tt == 5).mean()),
+        "series_min": int(tt.min()), "series_max": int(tt.max()),
+        "mat_phang": {pl: {"tong": int((s.Anatomical_Plane == pl).sum()),
+                           "nhay": int(((s.Anatomical_Plane == pl) & (s.Fluid_Sensitive == 1)).sum())}
+                      for pl in ("Sagittal", "Coronal", "Axial")},
+        "nhay_dich": float(s.Fluid_Sensitive.mean()),
+        "hang": pd.read_csv(dl / "manifest" / "study_manufacturer.csv").manufacturer_norm.value_counts().to_dict(),
+        "n_header": len(hd), "tu_truong": tu.value_counts().to_dict(),
+        "rows": hd.Rows.to_numpy(), "day_lat": hd.SliceThickness.to_numpy(),
+        "lat": lat.to_numpy(), "n_series_liet_ke": len(lat),
+        "so_tu": sm.report_words.to_numpy(),
+        "ty_le_gold": {k: float(gold[k].mean()) for k in L},
+        "ty_le_llm": {k: float((llm[k] > 0.5).mean()) for k in L}, "n_llm": len(llm),
+        "duong_moi_ca_gold": float(gold[L].sum(axis=1).mean()),
+        "gold_khong_benh": int((gold[L].sum(axis=1) == 0).sum()),
+        "vi_du": {"bao_cao": vd.Report, "llm": {k: float(llm_vd[k]) for k in L},
+                  "co_nhan_bac_si": bool(vd[L].notna().any())},
+    }
+
+
+def nap_ca_mau(k: int = 7):
+    """Mot ca gold dong goi cho web demo (khong ca nao vao train CNN): lat goc va khoi da chuan hoa.
+
+    Doc dung duong cua web demo (src/rsna_knee/demo.py) va ham doc_series cua notebook train, nen
+    hinh minh hoa la dung du lieu mo hinh nhin thay."""
+    sys.path.insert(0, str(REPO / "src"))
+    import numpy as np
+    import pydicom
+
+    from rsna_knee import demo
+    z = REPO / "data" / "web_demo" / "ca_mau" / f"ca_mau_{k}.zip"
+    series, tam, _ = demo.tach_series_tai_len([(z.name, z.read_bytes())])
+    nb = demo._nap_81()
+    ra = {}
+    try:
+        for pl in ("Sagittal", "Coronal", "Axial"):
+            d = series[pl][0]
+            lat = sorted(((int(getattr(x, "InstanceNumber", 0) or 0), x) for x in
+                          (pydicom.dcmread(str(p)) for p in d.glob("*.dcm"))), key=lambda t: t[0])
+            giua = lat[len(lat) // 2][1]
+            khoi, n = nb.doc_series(d)
+            ra[pl] = {"goc": giua.pixel_array.astype(np.float32), "khoi": khoi, "n": n,
+                      "co": giua.pixel_array.shape,
+                      "tat_ca": np.concatenate([x.pixel_array.ravel() for _, x in lat]).astype(np.float32)}
+    finally:
+        demo.don(tam)
+    return ra
+
+
+def hinh_quy_trinh(plt, ra: Path):
+    fig, ax = plt.subplots(figsize=(6.4, 3.05))
+    ax.set_xlim(0, 10), ax.set_ylim(0, 4.5), ax.axis("off")
+    buoc = [("Thu thập dữ liệu", "4.407 ca, 569 GB;\nđọc header DICOM", "Mục 2.1–2.2"),
+            ("Phân tích dữ liệu", "ảnh, báo cáo, nhãn;\nrút ra hướng xử lý", "Mục 2.3–2.6"),
+            ("Tiền xử lý ảnh", "chọn series nhạy dịch,\nchuẩn hoá 3 × 24 × 256²", "Mục 4.2"),
+            ("Rút nhãn yếu", "từ điển luật, LLM\ncho 4.349 báo cáo", "Mục 3.2, 4.4"),
+            ("Giai đoạn 1", "DINOv2 đóng băng\n+ head attention", "Mục 3.3"),
+            ("Đánh giá, đo lại", "macro AUC, bootstrap;\nsửa chọn epoch", "Mục 5.2"),
+            ("Giai đoạn 2", "CNN 2.5D huấn luyện\ntoàn mạng, 6 mô hình", "Mục 3.4, 4.3"),
+            ("Gộp và triển khai", "gộp theo hạng,\nweb demo cục bộ", "Mục 4.5, 5.5")]
+    w, h, xs = 2.2, 1.75, [0.05, 2.6, 5.15, 7.7]
+    vi_tri = [(xs[i], 2.6) for i in range(4)] + [(xs[3 - i], 0.2) for i in range(4)]
+    for i, ((ten, ct, muc), (x, y)) in enumerate(zip(buoc, vi_tri)):
+        mau, vien = ("#e8f6ef", LUC) if i >= 6 else ("#eef3fb", XANH)
+        ve_hop(ax, x, y, w, h, "", mau=mau, vien=vien)
+        ax.text(x + w / 2, y + h - 0.3, f"{i + 1}. {ten}", ha="center", va="center", fontsize=9, fontweight="bold")
+        ax.text(x + w / 2, y + h / 2 - 0.08, ct, ha="center", va="center", fontsize=8, linespacing=1.25)
+        ax.text(x + w / 2, y + 0.2, muc, ha="center", va="center", fontsize=7.5, style="italic", color="#555")
+    for i in range(3):
+        mui_ten(ax, xs[i] + w, 3.47, xs[i + 1], 3.47)
+        mui_ten(ax, xs[3 - i], 1.07, xs[2 - i] + w, 1.07)
+    mui_ten(ax, xs[3] + w / 2, 2.6, xs[3] + w / 2, 1.95)
+    fig.savefig(ra), plt.close(fig)
+
+
+def hinh_cau_truc(plt, D, ra: Path):
+    du = D["du_lieu"]
+    so = lambda n: f"{n:,}".replace(",", ".")
+    fig, ax = plt.subplots(figsize=(6.4, 2.9))
+    ax.set_xlim(0, 10), ax.set_ylim(0, 4.3), ax.axis("off")
+    ve_hop(ax, 0.05, 1.55, 1.9, 1.2, "Bộ dữ liệu\nMRI khớp gối", mau="#f1f2f4", vien=XAM, dam=True, co=9)
+    tep = [(3.25, "train.csv", f"{so(du['n_study'])} dòng, mỗi dòng một ca:\nmã ca, báo cáo chẩn đoán,\n12 cột nhãn (chỉ {du['n_gold']} ca có giá trị)"),
+           (1.75, "train_series.csv", f"{so(du['n_series'])} dòng, mỗi dòng một series:\nmã ca, mã series, mặt phẳng,\ncờ nhạy dịch, cờ xoá mỡ"),
+           (0.25, "train_series/", "<mã ca>/<mã series>/<lát>.dcm\nmỗi lát cắt là một file DICOM\n(ảnh + header thông số máy)")]
+    for y, ten, ct in tep:
+        ve_hop(ax, 2.55, y, 1.85, 0.85, ten, dam=True, co=9)
+        ve_hop(ax, 4.55, y - 0.1, 5.4, 1.05, ct, mau="#ffffff", vien="#c5cdd6", co=8)
+        mui_ten(ax, 1.95, 2.15, 2.55, y + 0.42)
+        ax.plot([4.4, 4.55], [y + 0.42, y + 0.42], color="#999", lw=0.8)
+    fig.savefig(ra), plt.close(fig)
+
+
+def hinh_eda_anh(plt, T, ra: Path):
+    import numpy as np
+    fig, axs = plt.subplots(2, 3, figsize=(6.4, 3.95))
+    for a in axs.flat:
+        a.tick_params(labelsize=7.5)
+    so = lambda n: f"{n:,}".replace(",", ".")
+    # (a) so series moi ca
+    a = axs[0, 0]
+    k, v = zip(*sorted(T["series_moi_ca"].items()))
+    a.bar(k, v, color=XANH, width=0.75)
+    a.set_title("(a) Số series mỗi ca", fontsize=8.5), a.set_xticks(range(3, 15, 2))
+    a.set_ylabel("Số ca", fontsize=8)
+    a.yaxis.set_major_formatter(lambda x, _: so(int(x)))
+    # (b) mat phang x nhay dich
+    a = axs[0, 1]
+    mp = T["mat_phang"]
+    ten = list(mp)
+    nh = [mp[t]["nhay"] for t in ten]
+    kh = [mp[t]["tong"] - mp[t]["nhay"] for t in ten]
+    a.bar(ten, nh, color=XANH, width=0.6, label="nhạy dịch")
+    a.bar(ten, kh, bottom=nh, color="#c5d6ef", width=0.6, label="khác")
+    a.set_title("(b) Series theo mặt phẳng", fontsize=8.5)
+    a.set_ylim(0, 12500)
+    a.legend(fontsize=7, frameon=False, loc="upper right", ncol=2, handlelength=1, columnspacing=0.8)
+    a.yaxis.set_major_formatter(lambda x, _: so(int(x)))
+    # (c) so lat moi series
+    a = axs[0, 2]
+    lat = np.clip(T["lat"], 0, 80)
+    a.hist(lat, bins=range(10, 82, 3), color=XANH)
+    a.axvline(np.median(T["lat"]), color=CAM, lw=1.2, ls="--")
+    a.set_title("(c) Số lát mỗi series", fontsize=8.5)
+    a.text(0.97, 0.92, f"trung vị {int(np.median(T['lat']))}", transform=a.transAxes, ha="right", fontsize=7.5, color=CAM)
+    a.yaxis.set_major_formatter(lambda x, _: so(int(x)))
+    # (d) hang may
+    a = axs[1, 0]
+    h = sorted(T["hang"].items(), key=lambda t: t[1])
+    tong = sum(v for _, v in h)
+    a.barh([t.title() if t != "GE" else "GE" for t, _ in h], [v for _, v in h], color=LUC, height=0.6)
+    for i, (_, v) in enumerate(h):
+        a.text(v + tong * 0.01, i, f(100 * v / tong, 1) + "%", va="center", fontsize=7)
+    a.set_xlim(0, max(v for _, v in h) * 1.35)
+    a.set_title("(d) Hãng máy (theo ca)", fontsize=8.5)
+    a.xaxis.set_major_formatter(lambda x, _: so(int(x)))
+    # (e) tu truong
+    a = axs[1, 1]
+    tt = sorted(T["tu_truong"].items())
+    a.bar([f(t, 1) + " T" for t, _ in tt], [v for _, v in tt], color=LUC, width=0.6)
+    for i, (_, v) in enumerate(tt):
+        a.text(i, v + 80, so(v), ha="center", fontsize=7)
+    a.set_title("(e) Từ trường (series đã chọn)", fontsize=8.5)
+    a.yaxis.set_major_formatter(lambda x, _: so(int(x)))
+    # (f) kich thuoc ma tran
+    a = axs[1, 2]
+    a.hist(T["rows"], bins=range(160, 1300, 64), color=LUC)
+    a.set_title("(f) Kích thước ảnh (điểm ảnh)", fontsize=8.5)
+    a.yaxis.set_major_formatter(lambda x, _: so(int(x)))
+    fig.tight_layout(h_pad=1.2, w_pad=0.8)
+    fig.savefig(ra), plt.close(fig)
+
+
+def hinh_eda_bao_cao(plt, D, T, ra: Path):
+    import numpy as np
+    fig, (a, b) = plt.subplots(1, 2, figsize=(6.4, 2.5), gridspec_kw={"width_ratios": [1.1, 1]})
+    nn = sorted(D["du_lieu"]["ngon_ngu"], key=lambda r: r["n"])
+    a.barh([r["ten"] for r in nn], [r["n"] for r in nn], color=XANH, height=0.65)
+    for i, r in enumerate(nn):
+        a.text(r["n"] + 20, i, f"{r['n']:,}".replace(",", "."), va="center", fontsize=7)
+    a.set_xlim(0, 2100), a.set_title("(a) Ngôn ngữ của báo cáo (số ca)", fontsize=8.5)
+    a.tick_params(labelsize=7.5)
+    a.xaxis.set_major_formatter(lambda x, _: f"{int(x):,}".replace(",", "."))
+    b.hist(T["so_tu"], bins=range(0, 700, 25), color=XANH)
+    b.axvline(np.median(T["so_tu"]), color=CAM, lw=1.2, ls="--")
+    b.text(np.median(T["so_tu"]) + 15, b.get_ylim()[1] * 0.88, f"trung vị {int(np.median(T['so_tu']))} từ",
+           fontsize=7.5, color=CAM)
+    b.set_title("(b) Độ dài báo cáo (số từ)", fontsize=8.5), b.set_ylabel("Số ca", fontsize=8)
+    b.tick_params(labelsize=7.5)
+    fig.tight_layout(w_pad=1.5)
+    fig.savefig(ra), plt.close(fig)
+
+
+def hinh_ty_le_nhan(plt, T, ra: Path):
+    import numpy as np
+    L = list(TEN_VI)
+    thu_tu = sorted(L, key=lambda k: T["ty_le_gold"][k])
+    y = np.arange(len(L))
+    fig, ax = plt.subplots(figsize=(6.2, 3.3))
+    ax.barh(y + 0.19, [100 * T["ty_le_gold"][k] for k in thu_tu], height=0.38, color=CAM,
+            label="58 ca có nhãn bác sĩ")
+    ax.barh(y - 0.19, [100 * T["ty_le_llm"][k] for k in thu_tu], height=0.38, color=XANH,
+            label=f"{T['n_llm']:,}".replace(",", ".") + " ca nhãn LLM (xác suất > 0,5)")
+    ax.set_yticks(y, [TEN_VI[k] for k in thu_tu], fontsize=8.5)
+    ax.set_xlabel("Tỷ lệ ca dương tính (%)", fontsize=9), ax.tick_params(axis="x", labelsize=8)
+    ax.legend(fontsize=8, frameon=False, loc="lower right")
+    fig.savefig(ra), plt.close(fig)
+
+
+def hinh_mri(plt, M, ra: Path):
+    import numpy as np
+    fig, axs = plt.subplots(1, 3, figsize=(6.4, 2.45))
+    ten = {"Sagittal": "Sagittal (đứng dọc)", "Coronal": "Coronal (đứng ngang)",
+           "Axial": "Axial (nằm ngang)"}
+    for a, pl in zip(axs, ("Sagittal", "Coronal", "Axial")):
+        g = M[pl]["goc"]
+        lo, hi = np.percentile(M[pl]["tat_ca"], (1, 99))
+        a.imshow(np.clip((g - lo) / (hi - lo), 0, 1), cmap="gray")
+        a.set_title(ten[pl], fontsize=8.5)
+        a.text(0.5, -0.07, f"{M[pl]['n']} lát gốc · {M[pl]['co'][0]} × {M[pl]['co'][1]} điểm ảnh",
+               transform=a.transAxes, ha="center", va="top", fontsize=7.5)
+        a.axis("off")
+    fig.tight_layout(w_pad=0.6)
+    fig.savefig(ra), plt.close(fig)
+
+
+def hinh_tien_xu_ly(plt, M, ra: Path):
+    import numpy as np
+    m = M["Sagittal"]
+    g, khoi = m["goc"], m["khoi"]
+    lo, hi = np.percentile(m["tat_ca"], (1, 99))
+    fig = plt.figure(figsize=(6.4, 3.05))
+    gs = fig.add_gridspec(2, 4, height_ratios=[1.5, 0.78], hspace=0.42, wspace=0.28)
+    a = fig.add_subplot(gs[0, 0])
+    a.imshow(g, cmap="gray"), a.axis("off")
+    a.set_title(f"(a) Lát gốc {g.shape[0]}×{g.shape[1]},\nhiển thị min–max", fontsize=8)
+    a = fig.add_subplot(gs[0, 1])
+    v = m["tat_ca"]
+    a.hist(v[v > 0], bins=80, color=XAM, log=True)
+    for x in (lo, hi):
+        a.axvline(x, color=CAM, lw=1.1, ls="--")
+    a.set_title("(b) Cường độ cả series,\ncắt ở phân vị 1 và 99", fontsize=8)
+    a.tick_params(labelsize=6.5), a.set_yticks([]), a.minorticks_off()
+    a.spines["left"].set_visible(False)
+    a = fig.add_subplot(gs[0, 2])
+    k = 12
+    a.imshow(khoi[k], cmap="gray", vmin=0, vmax=255), a.axis("off")
+    a.set_title("(c) Sau chuẩn hoá,\n256×256, uint8", fontsize=8)
+    a = fig.add_subplot(gs[0, 3])
+    a.imshow(np.stack([khoi[k - 1], khoi[k], khoi[k + 1]], -1)), a.axis("off")
+    a.set_title("(d) Cửa sổ 2.5D: lát\nk−1, k, k+1 → R, G, B", fontsize=8)
+    con = gs[1, :].subgridspec(1, 8, wspace=0.06)
+    for j, i in enumerate(range(2, 24, 3)):
+        a = fig.add_subplot(con[0, j])
+        a.imshow(khoi[i], cmap="gray", vmin=0, vmax=255), a.axis("off")
+        a.set_title(f"lát {i + 1}", fontsize=7)
+    fig.text(0.5, 0.0, f"(e) 24 lát lấy cách đều theo chiều sâu từ {m['n']} lát gốc (hiện 8 lát, cách nhau 3)",
+             ha="center", fontsize=8)
+    fig.savefig(ra), plt.close(fig)
+
+
+def hinh_roc(plt, D, ra: Path, k: float = 1.0, cham: bool = False, co=(6.4, 3.95)) -> float:
+    """ROC tung benh cua mo hinh cuoi (gop hang 6 CNN). Tra macro AUC de doi chieu voi file ket qua.
+
+    cham=True: so thap phan dau cham cho khop bo slide (slide cu ghi AUC 0.896)."""
+    fm = (lambda x, n=3: f"{x:.{n}f}") if cham else f
+    import numpy as np
+    from scipy.stats import rankdata
+    from sklearn.metrics import roc_auc_score, roc_curve
+    sys.path.insert(0, str(REPO / "src"))
+    from rsna_knee.oof import gold_theo_fold, ma_thu_tu
+    y, _, uid = gold_theo_fold()
+    z = np.load(REPO / "reports" / "day15_model_cuoi_du_doan.npz")
+    if str(z["uid_md5"]) != ma_thu_tu(uid):
+        raise SystemExit("Thu tu ca trong day15_model_cuoi_du_doan.npz khac thu tu gold hien tai")
+    P = np.mean([np.column_stack([rankdata(z[f"model_{s}"][:, j]) for j in range(12)]) for s in range(1, 7)], 0)
+    fig, axs = plt.subplots(3, 4, figsize=co, sharex=True, sharey=True)
+    auc = []
+    for j, (ten, a) in enumerate(zip(TEN_VI, axs.flat)):
+        fpr, tpr, _ = roc_curve(y[:, j], P[:, j])
+        auc.append(roc_auc_score(y[:, j], P[:, j]))
+        a.plot([0, 1], [0, 1], color="#bbb", lw=0.8, ls=":")
+        a.plot(fpr, tpr, color=LUC, lw=1.4)
+        a.fill_between(fpr, tpr, step=None, color=LUC, alpha=0.08)
+        a.set_title(TEN_VI[ten].split(" (")[0], fontsize=8 * k)
+        a.text(0.96, 0.05, f"AUC {fm(auc[-1])}", ha="right", fontsize=7.5 * k, transform=a.transAxes)
+        a.text(0.96, 0.05 + 0.13 * k, f"{int(y[:, j].sum())} ca dương", ha="right", fontsize=7 * k, color="#555", transform=a.transAxes)
+        a.tick_params(labelsize=7 * k), a.set_xticks([0, 0.5, 1]), a.set_yticks([0, 0.5, 1])
+        a.xaxis.set_major_formatter(lambda x, _: fm(x, 1)), a.yaxis.set_major_formatter(lambda x, _: fm(x, 1))
+    fig.supxlabel("Tỷ lệ dương tính giả (1 − độ đặc hiệu)", fontsize=8.5 * k)
+    fig.supylabel("Độ nhạy", fontsize=8.5 * k)
+    fig.tight_layout(h_pad=0.6, w_pad=0.4)
+    fig.savefig(ra), plt.close(fig)
+    return float(np.mean(auc))
+
+
+def anh_slide(M, ra_thu_muc: Path) -> None:
+    """Anh khong chu cho slide (chu dat bang HTML de cung font slide)."""
+    import numpy as np
+    from PIL import Image
+    ra_thu_muc.mkdir(parents=True, exist_ok=True)
+    for pl in ("Sagittal", "Coronal", "Axial"):
+        g = M[pl]["goc"]
+        lo, hi = np.percentile(M[pl]["tat_ca"], (1, 99))
+        Image.fromarray((np.clip((g - lo) / (hi - lo), 0, 1) * 255).astype(np.uint8)).save(ra_thu_muc / f"mri_{pl}.png")
+    m = M["Sagittal"]
+    g = m["goc"]
+    Image.fromarray((255 * (g - g.min()) / (g.max() - g.min())).astype(np.uint8)).save(ra_thu_muc / "txl_goc.png")
+    Image.fromarray(m["khoi"][12]).save(ra_thu_muc / "txl_chuan.png")
+    Image.fromarray(np.stack([m["khoi"][11], m["khoi"][12], m["khoi"][13]], -1)).save(ra_thu_muc / "txl_rgb.png")
+    o = list(m["khoi"]) + [np.zeros_like(m["khoi"][0])]   # 24 lat + 1 o trong -> luoi vuong 5 x 5
+    luoi = np.vstack([np.hstack(o[r * 5:(r + 1) * 5]) for r in range(5)])
+    Image.fromarray(luoi).save(ra_thu_muc / "txl_24_lat.png")
 
 
 def chup_web(ra: Path) -> None:
@@ -306,18 +628,46 @@ def chup_web(ra: Path) -> None:
 def ve_hinh(D) -> dict[str, Path]:
     HINH.mkdir(parents=True, exist_ok=True)
     plt = chuan_bi_matplotlib()
-    h = {k: HINH / f"{k}.png" for k in ("tong_quan", "kien_truc", "hanh_trinh", "epoch", "tung_benh", "web")}
+    h = {k: HINH / f"{k}.png" for k in ("tong_quan", "kien_truc", "hanh_trinh", "epoch", "tung_benh", "web",
+                                         "quy_trinh", "cau_truc", "eda_anh", "eda_bao_cao", "ty_le_nhan",
+                                         "mri", "tien_xu_ly", "roc")}
+    import numpy as np
+    (HINH / "slide").mkdir(parents=True, exist_ok=True)
+    T = thong_ke_du_lieu()
+    T["cau_vi_du"] = json.loads(THONG_TIN.read_text(encoding="utf-8"))["vi_du_bao_cao"]
+    M = nap_ca_mau()
     hinh_tong_quan(plt, D, h["tong_quan"])
     hinh_kien_truc(plt, h["kien_truc"])
     hinh_hanh_trinh(plt, D, h["hanh_trinh"])
     hinh_epoch(plt, D, h["epoch"])
     hinh_tung_benh(plt, D, h["tung_benh"])
-    chup_web(h["web"])
-    return h
+    hinh_quy_trinh(plt, h["quy_trinh"])
+    hinh_cau_truc(plt, D, h["cau_truc"])
+    hinh_eda_anh(plt, T, h["eda_anh"])
+    hinh_eda_bao_cao(plt, D, T, h["eda_bao_cao"])
+    hinh_ty_le_nhan(plt, T, h["ty_le_nhan"])
+    hinh_mri(plt, M, h["mri"])
+    hinh_tien_xu_ly(plt, M, h["tien_xu_ly"])
+    auc_roc = hinh_roc(plt, D, h["roc"])
+    g6 = D["cuoi"]["nhom"]["gop_6_cnn"]["auc"]
+    if abs(auc_roc - g6) > 5e-4:
+        raise SystemExit(f"ROC tinh lai {auc_roc:.4f} lech file ket qua {g6:.4f}")
+    # ban cho slide: chu Arial (gan font slide), co lon hon
+    with plt.rc_context({"font.family": "Arial", "savefig.transparent": True}):
+        hinh_roc(plt, D, HINH / "slide" / "roc.png", k=1.2, cham=True, co=(8.6, 6.4))
+    anh_slide(M, HINH / "slide")
+    T.update(n_lat_mau={pl: M[pl]["n"] for pl in M})
+    (HINH / "slide" / "thong_ke.json").write_text(json.dumps({
+        k: v for k, v in T.items() if k not in ("rows", "day_lat", "lat", "so_tu")} | {
+        "lat_trung_vi": float(np.median(T["lat"])),
+        "rows_min": int(T["rows"].min()), "rows_max": int(T["rows"].max()),
+        "so_tu_trung_vi": float(np.median(T["so_tu"]))}, ensure_ascii=False, indent=1,
+        default=lambda o: o.item()), encoding="utf-8")
+    return h, T
 
 
 # ============================================================ noi dung
-def noi_dung(D, H) -> list:
+def noi_dung(D, H, T) -> list:
     """Danh sach khoi: (loai, ...). Loai: h1 h2 h3 p ul hinh bang."""
     du = D["du_lieu"]
     n_khong = du["n_study"] - du["n_gold"]
@@ -351,57 +701,174 @@ def noi_dung(D, H) -> list:
       "mỗi series vài chục lát cắt, nên việc đọc ảnh tốn thời gian của bác sĩ chẩn đoán hình ảnh. Các nghiên cứu "
       "như MRNet {r:mrnet} đã cho thấy mạng học sâu có thể phát hiện bất thường, rách dây chằng chéo trước và rách "
       "sụn chêm trên MRI gối, khi được huấn luyện trên 1.370 ca có nhãn đầy đủ.")
-    p(f"Đồ án sử dụng dữ liệu của cuộc thi RSNA Knee Abnormality Detection trên Kaggle {{r:rsna}}. Đầu vào là một "
-      f"ca MRI gối, trung bình {f(du['series_moi_study'], 2)} series mỗi ca; toàn bộ tập dữ liệu gồm "
-      f"{so(du['n_study'])} ca, {so(du['n_series'])} series, khoảng {nk['dung_luong_gb']} GB file DICOM. Đầu ra là "
-      "12 xác suất, mỗi xác suất ứng với một bất thường trong {b:benh} (phần sau gọi ngán là \"bệnh\"). Đây là bài toán đa nhãn: một ca có thể mắc "
-      "nhiều bệnh cùng lúc. Thước đo là trung bình AUC của 12 nhãn (macro AUC).")
+    p(f"Đồ án sử dụng bộ dữ liệu MRI khớp gối do Hội Điện quang Bắc Mỹ (Radiological Society of North America, "
+      f"RSNA) công bố {{r:rsna}}. Đầu vào là một ca MRI gối, trung bình {f(du['series_moi_study'], 2)} series mỗi "
+      f"ca; toàn bộ tập dữ liệu gồm {so(du['n_study'])} ca, {so(du['n_series'])} series, khoảng "
+      f"{nk['dung_luong_gb']} GB file DICOM (chương 2). Đầu ra là 12 xác suất, mỗi xác suất ứng với một bất thường "
+      "trong {b:benh} (phần sau gọi ngắn là \"bệnh\"). Đây là bài toán đa nhãn: một ca có thể mắc nhiều bệnh cùng "
+      "lúc. Thước đo là trung bình AUC của 12 nhãn (macro AUC).")
     rows = [[TEN_VI[k].split(" (")[0], k, str(duong[k])] for k in TEN_VI]
     K.append(("bang", "benh", f"12 bất thường cần dự đoán và số ca dương tính trong {du['n_gold']} ca có nhãn bác sĩ",
               ["Bất thường", "Tên trong dữ liệu", "Số ca dương tính"], rows, [7.0, 4.5, 4.0]))
     h2("1.2. Các vấn đề cần giải quyết")
     p("Bài toán có bốn khó khăn chính, quyết định cách thiết kế toàn bộ hệ thống:")
     ul(f"**Nhãn rất hiếm.** Chỉ {du['n_gold']} trên {so(du['n_study'])} ca ({ti_le_gold}%) có nhãn do bác sĩ gán. "
-       f"{so(n_khong)} ca còn lại chỉ kèm một báo cáo chẩn đoán viết tự do bằng 9 ngôn ngữ (tiếng Anh, Tây Ban Nha, "
-       "Thổ Nhĩ Kỳ, Croatia, Hy Lạp, Đức, Bulgaria, Hà Lan, Pháp). Muốn dùng được phần dữ liệu này phải rút nhãn từ văn bản.",
-       "**Dữ liệu ảnh lớn và không đồng nhất.** Mỗi ca có số series, chuỗi xung, số lát và độ phân giải khác nhau, "
-       "đến từ máy của nhiều hãng; một số file nén JPEG Lossless hoặc JPEG 2000.",
+       f"{so(n_khong)} ca còn lại không có nhãn bác sĩ, chỉ có báo cáo chẩn đoán viết tự do bằng 9 ngôn ngữ. Muốn "
+       "dùng được phần dữ liệu này phải rút nhãn từ văn bản.",
+       f"**Dữ liệu ảnh lớn và không đồng nhất.** Mỗi ca có số series, chuỗi xung, số lát và độ phân giải khác nhau, "
+       f"đến từ máy của {len(T['hang'])} hãng với từ trường từ 1,0 đến 3,0 T (mục 2.3).",
        f"**Tập đánh giá rất nhỏ.** {du['n_gold']} ca có nhãn bác sĩ là thước đo duy nhất, nên khoảng tin cậy rộng và "
        "rất dễ vô tình chọn mô hình theo đúng tập dùng để chấm, làm điểm số lạc quan.",
-       "**Tài nguyên tính toán giới hạn.** Nhóm chỉ có một laptop RTX 4060 8 GB và GPU miễn phí của Kaggle "
+       "**Tài nguyên tính toán giới hạn.** Nhóm chỉ có một laptop RTX 4060 8 GB và GPU đám mây miễn phí "
        "(2 × T4 16 GB, tối đa 12 giờ mỗi lần chạy).")
     h2("1.3. Mục tiêu và phạm vi")
     p("Mục tiêu của đồ án là xây dựng trọn vẹn quy trình từ file DICOM thô tới 12 xác suất bệnh, tự viết toàn bộ, "
       "không dùng lại checkpoint của người khác; đạt macro AUC cao nhất có thể trên tập có nhãn bác sĩ với cách đo "
       "trung thực; và có một web demo để minh hoạ mô hình trên ca thật.")
     p(f"Phạm vi: hệ thống là sản phẩm học tập ở mức chứng minh ý tưởng, không phải công cụ chẩn đoán lâm sàng. Kết quả "
-      f"được đánh giá trên {du['n_gold']} ca có nhãn bác sĩ của cuộc thi. Web demo chỉ chạy trên máy cục bộ; dữ liệu "
-      "của cuộc thi không được phát tán lại.")
+      f"được đánh giá trên {du['n_gold']} ca có nhãn bác sĩ của bộ dữ liệu. Web demo chỉ chạy trên máy cục bộ; dữ "
+      "liệu gốc không được phát tán lại.")
+    h2("1.4. Quy trình thực hiện")
+    p("Đồ án đi theo tám bước, từ thu thập dữ liệu tới triển khai ({h:quytrinh}). Hai bước đầu (chương 2) tìm hiểu "
+      "dữ liệu trước khi chọn mô hình: các đặc điểm đo được ở đây quyết định cách tiền xử lý, cách rút nhãn và cách "
+      "đánh giá ở các chương sau. Bước 6 kiểm tra lại chính cách đo của nhóm và dẫn tới thay đổi lớn nhất về phương "
+      "pháp (mục 5.2). Màu xanh lá đánh dấu hai bước của mô hình cuối.")
+    K.append(("hinh", "quytrinh", H["quy_trinh"], 15.5, "Quy trình thực hiện đồ án từ dữ liệu thô tới web demo"))
 
     # ------------------------------------------------ chuong 2
-    h1("CHƯƠNG 2. CƠ SỞ LÝ THUYẾT VÀ GIẢI PHÁP")
-    h2("2.1. Tổng quan giải pháp")
+    mp, hg, tt = T["mat_phang"], T["hang"], T["tu_truong"]
+    tong_hang = sum(hg.values())
+    import numpy as np
+    lat, so_tu, kt = T["lat"], T["so_tu"], T["rows"]
+    tu_tong = sum(tt.values())
+    nn_ = {r["ma"]: r for r in du["ngon_ngu"]}
+    vd = T["vi_du"]
+    h1("CHƯƠNG 2. DỮ LIỆU VÀ PHÂN TÍCH DỮ LIỆU")
+    h2("2.1. Nguồn và cấu trúc dữ liệu")
+    p(f"Bộ dữ liệu gồm ảnh MRI khớp gối và báo cáo chẩn đoán đi kèm của {so(du['n_study'])} ca chụp. Dữ liệu đã được "
+      "ẩn danh trước khi công bố: mã ca và mã series là chuỗi UID sinh lại, ngày tháng trong báo cáo được thay bằng "
+      "chuỗi [DATE], và tên series của một số ca được thay bằng chuỗi giả. Dữ liệu gồm ba phần ({h:cautruc}):")
+    K.append(("hinh", "cautruc", H["cau_truc"], 14.5, "Cấu trúc bộ dữ liệu"))
+    ul(f"**train.csv:** mỗi ca một dòng, gồm mã ca, toàn văn báo cáo chẩn đoán và 12 cột nhãn. Chỉ {du['n_gold']} "
+       f"ca có giá trị ở các cột nhãn (0 hoặc 1, do bác sĩ gán); {so(n_khong)} ca còn lại để trống.",
+       "**train_series.csv:** mỗi series một dòng, cho biết series thuộc ca nào, chụp ở mặt phẳng nào, có thuộc "
+       "nhóm chuỗi xung nhạy dịch (fluid-sensitive) hay không và có xoá mỡ hay không.",
+       "**Thư mục ảnh:** tổ chức theo <mã ca>/<mã series>/<lát>.dcm. Mỗi file DICOM chứa một lát cắt và phần "
+       "header ghi thông số chụp: hãng máy, từ trường, kích thước ảnh, độ dày lát và thứ tự lát.")
+    p("Mỗi ca thường có series ở cả ba mặt phẳng ({h:mri}). Sagittal là mặt cắt đứng dọc, thấy rõ dây chằng chéo "
+      "và sụn chêm; Coronal là mặt cắt đứng ngang, thấy dây chằng bên và hai khoang khớp trong, ngoài; Axial là mặt "
+      "cắt nằm ngang, thấy rõ khớp bánh chè – đùi. Mỗi bệnh vì vậy hiện rõ nhất trên một vài mặt phẳng, đây là lý "
+      "do mô hình dùng cả ba.")
+    K.append(("hinh", "mri", H["mri"], 15.5,
+              "Ba mặt phẳng của một ca mẫu (lát giữa của series nhạy dịch, đã cắt cường độ theo phân vị 1–99)"))
+    h2("2.2. Thu thập dữ liệu")
+    p(f"Toàn bộ ảnh có dung lượng khoảng {nk['dung_luong_gb']} GB, vượt xa ổ cứng và đường truyền của nhóm. Nhóm thử "
+      f"tải file DICOM về máy qua API của nền tảng lưu trữ: sau khoảng {nk['n_file_tai']} file và hơn "
+      f"{nk['n_lenh_liet_ke']} lệnh liệt kê trong một buổi, tài khoản bị chặn với mã HTTP 429 và phải chờ "
+      f"{nk['giay_cho_429']} giây (khoảng 50 giờ) mới được gọi tiếp. Danh sách file lấy được trước khi bị chặn phủ "
+      f"{so(T['n_series_liet_ke'])} series và được dùng để thống kê số lát ở mục 2.3.")
+    p(f"Vì vậy nhóm chuyển bước đọc ảnh lên notebook GPU đám mây, nơi bộ dữ liệu được gắn sẵn vào máy và không tốn "
+      "lượt gọi API. Trên đó, mỗi ca được đọc, chọn series và chuẩn hoá một lần (mục 4.2); header của series được "
+      f"chọn ở mỗi mặt phẳng được ghi thành bảng ({so(T['n_header'])} series, tức 3 series cho mỗi ca). Về máy "
+      "chỉ tải kết quả: bảng header, đặc trưng, dự đoán và trọng số mô hình, tổng cộng vài trăm MB. Riêng web demo "
+      "cần ảnh gốc, nên 8 ca có nhãn bác sĩ được đóng gói thành file zip DICOM (mỗi mặt phẳng một series) để chạy "
+      "trên máy.")
+    h2("2.3. Phân tích dữ liệu ảnh")
+    p(f"{{h:edaanh}} tóm tắt dữ liệu ảnh. Mỗi ca có từ {T['series_min']} đến {T['series_max']} series, phổ biến "
+      f"nhất là 5 series ({pt(T['series_mode_ti_le'])} số ca). Sagittal có nhiều series nhất "
+      f"({so(mp['Sagittal']['tong'])}), Axial ít nhất ({so(mp['Axial']['tong'])}); {pt(T['nhay_dich'])} số series "
+      f"thuộc nhóm nhạy dịch. Trên {so(T['n_series_liet_ke'])} series có trong danh sách file, số lát mỗi series có "
+      f"trung vị {int(np.median(lat))} (khoảng tứ phân vị {int(np.percentile(lat, 25))}–{int(np.percentile(lat, 75))}), "
+      f"nhưng có series tới {int(lat.max())} lát.")
+    p(f"Header của {so(T['n_header'])} series được chọn cho thấy ảnh đến từ {len(hg)} hãng máy, nhiều nhất là Siemens "
+      f"({pt(hg['SIEMENS'] / tong_hang)} số ca) và Philips ({pt(hg['PHILIPS'] / tong_hang)}). Phần lớn series chụp ở "
+      f"từ trường 1,5 T ({pt(tt[1.5] / tu_tong)}) và 3,0 T ({pt(tt[3.0] / tu_tong)}). Kích thước ảnh từ "
+      f"{int(kt.min())} đến {so(int(kt.max()))} điểm ảnh mỗi cạnh (trung vị {int(np.median(kt))}), độ dày lát từ "
+      f"{f(T['day_lat'].min(), 1)} đến {f(T['day_lat'].max(), 0)} mm (trung vị {f(np.median(T['day_lat']), 0)} mm).")
+    K.append(("hinh", "edaanh", H["eda_anh"], 15.5,
+              "Đặc điểm dữ liệu ảnh: số series, mặt phẳng, số lát, hãng máy, từ trường và kích thước ảnh"))
+    p("Dữ liệu không đồng nhất ở mọi chiều đo, nên không thể đưa thẳng vào mạng nơ-ron. Cần chọn một series cho mỗi "
+      "mặt phẳng, đưa về cùng số lát và cùng kích thước, và chuẩn hoá cường độ vì mỗi máy cho thang giá trị điểm ảnh "
+      f"khác nhau. Sự khác biệt giữa các hãng máy còn là một rủi ro: đặc trưng DINOv2 của giai đoạn 1 đủ để đoán đúng "
+      f"hãng máy ở {nk['hang_may']}% số ca, tức mô hình có thể học lối tắt theo nơi chụp thay vì theo tổn thương.")
+    h2("2.4. Phân tích báo cáo chẩn đoán")
+    p(f"Báo cáo được viết tự do bằng 9 ngôn ngữ ({{h:edabaocao}}a). Tiếng Anh chiếm nhiều nhất "
+      f"({so(nn_['en']['n'])} ca, {pt(nn_['en']['n'] / du['n_study'])}), tiếp theo là tiếng Tây Ban Nha, Thổ Nhĩ Kỳ "
+      f"và Croatia. Độ dài trung vị là {int(np.median(so_tu))} từ, ngắn nhất {int(so_tu.min())} từ và dài nhất "
+      f"{int(so_tu.max())} từ ({{h:edabaocao}}b). Cách viết cũng khác nhau giữa các nơi: có báo cáo chia rõ phần kỹ "
+      "thuật, kết quả và kết luận; có báo cáo chỉ ghi câu hỏi lâm sàng và quy trình chụp mà không nêu kết luận nào.")
+    K.append(("hinh", "edabaocao", H["eda_bao_cao"], 15.5, "Ngôn ngữ và độ dài của báo cáo chẩn đoán"))
+    # cau trich tu bao cao (du lieu goc) nam o thong_tin.json - khong de trong repo cong khai
+    cau = [tuple(c) for c in T["cau_vi_du"]]
+    for c, _, _ in cau:
+        if c.rstrip("…") not in vd["bao_cao"]:
+            raise SystemExit(f"Bao cao vi du khong con cau: {c}")
+    co = {k for _, _, k in cau if k}
+    con_lai = [vd["llm"][k] for k in TEN_VI if k not in co]
+    rows = [[c, ng, TEN_VI[k].split(" (")[0] if k else "Không thuộc 12 bệnh", f(vd["llm"][k]) if k else "–"]
+            for c, ng, k in cau]
+    rows.append(["(không nhắc tới)", "–", f"{len(con_lai)} bệnh còn lại", f"{f(min(con_lai))}–{f(max(con_lai))}"])
+    p("{b:vidu} lấy một báo cáo tiếng Tây Ban Nha của một ca không có nhãn bác sĩ, đặt cạnh nhãn LLM của bộ nhãn "
+      "công khai dùng để huấn luyện (mục 3.2.2). Báo cáo nêu ba bệnh thuộc danh sách và nhãn LLM cho cả ba xác suất "
+      "trên 0,9; các bệnh không được nhắc tới nhận xác suất thấp. Một dấu hiệu khác (hoại tử vô mạch) không thuộc 12 "
+      "bệnh nên bị bỏ qua. Ví dụ này cho thấy báo cáo chứa đủ thông tin để rút nhãn, nhưng công cụ rút nhãn phải đọc "
+      "được nhiều ngôn ngữ và hiểu câu phủ định.")
+    if vd["co_nhan_bac_si"]:
+        raise SystemExit("Bao cao vi du lai la ca co nhan bac si - doi vi du")
+    K.append(("bang", "vidu", "Một báo cáo mẫu và nhãn LLM tương ứng",
+              ["Câu trong báo cáo", "Nghĩa", "Bệnh tương ứng", "Nhãn LLM"], rows, [5.6, 4.4, 3.8, 2.2]))
+    h2("2.5. Phân tích nhãn")
+    p(f"Trong {du['n_gold']} ca có nhãn bác sĩ, mỗi ca trung bình có {f(T['duong_moi_ca_gold'], 1)} bệnh và "
+      f"{'không ca nào' if T['gold_khong_benh'] == 0 else str(T['gold_khong_benh']) + ' ca'} hoàn toàn bình thường. "
+      f"Tràn dịch khớp phổ biến nhất ({duong['Effusion']} ca), dây chằng bên trong hiếm nhất ({duong['MCL']} ca) "
+      f"({{b:benh}}). Vì phần lớn ô (ca, bệnh) là âm tính, một mô hình luôn đoán \"không bệnh\" đã đúng "
+      f"{pt(1 - sum(duong.values()) / (12 * du['n_gold']))} số ô, nên độ chính xác (accuracy) không phải thước đo "
+      "phù hợp. Với dây chằng bên trong, chia 5 fold thì mỗi fold chỉ còn 1–2 ca dương tính.")
+    p(f"{{h:tylenhan}} so tỷ lệ dương tính giữa {du['n_gold']} ca bác sĩ và {so(T['n_llm'])} ca có nhãn LLM. Hai tập "
+      f"lệch nhau rõ: viêm màng hoạt dịch chiếm {pt(T['ty_le_gold']['Synovitis'])} ở tập bác sĩ nhưng chỉ "
+      f"{pt(T['ty_le_llm']['Synovitis'])} ở nhãn LLM; gãy xương là {pt(T['ty_le_gold']['Fracture'])} so với "
+      f"{pt(T['ty_le_llm']['Fracture'])}. Có hai cách giải thích: tập có nhãn bác sĩ được chọn ra từ những ca nhiều "
+      "bệnh hơn mức thường gặp (không ca nào lành), và báo cáo có thể không nhắc tới các dấu hiệu nhẹ mà người gán "
+      "nhãn vẫn đánh dấu. Nhóm chưa tách được phần nào do nguyên nhân nào. Điều chắc chắn là tập chấm không đại diện "
+      "cho toàn bộ dữ liệu, nên điểm AUC chỉ nói về chính tập này.")
+    K.append(("hinh", "tylenhan", H["ty_le_nhan"], 15.0, "Tỷ lệ ca dương tính theo bệnh: nhãn bác sĩ và nhãn LLM"))
+    h2("2.6. Nhận xét và định hướng xử lý")
+    p("Các đặc điểm trên dẫn tới những quyết định thiết kế ở các chương sau:")
+    ul("**Ảnh không đồng nhất:** mỗi mặt phẳng chọn một series nhạy dịch theo cờ trong train_series.csv (không theo "
+       "tên series, vì tên có thể đã bị thay), lấy 24 lát cách đều, đưa về 256 × 256 và chuẩn hoá cường độ theo cả "
+       "series (mục 4.2).",
+       f"**{f(100 * n_khong / du['n_study'], 1)}% số ca chỉ có báo cáo:** rút nhãn yếu từ báo cáo; vì báo cáo đa "
+       "ngôn ngữ và có câu phủ định, dùng LLM thay vì chỉ dùng từ điển (mục 3.2).",
+       "**Bệnh hiện trên mặt phẳng khác nhau và chỉ trên vài lát:** dùng cả ba mặt phẳng, gom các lát bằng attention "
+       "riêng cho từng bệnh (mục 3.3, 3.4).",
+       "**Tập chấm nhỏ và lệch:** báo cáo macro AUC kèm khoảng tin cậy bootstrap, chốt mọi lựa chọn trước khi chấm "
+       "(mục 3.5).",
+       f"**Dữ liệu {nk['dung_luong_gb']} GB:** xử lý ảnh trên GPU đám mây, chỉ tải kết quả về máy.")
+
+    # ------------------------------------------------ chuong 3
+    h1("CHƯƠNG 3. CƠ SỞ LÝ THUYẾT VÀ GIẢI PHÁP")
+    h2("3.1. Tổng quan giải pháp")
     p("Giải pháp gồm hai nhánh gặp nhau ở bước huấn luyện ({h:tongquan}). Nhánh nhãn biến báo cáo chẩn đoán của "
       f"{so(n_khong)} ca thành nhãn mềm cho 12 bệnh. Nhánh ảnh đọc DICOM, chọn series và chuẩn hoá thành khối ảnh cố "
       f"định cho mỗi ca. Mô hình được phát triển qua hai giai đoạn. Ở giai đoạn 1, {du['n_gold']} ca có nhãn bác sĩ được "
       "chia 5 fold để kiểm định chéo; ở giai đoạn 2, chúng được giữ riêng hoàn toàn, chỉ dùng để chấm.")
-    K.append(("hinh", "tongquan", H["tong_quan"], 15.5, "Sơ đồ tổng quan hệ thống"))
-    h2("2.2. Nhãn yếu từ báo cáo chẩn đoán")
+    K.append(("hinh", "tongquan", H["tong_quan"], 15.0, "Sơ đồ tổng quan hệ thống"))
+    h2("3.2. Nhãn yếu từ báo cáo chẩn đoán")
     p("Học với nhãn yếu (weak supervision) là dùng nhãn được sinh tự động, có nhiễu nhưng rẻ, thay cho nhãn do "
       "chuyên gia gán {r:snorkel}. Ở đây nguồn nhãn yếu là báo cáo chẩn đoán đi kèm mỗi ca. Nhóm thử hai cách rút nhãn.")
-    h3("2.2.1. Từ điển luật")
+    h3("3.2.1. Từ điển luật")
     p("Cách đầu tiên là bộ từ điển tự viết: với mỗi bệnh, liệt kê từ khoá ở 9 ngôn ngữ, kèm luật phủ định (ví dụ "
       "\"không thấy rách\") và biến thể hình thái của từng ngôn ngữ. Mỗi ô (ca, bệnh) nhận giá trị 1, 0 hoặc \"chưa rõ\". "
       f"Trên {du['n_gold']} ca có nhãn bác sĩ, từ điển chỉ đưa ra kết luận cho {pt(D['llm']['do_phu_tu_dien_tren_gold'])} "
       f"số ô, và đạt AUC {f(llm['tu_dien']['macro_auc'])} khi so với bác sĩ. Dù vậy, chỉ thêm nhãn từ điển cho "
       f"{so(n_khong)} ca đã nâng điểm mô hình từ {f(D['nguon_nhan']['A'])} lên {f(D['nguon_nhan']['B'])}.")
-    h3("2.2.2. Nhãn từ mô hình ngôn ngữ lớn")
+    h3("3.2.2. Nhãn từ mô hình ngôn ngữ lớn")
     p("Cách thứ hai là để mô hình ngôn ngữ lớn (LLM) đọc báo cáo và cho xác suất từng bệnh. Mô hình chính được huấn "
-      "luyện bằng một bộ nhãn LLM công khai trên Kaggle {r:llmlabels}: nhãn mềm trong khoảng 0–1, phủ 100% số ca, "
+      "luyện bằng một bộ nhãn LLM do cộng đồng công bố {r:llmlabels}: nhãn mềm trong khoảng 0–1, phủ 100% số ca, "
       f"đạt AUC {f(llm['cong_khai']['macro_auc'])} so với bác sĩ. Vì bộ nhãn này không ghi rõ dùng LLM nào và prompt "
       "nào, nhóm tự gán lại nhãn cho cả 4.407 báo cáo bằng Gemini Flash {r:gemini} với prompt tự viết để kiểm chứng "
-      "(mục 3.4 và 4.4).")
-    h2("2.3. Giai đoạn 1: DINOv2 đóng băng")
+      "(mục 4.4 và 5.4).")
+    h2("3.3. Giai đoạn 1: DINOv2 đóng băng")
     p("DINOv2 {r:dinov2} là mô hình Vision Transformer học tự giám sát trên khoảng 142 triệu ảnh tự nhiên, cho đặc "
       "trưng dùng được cho nhiều tác vụ mà không cần huấn luyện lại. Ở giai đoạn 1, DINOv2 được giữ đóng băng: mỗi lát "
       "MRI đi qua mạng một lần để thành một vector đặc trưng (384 chiều với ViT-S/14). Phần huấn luyện chỉ là các "
@@ -410,8 +877,8 @@ def noi_dung(D, H) -> list:
       "(multiple instance learning, MIL). Head dùng gom chú ý (attention pooling) {r:ilse}: mạng học một trọng số "
       "cho từng lát, rồi lấy tổng có trọng số của các vector để ra vector đại diện cho cả ca. Nhóm dùng attention "
       "riêng cho từng bệnh, để mỗi bệnh tự chọn lát của mình. Năm head được huấn luyện: ba head chỉ nhìn một mặt "
-      "phẳng, hai head nhìn cả ba mặt phẳng với hai cỡ backbone. Kết quả của năm head được gộp theo hạng (mục 2.5.3).")
-    h2("2.4. Giai đoạn 2: CNN 2.5D với attention riêng từng bệnh")
+      "phẳng, hai head nhìn cả ba mặt phẳng với hai cỡ backbone. Kết quả của năm head được gộp theo hạng (mục 3.5.3).")
+    h2("3.4. Giai đoạn 2: CNN 2.5D với attention riêng từng bệnh")
     p("Đặc trưng của DINOv2 học từ ảnh thường nên không nhạy với tổn thương nhỏ trên MRI; giai đoạn 1 dừng ở mức "
       f"AUC khoảng {f(D['seed']['gop'], 2)}. Giai đoạn 2 huấn luyện toàn bộ mạng tích chập (CNN) trên chính ảnh MRI "
       "({h:kientruc}). Backbone là EfficientNet-B3 {r:effnet} và EfficientNetV2-B2 {r:effv2}, khởi tạo từ trọng số "
@@ -423,44 +890,58 @@ def noi_dung(D, H) -> list:
       "a(k, l), rồi gom thành vector g(l) = Σ a(k, l)·f(k). Logit của bệnh l chỉ phụ thuộc vào g(l). Hàm mất mát là "
       "binary cross-entropy trên nhãn mềm. Trọng số attention còn cho biết lát nào được dùng để kết luận bệnh nào; "
       "web demo dùng thông tin này để hiển thị lát cắt.")
-    h2("2.5. Đánh giá và gộp mô hình")
-    h3("2.5.1. Macro AUC")
+    h2("3.5. Đánh giá và gộp mô hình")
+    h3("3.5.1. Macro AUC")
     p("AUC của một bệnh là xác suất một ca dương tính ngẫu nhiên được mô hình xếp điểm cao hơn một ca âm tính ngẫu "
       "nhiên {r:hanley}; 0,5 là đoán mò, 1,0 là xếp hạng hoàn hảo. Macro AUC là trung bình AUC của 12 bệnh. AUC không "
       "phụ thuộc ngưỡng và không bị đánh lừa bởi tỷ lệ bệnh lệch, trong khi độ chính xác (accuracy) của một mô hình "
       "luôn đoán \"không bệnh\" đã khá cao chỉ vì đa số ô là âm tính.")
-    h3("2.5.2. Khoảng tin cậy bootstrap")
+    h3("3.5.2. Khoảng tin cậy bootstrap")
     p(f"Với {du['n_gold']} ca, một con số AUC đơn lẻ dao động nhiều. Mọi kết quả đều kèm khoảng tin cậy 95% bằng "
       "bootstrap {r:efron}: lấy mẫu lại có hoàn lại 58 ca 1.000 lần, tính macro AUC mỗi lần, lấy phân vị 2,5% và 97,5%. "
       "Khi so hai mô hình, dùng bootstrap bắt cặp: cùng một mẫu ca cho cả hai, tính hiệu số. Nếu khoảng tin cậy của "
       "hiệu số không chứa 0 thì chênh lệch được coi là có thật.")
-    h3("2.5.3. Gộp theo hạng")
+    h3("3.5.3. Gộp theo hạng")
     p("Các mô hình huấn luyện riêng nên thang xác suất không cùng gốc; lấy trung bình xác suất sẽ để mô hình \"tự tin\" "
       "hơn lấn át. Vì AUC chỉ quan tâm thứ hạng, nhóm gộp theo hạng: với từng bệnh, xếp hạng các ca theo xác suất của "
       "từng mô hình rồi lấy trung bình hạng, trọng số bằng nhau.")
-    h3("2.5.4. Chốt trước khi chấm")
-    p("Bài học quan trọng nhất của giai đoạn 1 (mục 4.2) là con số sẽ lạc quan nếu các lựa chọn được quyết định "
+    h3("3.5.4. Chốt trước khi chấm")
+    p("Bài học quan trọng nhất của giai đoạn 1 (mục 5.2) là con số sẽ lạc quan nếu các lựa chọn được quyết định "
       "dựa trên điểm của chính tập chấm. Vì vậy ở giai đoạn 2, số epoch, cách gộp và danh sách mô hình cuối đều được ghi vào "
       "file và commit lên GitHub trước khi có kết quả; điểm báo cáo nguyên như đo được, kể cả khi thấp hơn mong đợi.")
 
-    # ------------------------------------------------ chuong 3
-    h1("CHƯƠNG 3. XÂY DỰNG VÀ TRIỂN KHAI HỆ THỐNG")
-    h2("3.1. Môi trường và công cụ")
+    # ------------------------------------------------ chuong 4
+    h1("CHƯƠNG 4. XÂY DỰNG VÀ TRIỂN KHAI HỆ THỐNG")
+    h2("4.1. Môi trường và công cụ")
     p("Hệ thống viết bằng Python 3.12, quản lý thư viện bằng uv. Mô hình dùng PyTorch {r:pytorch} và timm; đọc DICOM "
       "bằng pydicom {r:pydicom}; tính AUC bằng scikit-learn {r:sklearn}; web demo dùng FastAPI {r:fastapi}. Phần giai "
-      "đoạn 1 và đánh giá chạy trên laptop RTX 4060 8 GB; phần trích đặc trưng và huấn luyện CNN chạy trên Kaggle "
-      "Notebook với 2 GPU T4. Mã nguồn chia thành các script đánh số theo thứ tự chạy, mọi số liệu trong báo cáo được "
+      "đoạn 1 và đánh giá chạy trên laptop RTX 4060 8 GB; phần trích đặc trưng và huấn luyện CNN chạy trên notebook "
+      "GPU đám mây miễn phí với 2 GPU T4. Mã nguồn chia thành các script đánh số theo thứ tự chạy, mọi số liệu trong báo cáo được "
       "tính lại từ file kết quả.")
-    h2("3.2. Xử lý dữ liệu")
+    h2("4.2. Tiền xử lý dữ liệu")
+    p("Mục này mô tả đường đi của một ca từ file DICOM thô tới khối ảnh mà mô hình nhận vào ({h:tienxuly}). Toàn bộ "
+      "bước này chạy một lần trên GPU đám mây và lưu bộ nhớ đệm; web demo gọi lại đúng hàm đọc ảnh lúc huấn luyện "
+      "để tránh lệch xử lý giữa hai nơi.")
     ul(f"**Lập bảng ca và chia tập.** Bảng ca gồm {so(du['n_study'])} ca và {so(du['n_series'])} series. Tập được chia "
        "theo ca, không theo series: khi thử chia theo series, 100% ca kiểm tra có series nằm bên tập huấn luyện.",
        "**Chặn rò rỉ qua nhãn yếu.** Một ca ngoài tập chấm có báo cáo trùng từng ký tự với một ca có nhãn bác sĩ, nên "
        "nhãn yếu của nó mang luôn đáp án. Ca này bị loại khỏi tập huấn luyện ở cả hai giai đoạn.",
-       f"**Chọn series.** Mỗi mặt phẳng chọn một series nhạy dịch (ưu tiên chuỗi xung PD hoặc T2 xoá mỡ), vì dịch và "
-       f"phù tuỷ xương hiện rõ trên các chuỗi này; {nk['chon_series']}% số ca có đủ series phù hợp ở cả ba mặt phẳng.",
-       "**Chuẩn hoá.** Cường độ được cắt theo phân vị 1–99 tính trên cả series (không theo từng lát, để giữ độ sáng "
-       "tương đối giữa các lát), rồi lấy mẫu lại thành 24 lát × 256 × 256 điểm ảnh và lưu bộ nhớ đệm dạng uint8.")
-    h2("3.3. Huấn luyện CNN 2.5D trên Kaggle")
+       f"**Chọn series.** Mỗi mặt phẳng chọn một series nhạy dịch theo cờ trong train_series.csv (ưu tiên chuỗi xung "
+       f"PD hoặc T2 xoá mỡ), vì dịch và phù tủy xương hiện rõ trên các chuỗi này; {nk['chon_series']}% số ca có đủ "
+       "series phù hợp ở cả ba mặt phẳng. Nếu series được chọn đọc lỗi, chương trình lùi sang series kế tiếp của "
+       "cùng mặt phẳng.",
+       "**Đọc và sắp lát.** Các file DICOM của series được đọc bằng pydicom và sắp theo số thứ tự lát "
+       "(InstanceNumber) ghi trong header, không theo tên file.",
+       "**Chuẩn hoá cường độ.** Cường độ được cắt theo phân vị 1 và 99 tính trên toàn bộ điểm ảnh của cả series rồi "
+       "đưa về khoảng 0–1 ({h:tienxuly}b). Tính theo cả series chứ không theo từng lát để giữ độ sáng tương đối giữa "
+       "các lát; tính trước khi đổi kích thước vì phép nội suy tạo ra giá trị mới ở biên và làm lệch phân vị.",
+       "**Lấy mẫu lát và đổi kích thước.** Lấy 24 lát cách đều theo chiều sâu ({h:tienxuly}e), đổi mỗi lát về "
+       "256 × 256 bằng nội suy song tuyến, lưu dạng uint8. Mỗi ca thành một khối 3 × 24 × 256 × 256 kèm cờ cho "
+       "biết mặt phẳng nào có mặt.",
+       "**Cửa sổ 2.5D.** Khi đưa vào CNN, ba lát liền kề được ghép thành ba kênh màu của một ảnh "
+       "({h:tienxuly}d); phần màu trên ảnh ghép là chỗ ba lát khác nhau, tức thông tin về chiều sâu.")
+    K.append(("hinh", "tienxuly", H["tien_xu_ly"], 15.5, "Các bước tiền xử lý trên series Sagittal của ca mẫu"))
+    h2("4.3. Huấn luyện CNN 2.5D trên GPU đám mây")
     p(f"Mỗi mô hình được huấn luyện trên nhãn LLM của {so(cn['mo_hinh'][0]['n_train'])} ca; {nk['n_val_llm']} ca nhãn "
       "LLM khác được giữ lại để theo dõi, không dùng ca nào có nhãn bác sĩ. Cấu hình chính nằm trong {b:cauhinh}.")
     K.append(("bang", "cauhinh", "Cấu hình huấn luyện CNN 2.5D", ["Tham số", "Giá trị"], [
@@ -490,33 +971,33 @@ def noi_dung(D, H) -> list:
                      f(tm[m["so"]]["auc"])])
     K.append(("bang", "sauModel", "Sáu mô hình CNN 2.5D trong bản cuối (mỗi mô hình lấy trọng số EMA ở epoch 12)",
               ["#", "Backbone", "Seed", "Nhãn huấn luyện", "AUC riêng"], rows, [1.0, 5.0, 2.0, 4.5, 3.0]))
-    h2("3.4. Tự gán nhãn bằng Gemini Flash")
+    h2("4.4. Tự gán nhãn bằng Gemini Flash")
     p("Để có bộ nhãn của riêng mình và kiểm tra bộ nhãn công khai, nhóm viết prompt mô tả định nghĩa từng bệnh "
       "(ví dụ: thoái hoá dạng nhầy của dây chằng mà không rách thì cho khoảng 30 điểm), yêu cầu LLM chấm 0–100 cho "
       "12 bệnh của mỗi báo cáo. Báo cáo được gửi theo lô 25 báo cáo, chạy song song 4 lô, có lưu kết quả từng lô để chạy tiếp "
       "khi bị ngắt. LLM chỉ thấy văn bản báo cáo, không thấy mã ca hay nhãn bác sĩ, và prompt được chốt trước khi so "
       "với bác sĩ.")
-    h2("3.5. Web demo")
+    h2("4.5. Web demo")
     p(f"Web demo gồm một máy chủ FastAPI chạy tại 127.0.0.1:8790 và một trang HTML ({{h:web}}). Người dùng chọn một ca "
       "mẫu có nhãn bác sĩ (không nằm trong tập huấn luyện) hoặc tải lên file DICOM nén zip. Máy chủ đọc và chuẩn hoá ca "
       f"theo đúng quy trình lúc huấn luyện, chạy 5 mô hình CNN rồi gộp theo hạng, mất khoảng {nk['web_giay']} giây mỗi "
       "ca trên GPU. Trang hiển thị 12 xác suất xếp giảm dần, so với nhãn bác sĩ nếu có, kèm khung xem lát cắt MRI mà "
-      "mô hình chú ý. Web chạy 5 thay vì 6 mô hình vì trọng số của mô hình #6 bị ghi đè trên Kaggle khi chạy lại #5; "
+      "mô hình chú ý. Web chạy 5 thay vì 6 mô hình vì trọng số của mô hình #6 bị ghi đè trên máy chủ đám mây khi chạy lại #5; "
       "dự đoán của #6 đã được tải về trước nên vẫn được chấm.")
-    K.append(("hinh", "web", H["web"], 15.5, "Giao diện web demo với một ca mẫu"))
-    h2("3.6. Kiểm thử")
+    K.append(("hinh", "web", H["web"], 13.0, "Giao diện web demo với một ca mẫu"))
+    h2("4.6. Kiểm thử")
     p(f"Dự án có {nk['n_test']} kiểm thử tự động (pytest), chạy trong khoảng 20 giây và không cần ảnh thật. Kiểm "
       "thử tập trung vào loại lỗi \"âm thầm\": chương trình vẫn chạy và cho ra một con số hợp lý, chỉ có con số đó sai. "
       "Ví dụ: pooling quên mặt nạ cho lát đệm, softmax ra NaN khi ca thiếu cả ba mặt phẳng, cửa sổ 3 lát không liền "
       "kề, chia tập để lọt ca giữa hai phía, và hàm chọn epoch âm thầm chuyển sang chọn theo loss.")
 
-    # ------------------------------------------------ chuong 4
-    h1("CHƯƠNG 4. THỰC NGHIỆM VÀ KẾT QUẢ")
-    h2("4.1. Thiết lập đánh giá")
+    # ------------------------------------------------ chuong 5
+    h1("CHƯƠNG 5. THỰC NGHIỆM VÀ KẾT QUẢ")
+    h2("5.1. Thiết lập đánh giá")
     p(f"Mọi con số trong chương này là macro AUC trên {du['n_gold']} ca có nhãn bác sĩ, kèm khoảng tin cậy bootstrap "
       "95% trong ngoặc vuông. Ở giai đoạn 1, các ca này được chia 5 fold theo ca và điểm là AUC ngoài fold; ở giai "
       "đoạn 2, chúng không bao giờ vào huấn luyện nên điểm là điểm ngoài mẫu trực tiếp.")
-    h2("4.2. Hành trình cải tiến")
+    h2("5.2. Hành trình cải tiến")
     p("{h:hanhtrinh} tóm tắt các bước. Mỗi bước chỉ đổi một thứ. Dùng cả ba mặt phẳng, thêm nhãn yếu cho "
       f"{so(n_khong)} ca, rồi thay từ điển bằng nhãn LLM đều tăng điểm rõ rệt. Bộ gộp 5 head từng đạt "
       f"{f(ce['cv_cu_bao_cao'])} theo cách đo cũ, nhưng khi kiểm tra lại cách đo, nhóm tìm ra hai lỗi: (1) lúc đo, mỗi fold chọn epoch "
@@ -526,9 +1007,9 @@ def noi_dung(D, H) -> list:
     p(f"Cách sửa: chốt {ce['epoch_chot']} epoch, chọn bằng 10% ca nhãn LLM giữ riêng, không nhìn ca có nhãn bác sĩ, và "
       f"gộp 3 seed. Điểm đo lại đúng cách của giai đoạn 1 là {f(D['seed']['gop'])} {ci(D['seed']['ci_gop'])}. "
       f"Giai đoạn 2 tăng lên {f(cn['auc'])} với 2 CNN và {f(g6['auc'])} với bản cuối 6 CNN.")
-    K.append(("hinh", "hanhtrinh", H["hanh_trinh"], 14.0,
+    K.append(("hinh", "hanhtrinh", H["hanh_trinh"], 14.5,
               "Macro AUC qua từng bước (cột xám: đo theo cách cũ, chỉ để so các bước)"))
-    h2("4.3. Giai đoạn 2 so với giai đoạn 1")
+    h2("5.3. Giai đoạn 2 so với giai đoạn 1")
     mh = cn["mo_hinh"]
     K.append(("bang", "gd2", "So sánh giai đoạn 2 và giai đoạn 1", ["Mô hình", "Macro AUC", "KTC 95%"], [
         ["EfficientNet-B3, seed 42", f(mh[0]["auc"]), ci(mh[0]["ci"])],
@@ -544,7 +1025,7 @@ def noi_dung(D, H) -> list:
       "LLM giữ lại đi cùng chiều với AUC trên ca bác sĩ, cả hai phẳng từ khoảng epoch 6. Lấy epoch cuối như đã chốt "
       "chỉ thấp hơn đỉnh khoảng 0,01.")
     K.append(("hinh", "epoch", H["epoch"], 15.0, "AUC theo epoch: ca bác sĩ (nét liền, chỉ ghi lại) và ca nhãn LLM giữ lại (nét đứt)"))
-    h2("4.4. So sánh ba nguồn nhãn")
+    h2("5.4. So sánh ba nguồn nhãn")
     rows = []
     for k in ("cong_khai", "tu_gan", "tu_dien"):
         n = llm[k]
@@ -563,7 +1044,7 @@ def noi_dung(D, H) -> list:
       f"đạt {f(g2t['auc'])}, ngang bản gộp 2 CNN cùng cấu hình dùng nhãn công khai ({f(g2c['auc'])}; hiệu số "
       f"{ci_dau(ss['gop_2_cnn_tu_gan']['ci'])} chứa 0). Ít nhất trong thí nghiệm này, chất lượng nhãn đo trực tiếp "
       "chưa phản ánh hết chất lượng mô hình huấn luyện từ nó.")
-    h2("4.5. Mô hình cuối")
+    h2("5.5. Mô hình cuối")
     K.append(("bang", "cuoi", "Kết quả mô hình cuối và các nhóm báo cáo kèm (đều chốt trước)",
               ["Nhóm mô hình", "Macro AUC", "KTC 95%"], [
                   ["**Gộp 6 CNN (mô hình chính)**", f"**{f(g6['auc'])}**", ci(g6["ci"])],
@@ -583,7 +1064,13 @@ def noi_dung(D, H) -> list:
     K.append(("bang", "tungbenh", "AUC từng bệnh qua các giai đoạn",
               ["Bệnh", "Số ca dương", "DINOv2 (GĐ 1)", "2 CNN", "6 CNN (cuối)"], rows, [6.0, 2.4, 2.6, 2.2, 2.8]))
     K.append(("hinh", "tungbenh", H["tung_benh"], 15.0, "AUC từng bệnh: DINOv2 đóng băng so với mô hình cuối"))
-    h2("4.6. Các lỗi âm thầm đã phát hiện")
+    p("{h:roc} vẽ đường cong ROC của mô hình cuối cho từng bệnh. Mỗi điểm trên đường cong ứng với một ngưỡng: trục "
+      "ngang là tỷ lệ ca âm tính bị báo nhầm, trục dọc là tỷ lệ ca dương tính được phát hiện; diện tích dưới đường "
+      "cong là AUC. Với thoái hoá khoang trong và nang Baker, mô hình phát hiện phần lớn ca dương tính trước khi báo "
+      "nhầm ca nào. Đường cong của viêm màng hoạt dịch nằm gần đường chéo hơn hẳn, khớp với AUC thấp nhất. Các đường "
+      "cong có dạng bậc thang vì mỗi bệnh chỉ có 9–35 ca dương tính.")
+    K.append(("hinh", "roc", H["roc"], 15.5, "Đường cong ROC từng bệnh của mô hình cuối trên 58 ca có nhãn bác sĩ"))
+    h2("5.6. Các lỗi âm thầm đã phát hiện")
     p("Phần lớn thời gian phát triển dành cho các lỗi không báo ngoại lệ mà làm sai con số. {b:loi} liệt kê các lỗi "
       "chính và cách nhóm chặn từng lỗi.")
     K.append(("bang", "loi", "Lỗi âm thầm và cách chặn", ["Lỗi", "Dấu hiệu đo được", "Cách chặn"], [
@@ -596,30 +1083,28 @@ def noi_dung(D, H) -> list:
         ["nn.DataParallel chậm", f"{nk['dp_giay']} so với {nk['mot_gpu_giay']} giây/bước", "Mỗi GPU một mô hình"],
     ], [4.2, 6.6, 5.2]))
 
-    # ------------------------------------------------ chuong 5
-    h1("CHƯƠNG 5. KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN")
-    h2("5.1. Kết quả đạt được")
-    ul(f"Xây dựng trọn vẹn quy trình từ DICOM thô tới 12 xác suất bệnh; mô hình cuối đạt macro AUC {f(g6['auc'])} "
-       f"{ci(g6['ci'])} trên {du['n_gold']} ca có nhãn bác sĩ, so với {f(D['seed']['gop'])} của giai đoạn 1.",
-       f"Tận dụng được {so(n_khong)} ca không có nhãn bác sĩ ({f(100 * n_khong / du['n_study'], 1)}% dữ liệu) nhờ nhãn "
-       "yếu rút từ báo cáo 9 ngôn ngữ; tự gán lại nhãn bằng Gemini Flash và cho thấy nhãn này dùng được để huấn luyện.",
+    # ------------------------------------------------ chuong 6
+    h1("CHƯƠNG 6. KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN")
+    h2("6.1. Kết quả đạt được")
+    ul(f"Xây dựng trọn vẹn quy trình từ thu thập, phân tích dữ liệu tới 12 xác suất bệnh; mô hình cuối đạt macro AUC "
+       f"{f(g6['auc'])} {ci(g6['ci'])} trên {du['n_gold']} ca có nhãn bác sĩ, so với {f(D['seed']['gop'])} của giai đoạn 1.",
+       f"Tận dụng {so(n_khong)} ca không có nhãn bác sĩ ({f(100 * n_khong / du['n_study'], 1)}% dữ liệu) nhờ nhãn yếu "
+       "rút từ báo cáo 9 ngôn ngữ; nhãn tự gán bằng Gemini Flash bước đầu cho thấy dùng được để huấn luyện.",
        "Thiết lập cách đánh giá trung thực: chia theo ca, chặn rò rỉ, khoảng tin cậy bootstrap, chốt mô hình trước khi "
        "chấm; tự phát hiện và sửa một con số lạc quan của chính nhóm.",
-       f"Web demo chạy cục bộ, trả kết quả trong khoảng {nk['web_giay']} giây mỗi ca, cùng {nk['n_test']} kiểm thử tự động.")
-    h2("5.2. Hạn chế")
-    ul(f"{du['n_gold']} ca có nhãn bác sĩ không vào huấn luyện ở giai đoạn 2 nhưng đã được xem nhiều lần trong quá "
-       "trình phát triển (và dùng để kiểm định chéo ở giai đoạn 1), nên đây là đánh giá nội bộ, không phải tập kiểm "
-       "tra độc lập hoàn toàn.",
-       "Khoảng tin cậy còn rộng (khoảng ±0,03); chênh lệch cỡ 0,01 giữa các mô hình CNN đơn lẻ chưa phân định được.",
-       "AUC chỉ đo khả năng xếp hạng; xác suất chưa được hiệu chỉnh (calibration) và chưa có đánh giá lâm sàng.",
-       "Nhãn huấn luyện là nhãn LLM, chỉ khớp bác sĩ khoảng 81% số ô, nên mô hình bị giới hạn bởi chất lượng nhãn này.",
-       f"Viêm màng hoạt dịch ({f(D['cuoi']['tung_benh']['Synovitis'])}) và thoái hoá khoang ngoài "
-       f"({f(D['cuoi']['tung_benh']['Lateral OA'])}) vẫn còn yếu.")
-    h2("5.3. Hướng phát triển")
-    ul("Đánh giá trên một tập có nhãn bác sĩ lớn hơn và độc lập, ví dụ tập kiểm tra ẩn của cuộc thi.",
+       f"Web demo chạy cục bộ, khoảng {nk['web_giay']} giây mỗi ca; dự án có {nk['n_test']} kiểm thử tự động.")
+    h2("6.2. Hạn chế")
+    ul(f"{du['n_gold']} ca có nhãn bác sĩ không vào huấn luyện ở giai đoạn 2 nhưng đã dùng để kiểm định chéo ở giai "
+       "đoạn 1 và được xem nhiều lần khi phát triển, nên đây là đánh giá nội bộ. Tập này còn lệch so với toàn bộ dữ "
+       "liệu (mục 2.5); khoảng tin cậy rộng khoảng ±0,03 nên chênh lệch cỡ 0,01 giữa các CNN chưa phân định được.",
+       "Mô hình có thể học lối tắt theo hãng máy (mục 2.3); nhóm biết rủi ro này nhưng chưa đo được ảnh hưởng.",
+       "Nhãn huấn luyện là nhãn LLM, chỉ khớp bác sĩ khoảng 81% số ô; xác suất chưa được hiệu chỉnh (calibration) "
+       f"và chưa có đánh giá lâm sàng. Viêm màng hoạt dịch ({f(D['cuoi']['tung_benh']['Synovitis'])}) và thoái hoá "
+       f"khoang ngoài ({f(D['cuoi']['tung_benh']['Lateral OA'])}) vẫn còn yếu.")
+    h2("6.3. Hướng phát triển")
+    ul("Đánh giá trên một tập có nhãn bác sĩ lớn hơn và độc lập, ví dụ dữ liệu từ bệnh viện khác.",
        "Tăng độ phân giải và số lát cho tổn thương nhỏ; thử backbone 3D hoặc huấn luyện riêng cho từng mặt phẳng.",
-       "Hiệu chỉnh xác suất và chọn ngưỡng theo từng bệnh để web demo đưa ra gợi ý dễ hiểu hơn.",
-       "Cải thiện nhãn yếu bằng cách gộp nhiều LLM, hoặc để bác sĩ duyệt lại những ô mà hai bộ nhãn bất đồng.")
+       "Hiệu chỉnh xác suất, chọn ngưỡng theo từng bệnh; gộp nhiều LLM hoặc để bác sĩ duyệt những ô hai bộ nhãn bất đồng.")
     return K
 
 
@@ -720,7 +1205,7 @@ def ghi_than_bai(d, K, H):
                 ilvl.set(qn("w:val"), "0"), numId.set(qn("w:val"), "14")
                 numPr.append(ilvl), numPr.append(numId)
                 par._p.get_or_add_pPr().append(numPr)
-                doan_than(par, after=60, thut=False)
+                doan_than(par, after=40, thut=False)
                 viet_chu(par, td.thay(muc, so))
         elif loai == "hinh":
             _, khoa, anh, rong, chu = k
@@ -768,7 +1253,7 @@ def ghi_than_bai(d, K, H):
         par = d.add_paragraph()
         pf = par.paragraph_format
         pf.left_indent, pf.first_line_indent = Cm(1.0), Cm(-1.0)
-        pf.space_before, pf.space_after, pf.line_spacing = Pt(0), Pt(6), 1.15
+        pf.space_before, pf.space_after, pf.line_spacing = Pt(0), Pt(3), 1.15
         par.alignment = WD_ALIGN_PARAGRAPH.LEFT
         dat_run(par.add_run(f"[{i}]\t{TAI_LIEU[k]}"), co=12)
     thua = set(TAI_LIEU) - set(td.thu_tu)
@@ -810,12 +1295,12 @@ def sua_phan_dau(d, tt: dict, D):
     du = D["du_lieu"]
     so = lambda n: f"{n:,}".replace(",", ".")
     tom_tat = [
-        "Đồ án giải quyết bài toán của cuộc thi RSNA Knee Abnormality Detection trên Kaggle: từ một ca chụp cộng "
-        "hưởng từ (MRI) đầu gối, dự đoán xác suất có mặt của 12 bất thường như rách dây chằng chéo trước, rách sụn "
+        "Đồ án giải quyết bài toán phát hiện bất thường trên ảnh cộng hưởng từ (MRI) đầu gối, dùng bộ dữ liệu do "
+        "Hội Điện quang Bắc Mỹ (RSNA) công bố: từ một ca chụp, dự đoán xác suất có mặt của 12 bất thường như rách dây chằng chéo trước, rách sụn "
         f"chêm, thoái hoá khớp và tràn dịch khớp. Khó khăn chính là chỉ {du['n_gold']} trên {so(du['n_study'])} ca "
         f"({f(100 * du['n_gold'] / du['n_study'], 2)}%) có nhãn do bác sĩ gán; các ca còn lại chỉ kèm một báo cáo "
         "chẩn đoán viết tự do bằng 9 ngôn ngữ.",
-        "Nhóm xây dựng toàn bộ quy trình từ file DICOM thô: rút nhãn yếu từ báo cáo bằng mô hình ngôn ngữ lớn (LLM) "
+        "Nhóm xây dựng toàn bộ quy trình từ file DICOM thô: phân tích dữ liệu ảnh và báo cáo, rút nhãn yếu từ báo cáo bằng mô hình ngôn ngữ lớn (LLM) "
         "để dùng được phần dữ liệu chưa có nhãn, chuẩn hoá ảnh theo từng series, rồi huấn luyện qua hai giai đoạn. "
         "Giai đoạn 1 dùng DINOv2 đóng băng làm bộ trích đặc trưng và chỉ huấn luyện phần đầu phân loại. Giai đoạn 2 "
         "huấn luyện toàn bộ mạng CNN 2.5D (EfficientNet) trên chính ảnh MRI, gom các lát cắt bằng cơ chế chú ý riêng "
@@ -836,16 +1321,16 @@ def sua_phan_dau(d, tt: dict, D):
     mau_muc = copy.deepcopy(pc.cell(1, 1).paragraphs[1]._p)
     viec = {
         "chinh": ("Dữ liệu, mô hình và đánh giá:", [
-            "Tải, đọc và chuẩn hoá dữ liệu DICOM; chia tập theo ca, chặn rò rỉ",
+            "Thu thập, phân tích và tiền xử lý dữ liệu DICOM; chia tập theo ca, chặn rò rỉ",
             "Rút nhãn yếu từ báo cáo: từ điển luật, nhãn LLM, tự gán nhãn bằng Gemini Flash",
             "Giai đoạn 1: trích đặc trưng DINOv2, huấn luyện các head attention",
             "Phân tích lỗi và đo lại kết quả giai đoạn 1",
-            "Giai đoạn 2: xây dựng và huấn luyện CNN 2.5D trên Kaggle",
+            "Giai đoạn 2: xây dựng và huấn luyện CNN 2.5D trên GPU đám mây",
             "Đánh giá AUC, bootstrap; chốt và gộp mô hình cuối",
             "Xây dựng máy chủ suy luận cho web demo",
         ]),
         "phu": ("Khảo sát, giao diện và tài liệu:", [
-            "Khảo sát bài toán, cuộc thi và tài liệu liên quan",
+            "Khảo sát bài toán, dữ liệu và tài liệu liên quan",
             "Thiết kế giao diện web demo",
             "Kiểm thử web demo trên các ca mẫu",
             "Soạn báo cáo và slide thuyết trình",
@@ -878,6 +1363,10 @@ def sua_phan_dau(d, tt: dict, D):
         st.font.size = Pt(12)
         pf = st.paragraph_format
         pf.space_before, pf.space_after, pf.line_spacing = Pt(0), Pt(0), 1.1
+    # muc luc chi lay cap chuong va muc (Heading 1, 2) de gon mot trang; bo \u vi \u lay ca outline level 3
+    for e in body.iter(qn("w:instrText")):
+        if e.text and e.text.strip().startswith("TOC "):
+            e.text = ' TOC \\h \\z \\t "Heading 1,1,Heading 2,2" '
     # doan ket thuc truong muc luc: thu nho de khong tran sang trang trang
     cuoi_ml = body.xpath("./w:sdt//w:p")[-1]
     sp = cuoi_ml.find(qn("w:pPr")).find(qn("w:spacing"))   # mau co san <w:spacing>, sua tai cho de giu thu tu
@@ -953,14 +1442,15 @@ if ($w.Documents.Count -eq 0) {{ $w.Quit() }}
 
 def main() -> None:
     if not THONG_TIN.exists():
-        raise SystemExit(f"Thieu {THONG_TIN.relative_to(REPO)} (mau_docx, hoc_phan, gvhd, noi_thang, sinh_vien)")
+        raise SystemExit(f"Thieu {THONG_TIN.relative_to(REPO)} (mau_docx, hoc_phan, gvhd, noi_thang, sinh_vien, "
+                         "vi_du_bao_cao)")
     tt = json.loads(THONG_TIN.read_text(encoding="utf-8"))
     D = nap_so_lieu()
     print("ve hinh ...")
-    H = ve_hinh(D)
+    H, T = ve_hinh(D)
     d = docx.Document(tt["mau_docx"])
     sua_phan_dau(d, tt, D)
-    tl = ghi_than_bai(d, noi_dung(D, H), H)
+    tl = ghi_than_bai(d, noi_dung(D, H, T), H)
     xoa_anh_thua(d)
     d.save(DOCX)
     print(f"  {DOCX.relative_to(REPO)}  ({len(tl)} tai lieu tham khao)")

@@ -8,7 +8,7 @@ Võ Trần Anh Quân · Dữ liệu: cuộc thi *RSNA Knee Abnormality Detection
 
 | | |
 |---|---|
-| **Đầu vào** | Một ca MRI đầu gối: 3 mặt phẳng (Sagittal, Coronal, Axial), mỗi series khoảng 26 lát DICOM. Cả bộ 4.407 ca, 569 GB. |
+| **Đầu vào** | Một ca MRI đầu gối: 3 mặt phẳng (Sagittal, Coronal, Axial), mỗi series khoảng 30 lát DICOM (trung vị). Cả bộ 4.407 ca, 569 GB. |
 | **Đầu ra** | 12 xác suất: ACL, MCL, sụn chêm trong/ngoài, thoái hoá 3 khoang, tràn dịch, viêm màng hoạt dịch, nang Baker, dập xương, gãy xương. |
 | **Thước đo** | Macro AUC trên 12 nhãn. |
 | **Cái khó** | Chỉ **58 / 4.407 ca (1,3%) có nhãn bác sĩ**. 4.349 ca còn lại chỉ có báo cáo chữ tự do, viết bằng 9 ngôn ngữ. |
@@ -173,8 +173,8 @@ uv run python scripts/93_cham_model_cuoi.py --tai               # model cuối g
 ```bash
 uv run python scripts/70_xuat_bao_cao.py          # -> reports/bao_cao_pbl.html
 uv run python scripts/70_xuat_bao_cao.py --slide  # -> reports/slide/ (PNG, PDF, PPTX; cần Chrome/Edge)
-uv run python scripts/71_xuat_word_pbl6.py --pdf  # báo cáo Word PBL6 theo mẫu trường -> reports/pbl6/ (cần reports/pbl6/thong_tin.json, Word trên Windows, web demo đang chạy)
-uv run python scripts/72_xuat_slide_pbl6.py       # slide PBL6 14 trang -> reports/pbl6/slide/ (PNG, PDF, PPTX)
+uv run --extra bao-cao python scripts/71_xuat_word_pbl6.py --pdf  # báo cáo Word PBL6 theo mẫu trường -> reports/pbl6/ (cần reports/pbl6/thong_tin.json, Word trên Windows, web demo đang chạy)
+uv run --extra bao-cao python scripts/72_xuat_slide_pbl6.py       # slide PBL6 20 trang -> reports/pbl6/slide/ (PNG, PDF, PPTX)
 ```
 
 **Nhãn LLM tự gắn và web demo:**
