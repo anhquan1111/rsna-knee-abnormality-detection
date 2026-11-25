@@ -14,7 +14,7 @@ Võ Trần Anh Quân · Dữ liệu: cuộc thi *RSNA Knee Abnormality Detection
 | **Cái khó** | Chỉ **58 / 4.407 ca (1,3%) có nhãn bác sĩ**. 4.349 ca còn lại chỉ có báo cáo chữ tự do, viết bằng 9 ngôn ngữ. |
 
 Vì vậy dự án gồm hai bài toán: **(1)** rút nhãn từ báo cáo chữ để dùng được 98,7% dữ liệu, **(2)** học từ ảnh MRI.
-58 ca bác sĩ gán nhãn **không bao giờ dùng để train**, chỉ dùng để chấm.
+58 ca bác sĩ gán nhãn là thước đo: giai đoạn 1 chia 5 fold (mỗi ca được chấm bởi model chưa từng thấy nó), giai đoạn 2 **không bao giờ dùng để train**, chỉ dùng để chấm.
 
 ---
 
@@ -173,6 +173,8 @@ uv run python scripts/93_cham_model_cuoi.py --tai               # model cuối g
 ```bash
 uv run python scripts/70_xuat_bao_cao.py          # -> reports/bao_cao_pbl.html
 uv run python scripts/70_xuat_bao_cao.py --slide  # -> reports/slide/ (PNG, PDF, PPTX; cần Chrome/Edge)
+uv run python scripts/71_xuat_word_pbl6.py --pdf  # báo cáo Word PBL6 theo mẫu trường -> reports/pbl6/ (cần reports/pbl6/thong_tin.json, Word trên Windows, web demo đang chạy)
+uv run python scripts/72_xuat_slide_pbl6.py       # slide PBL6 14 trang -> reports/pbl6/slide/ (PNG, PDF, PPTX)
 ```
 
 **Nhãn LLM tự gắn và web demo:**

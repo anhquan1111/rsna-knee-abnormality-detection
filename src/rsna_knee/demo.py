@@ -45,7 +45,7 @@ def _nap_81():
 
 
 class MayDoan:
-    """Nap 2 model mot lan; `doan()` khoa GPU de hai yeu cau khong chay chong."""
+    """Nap moi model trong thu muc mot lan (hien 5); `doan()` khoa GPU de hai yeu cau khong chay chong."""
 
     def __init__(self) -> None:
         import torch

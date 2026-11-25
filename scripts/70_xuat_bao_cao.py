@@ -283,10 +283,8 @@ def tim_chrome() -> tuple[str, bool]:
 
 
 def xuat_slide(d: dict) -> None:
-    from PIL import Image
     try:
-        from pptx import Presentation
-        from pptx.util import Emu
+        import pptx  # noqa: F401
     except ImportError:
         raise SystemExit("Thieu python-pptx: uv sync --extra bao-cao")
 
@@ -294,6 +292,16 @@ def xuat_slide(d: dict) -> None:
     html = dien(KHUNG_SLIDE, d)
     trang = RA_SLIDE / "slide.html"
     trang.write_text('<!doctype html>\n<html lang="vi">\n' + html + "\n</html>\n", encoding="utf-8")
+    chup_slide(trang, RA_SLIDE, "bao_cao_pbl")
+
+
+def chup_slide(trang: Path, ra: Path, ten: str) -> None:
+    """Chrome headless chup tung slide cua `trang` (#s1, #s2...) -> ra/slide_XX.png, ra/<ten>.pdf, ra/<ten>.pptx."""
+    from PIL import Image
+    from pptx import Presentation
+    from pptx.util import Emu
+
+    html = trang.read_text(encoding="utf-8")
     ghi_chu = [re.sub(r"\s+", " ", g).strip()
                for g in re.findall(r'<section class="slide[^"]*" data-ghi-chu="([^"]*)"', html)]
     n = len(re.findall(r'<section class="slide', html))
@@ -308,11 +316,11 @@ def xuat_slide(d: dict) -> None:
     chung = [chrome, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run",
              f"--user-data-dir={doi(ho_so)}", "--virtual-time-budget=8000"]
     try:
-        for cu in RA_SLIDE.glob("slide_*.png"):
+        for cu in ra.glob("slide_*.png"):
             cu.unlink()
         anh = []
         for i in range(1, n + 1):
-            png = RA_SLIDE / f"slide_{i:02d}.png"
+            png = ra / f"slide_{i:02d}.png"
             for _ in range(3):   # Chrome tu WSL thinh thoang thoat som ma khong ghi file
                 subprocess.run(chung + ["--window-size=1920,1080", "--force-device-scale-factor=2",
                                         f"--screenshot={doi(png)}", url(trang) + f"#s{i}"],
@@ -325,7 +333,7 @@ def xuat_slide(d: dict) -> None:
                 if im.size != (3840, 2160):
                     raise SystemExit(f"slide {i}: anh {im.size}, mong doi 3840x2160")
             anh.append(png)
-        pdf = RA_SLIDE / "bao_cao_pbl.pdf"
+        pdf = ra / f"{ten}.pdf"
         subprocess.run(chung + ["--no-pdf-header-footer", f"--print-to-pdf={doi(pdf)}", url(trang)],
                        capture_output=True, timeout=180)
     finally:
@@ -338,7 +346,7 @@ def xuat_slide(d: dict) -> None:
         s = prs.slides.add_slide(trong)
         s.shapes.add_picture(str(png), 0, 0, prs.slide_width, prs.slide_height)
         s.notes_slide.notes_text_frame.text = gc
-    pptx = RA_SLIDE / "bao_cao_pbl.pptx"
+    pptx = ra / f"{ten}.pptx"
     prs.save(pptx)
     print(f"Slide: {n} PNG 3840x2160 + {pptx.name} ({pptx.stat().st_size/1024**2:.1f} MB)"
           + (f" + {pdf.name} ({pdf.stat().st_size/1024**2:.1f} MB)" if pdf.exists() else " (PDF loi)"))
