@@ -35,9 +35,11 @@ ANH_SLIDE = REPO / "reports" / "pbl6" / "hinh" / "slide"
 # So thu tu (1-based) trong bo 21 slide; chu la slide moi. Bia moi luon dung dau.
 GIU = ["muc_luc", 2, "lien_quan", "du_lieu", "eda", 3, "quy_trinh", "tien_xu_ly", 4, 5, 6, 13, "attention", "giao_thuc",
        14, 15, 17, 18, "roc", "phan_tich_ca", "web", "gioi_han", "huong_tiep", 21]
-# Nguoi trinh bay theo so slide cuoi (1-based, tinh ca bia): sinh vien 1 tu bia toi het lan do lai (muc 1-6),
-# sinh vien 2 tu giai doan 2 toi ket luan (muc 7-9). Chia o ranh gioi muc, 12 / 13 slide.
-NGUOI_NOI = (range(1, 13), range(13, 26))
+# Nguoi trinh bay theo so slide cuoi (1-based, tinh ca bia): (so thu tu trong thong_tin.json sinh_vien, cac slide,
+# cau chuyen loi cho nguoi ke tiep). Sinh vien 1 giu phan kho (giai doan 1, nhan LLM, do lai, giai doan 2, attention,
+# phan tich ca, gioi han): 14 slide; sinh vien 2 mo dau, du lieu, roi chot huong tiep va ket luan: 11 slide.
+NGUOI_NOI = ((1, range(1, 10), "giai đoạn 1 và phần mô hình"), (0, range(10, 24), "hướng tiếp và kết luận"),
+             (1, range(24, 26), ""))
 # Muc lon tren dong eyebrow: so cu -> so moi (them muc 2 Du lieu, 3 Quy trinh nen danh lai)
 MUC = {"1": "1", "2": "4", "3": "5", "4": "6", "7": "7"}   # slide cu muc 5, 6, 8, 9 khong giu
 MUC_WEB = "8"
@@ -121,8 +123,8 @@ def bia(tt: dict, logo: list[str]) -> str:
                "do Hội Điện quang Bắc Mỹ RSNA công bố, trong đó chỉ 58 trên 4.407 ca có nhãn bác sĩ. Bài đi từ bài "
                "toán và dữ liệu, quy trình xử lý, cách rút nhãn từ báo cáo, hai giai đoạn mô hình, tới kết quả, web "
                "demo và giới hạn. "
-               f"Em là {tt['sinh_vien'][0]['ten']}, trình bày từ bài toán tới lần đo lại; bạn {tt['sinh_vien'][1]['ten']} "
-               "trình bày giai đoạn 2, web demo, giới hạn và kết luận.")
+               f"Em là {tt['sinh_vien'][1]['ten']}, trình bày bài toán và dữ liệu; bạn {tt['sinh_vien'][0]['ten']} "
+               "trình bày hai giai đoạn mô hình, web demo và giới hạn; cuối cùng em trình bày hướng tiếp và kết luận.")
     return f'''<section class="slide toi" data-ghi-chu="{h.escape(ghi_chu)}">
   <div class="goc" style="align-items:center">
     <div style="display:flex; gap:22px; align-items:center">
@@ -749,8 +751,8 @@ def main() -> None:
         if 'data-k="' not in s[:s.index(">")]:
             s = re.sub(r'^(<section class="slide[^"]*" data-ghi-chu="[^"]*")', rf'\1 data-k="{k}"', s, count=1)
         hien.append(s)
-    if len(hien) != max(NGUOI_NOI[-1]):
-        raise SystemExit(f"{len(hien)} slide nhung NGUOI_NOI chia cho {max(NGUOI_NOI[-1])}: sua NGUOI_NOI")
+    if sorted(i for _, r, _ in NGUOI_NOI for i in r) != list(range(1, len(hien) + 1)):
+        raise SystemExit(f"NGUOI_NOI khong chia dung {len(hien)} slide: sua NGUOI_NOI")
     # slide ket luan: ghi chu cap nhat 0.896
     hien[-1] = re.sub(r'data-ghi-chu="[^"]*"', f'data-ghi-chu="{h.escape(GHI_CHU_KET)}"', hien[-1], count=1)
     an = [re.sub(r'^<section class="slide[^"]*"', '<div hidden data-bo="1"', s).replace("</section>", "</div>")
@@ -782,11 +784,11 @@ def main() -> None:
     goi = [sv["ten"].split()[-1] for sv in tt["sinh_vien"]]
     khoi_moi = list(re.finditer(r'<section class="slide[^"]*"[^>]*?data-ghi-chu="', than))
     for i, m in reversed(list(enumerate(khoi_moi, 1))):
-        ai = next(n for n, r in enumerate(NGUOI_NOI) if i in r)
+        ai = next(sv for sv, r, _ in NGUOI_NOI if i in r)
         than = than[:m.end()] + f"[{h.escape(goi[ai])}] " + than[m.end():]
-    cuoi_phan_1 = max(NGUOI_NOI[0])
-    m = list(re.finditer(r'<section class="slide[^"]*"[^>]*?data-ghi-chu="[^"]*', than))[cuoi_phan_1 - 1]
-    than = than[:m.end()] + f" Phần tiếp theo, bạn {h.escape(goi[1])} trình bày giai đoạn 2." + than[m.end():]
+    for (_, r, chuyen), (sau, _, _) in reversed(list(zip(NGUOI_NOI, NGUOI_NOI[1:]))):
+        m = list(re.finditer(r'<section class="slide[^"]*"[^>]*?data-ghi-chu="[^"]*', than))[max(r) - 1]
+        than = than[:m.end()] + f" Phần tiếp theo, bạn {h.escape(goi[sau])} trình bày {chuyen}." + than[m.end():]
     dau = thay_dung_mot(dau, "</style>", CSS_THEM + "</style>")
     dau = thay_dung_mot(dau, "<title>Slide MRI gối 58 nhãn</title>", "<title>Slide PBL6 MRI gối</title>")
     trang_html = dau + than + "\n\n" + "\n".join(an) + cuoi
