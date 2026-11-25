@@ -17,6 +17,8 @@ import html as h
 import importlib.util
 import json
 import re
+import sys
+import textwrap
 import zipfile
 from pathlib import Path
 
@@ -35,15 +37,15 @@ MUC_WEB = "8"
 CHON_SERIES = "96,9"   # % ca du series nhay dich o ca 3 mat phang (SO_NHAT_KY cua scripts/71)
 MUC_LUC = [("Bài toán", "12 bất thường, macro AUC"), ("Dữ liệu và phân tích", "4.407 ca, ảnh và báo cáo"),
            ("Quy trình, tiền xử lý", "8 bước, DICOM → khối ảnh"), ("Giai đoạn 1", "DINOv2 đóng băng"),
-           ("Nhãn từ báo cáo", "từ điển, LLM"), ("Hành trình và đo lại", "0.811 → 0.764"),
-           ("Giai đoạn 2", "CNN 2.5D, model cuối 0.896"), ("Web demo", "chạy cục bộ"),
+           ("Nhãn từ báo cáo", "từ điển, LLM"), ("Hành trình và đo lại", "0,811 → 0,764"),
+           ("Giai đoạn 2", "CNN 2.5D, model cuối 0,896"), ("Web demo", "chạy cục bộ"),
            ("Giới hạn, kết luận", "điều chưa làm được")]
 
 # Sua chu trong slide cu cho dung voi bao cao PBL6 (tim -> thay, moi cap phai khop dung 1 lan)
 SUA = [
     # slide gioi han: them tap gold lech, loi tat hang may; huong tiep xep tap kiem tra doc lap len dau (khop muc 6.3)
     ("<li><b>58 ca là trần cứng.</b> Khoảng tin cậy rộng khoảng 0.06–0.09; thêm ảnh hay nhãn máy không làm nó hẹp lại.</li>",
-     ("<li><b>58 ca là trần cứng.</b> Khoảng tin cậy rộng khoảng 0.06–0.09, và tập này lệch: không ca nào lành, "
+     ("<li><b>58 ca là trần cứng.</b> Khoảng tin cậy rộng khoảng 0,06–0,09, và tập này lệch: không ca nào lành, "
      "trung bình 4,1 bệnh mỗi ca.</li>")),
     (("<li><b>58 ca đã được xem nhiều lần</b> khi phát triển (dù chưa bao giờ vào train): đây là đánh giá nội bộ, "
      "không phải test độc lập hoàn toàn.</li>"),
@@ -55,16 +57,21 @@ SUA = [
     (("<li><b>Thêm seed và backbone</b> rồi gộp: 6 CNN đã hơn 2 CNN +0.011; mỗi lần thêm khoảng 3 giờ GPU miễn phí.</li>\n"
      "        <li><b>Độ phân giải và số lát cao hơn</b> cho tổn thương nhỏ; viêm màng hoạt dịch (0.71) và gãy xương (0.79) "
      "còn yếu nhất.</li>\n        <li><b>Một tập kiểm tra có nhãn lớn hơn 58 ca</b> để phân xử các chênh lệch nhỏ cỡ 0.01.</li>"),
-     ("<li><b>Một tập kiểm tra có nhãn lớn hơn và độc lập</b> để phân xử các chênh lệch nhỏ cỡ 0.01.</li>\n"
-     "        <li><b>Độ phân giải và số lát cao hơn</b> cho tổn thương nhỏ; viêm màng hoạt dịch (0.718) và thoái hoá "
-     "khoang ngoài (0.840) còn yếu nhất.</li>\n        <li><b>Thêm seed và backbone</b> rồi gộp: 6 CNN hơn 2 CNN "
-     "+0.011; mỗi lần thêm khoảng 3 giờ GPU miễn phí.</li>")),
+     ("<li><b>Một tập kiểm tra có nhãn lớn hơn và độc lập</b> để phân xử các chênh lệch nhỏ cỡ 0,01.</li>\n"
+     "        <li><b>Độ phân giải và số lát cao hơn</b> cho tổn thương nhỏ; viêm màng hoạt dịch (0,718) và thoái hoá "
+     "khoang ngoài (0,840) còn yếu nhất.</li>\n        <li><b>Thêm seed và backbone</b> rồi gộp: 6 CNN hơn 2 CNN "
+     "+0,011; mỗi lần thêm khoảng 3 giờ GPU miễn phí.</li>")),
     # tieu de, cau ket: noi thang so lieu thay vi an du; "don bay lon nhat" khong dung (nhan +0.12, CNN +0.12)
     ("<h2>Mười hai câu hỏi cho mỗi ca chụp, gần như không có đáp án mẫu</h2>",
      "<h2>12 xác suất cho mỗi ca chụp, chỉ 1,3% số ca có nhãn bác sĩ</h2>"),
     ("<h2>Từng bước cải tiến, một lần đo lại, rồi một bước nhảy</h2>",
-     "<h2>Đo lại: 0.811 còn 0.764; giai đoạn 2 lên 0.885</h2>"),
-    ("<h2>Vượt hẳn backbone đóng băng</h2>", "<h2>CNN 2.5D đạt 0.885, hơn DINOv2 đóng băng 0.120</h2>"),
+     "<h2>Đo lại: 0,811 còn 0,764; giai đoạn 2 lên 0,885</h2>"),
+    ("<h2>Vượt hẳn backbone đóng băng</h2>", "<h2>CNN 2.5D đạt 0,885, hơn DINOv2 đóng băng 0,120</h2>"),
+    ("<h2>Nhãn hiếm, và báo cáo viết bằng chín thứ tiếng</h2>",
+     "<h2>Nhãn hiếm, và báo cáo viết bằng 9 thứ tiếng</h2>"),
+    ("<h2>Backbone đóng băng, chỉ học phần đầu, gộp năm góc nhìn</h2>",
+     "<h2>Backbone đóng băng, chỉ học phần đầu, gộp 5 góc nhìn</h2>"),
+    ("<th class=\"so\">khớp bác sĩ @0.5</th>", "<th class=\"so\">khớp bác sĩ @0,5</th>"),
     ("<p>Nhãn rút từ báo cáo là đòn bẩy lớn nhất khi chỉ 1,3% dữ liệu có nhãn.",
      "<p>Nhãn rút từ báo cáo cho phép dùng 98,7% số ca chưa có nhãn bác sĩ."),
     ("<p>Train cả mạng trên chính ảnh MRI vượt hẳn backbone đóng băng.",
@@ -107,14 +114,14 @@ SUA = [
 GHI_CHU_GIOI_HAN = ("Giới hạn đầu tiên là 58 ca: khoảng tin cậy vẫn rộng, và tập này lệch so với toàn bộ dữ liệu vì "
                     "không ca nào lành. 58 ca không vào huấn luyện ở giai đoạn 2 nhưng đã dùng để kiểm định chéo ở giai "
                     "đoạn 1 và được xem nhiều lần khi phát triển, nên đây là đánh giá nội bộ. Chọn CNN làm kết quả chính "
-                    "thay vì bản gộp 50/50 là chọn một trong hai sau khi thấy điểm; chênh 0.033 nên kết luận không đổi, "
+                    "thay vì bản gộp 50/50 là chọn một trong hai sau khi thấy điểm; chênh 0,033 nên kết luận không đổi, "
                     "nhưng nhóm ghi rõ. Nhãn huấn luyện là nhãn LLM, chỉ khớp bác sĩ khoảng 81% số ô, và mô hình có thể "
                     "học lối tắt theo hãng máy mà nhóm chưa đo. Hướng tiếp theo: một tập kiểm tra có nhãn lớn hơn và độc "
                     "lập, tăng độ phân giải cho tổn thương nhỏ, rồi thêm seed để gộp.")
 GHI_CHU_KET = ("Ba ý mang về. Một: khi chỉ 1,3% số ca có nhãn bác sĩ, rút nhãn từ báo cáo cho phép dùng gần hết phần "
-               "còn lại, nâng điểm từ 0.627 lên 0.747. Hai: huấn luyện cả mạng trên "
-               "chính ảnh MRI vượt hẳn backbone đóng băng, từ 0.764 lên 0.885 với 2 CNN và 0.896 với bản cuối 6 CNN. "
-               "Ba: con số chỉ đáng tin khi cách đo đúng; đo lại khiến điểm giảm từ 0.811 xuống 0.764, và ở giai đoạn 2 "
+               "còn lại, nâng điểm từ 0,627 lên 0,747. Hai: huấn luyện cả mạng trên "
+               "chính ảnh MRI vượt hẳn backbone đóng băng, từ 0,764 lên 0,885 với 2 CNN và 0,896 với bản cuối 6 CNN. "
+               "Ba: con số chỉ đáng tin khi cách đo đúng; đo lại khiến điểm giảm từ 0,811 xuống 0,764, và ở giai đoạn 2 "
                "mọi lựa chọn được chốt trước khi chấm. Cảm ơn thầy và mời câu hỏi.")
 
 
@@ -148,27 +155,41 @@ def bia(tt: dict, logo: list[str]) -> str:
     </div>
     <div id="bia-so" hidden></div>
   </div>
-  <div class="goc"><div>{h.escape(tt["noi_thang"].upper())}</div><div>MACRO AUC 0.896 · 58 CA BÁC SĨ GÁN NHÃN</div></div>
+  <div class="goc"><div>{h.escape(tt["noi_thang"].upper())}</div><div>MACRO AUC 0,896 · 58 CA BÁC SĨ GÁN NHÃN</div></div>
 </section>'''
 
 
+# Vung cat tu anh chup web (3200 x 2160, chup o 1600 x 1080 x2): bo cot ca mau va dau trang, giu banner ca,
+# bang 12 benh va khung MRI de chu trong anh to gap ~1,7 lan khi chieu
+CAT_WEB = (872, 600, 3020, 2000)
+
+
 def slide_web(anh: Path) -> str:
-    src = "data:image/png;base64," + base64.b64encode(anh.read_bytes()).decode()
+    import io
+
+    from PIL import Image
+    im = Image.open(anh)
+    if im.size != (3200, 2160):
+        raise SystemExit(f"Anh web {im.size} khac 3200x2160: sua CAT_WEB cho khop")
+    b = io.BytesIO()
+    im.crop(CAT_WEB).save(b, "PNG")
+    src = "data:image/png;base64," + base64.b64encode(b.getvalue()).decode()
     ghi_chu = ("Web demo chạy trên máy, chỉ mở ở 127.0.0.1. Chọn một ca mẫu có nhãn bác sĩ, không nằm trong tập huấn "
                "luyện, hoặc tải lên file DICOM nén zip. Máy chủ FastAPI đọc ca theo đúng quy trình lúc huấn luyện, chạy "
-               "5 mô hình CNN rồi gộp theo hạng, mất khoảng 0,2 giây mỗi ca trên GPU. Bảng bên trái là 12 xác suất xếp "
+               "5 mô hình CNN rồi lấy trung bình xác suất (một ca đơn lẻ thì không xếp hạng được), mất khoảng 0,2 giây "
+               "mỗi ca trên GPU. Bảng bên trái là 12 xác suất xếp "
                "giảm dần, so với nhãn bác sĩ; khung bên phải là lát cắt MRI mà mô hình chú ý nhiều nhất. Web chạy 5 chứ "
                "không phải 6 mô hình vì trọng số mô hình số 6 bị ghi đè trên máy chủ đám mây; dự đoán của nó vẫn được chấm.")
     return f'''<section class="slide" data-ghi-chu="{h.escape(ghi_chu)}">
   <span class="eyebrow">{MUC_WEB} · Web demo</span>
   <h2>Chọn một ca, xem 12 xác suất và lát mô hình chú ý</h2>
-  <div style="display:grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); gap:44px; min-height:0">
+  <div style="display:grid; grid-template-columns: minmax(0, 2.3fr) minmax(0, 1fr); gap:40px; min-height:0">
     <img src="{src}" alt="Giao diện web demo" style="width:100%; height:100%; object-fit:cover; object-position:top left; border:1.5px solid var(--ke); border-radius:10px; min-height:0">
     <div class="the"><span class="tt">Cách chạy</span>
       <ul class="ds" style="font-size:26px; gap:18px">
         <li><b>FastAPI ở 127.0.0.1:8790</b>, chỉ chạy trên máy; không gửi ảnh đi đâu.</li>
         <li><b>Ca mẫu có nhãn bác sĩ</b> (ngoài tập huấn luyện) hoặc <b>tải lên DICOM</b> nén zip.</li>
-        <li><b>5 CNN gộp theo hạng</b>, khoảng 0,2 giây mỗi ca trên GPU.</li>
+        <li><b>5 CNN, lấy trung bình xác suất</b>: một ca đơn lẻ không xếp hạng được; khoảng 0,2 giây mỗi ca trên GPU.</li>
         <li><b>Lát được chú ý</b> lấy từ trọng số attention riêng từng bệnh.</li>
       </ul></div>
   </div>
@@ -293,7 +314,7 @@ def slide_quy_trinh() -> str:
                "tới thay đổi lớn nhất về phương pháp. Hai bước viền xanh là model cuối và web demo.")
     return f'''<section class="slide" data-ghi-chu="{h.escape(ghi_chu)}">
   <span class="eyebrow">3 · Quy trình</span>
-  <h2>Tám bước, từ dữ liệu thô tới web demo</h2>
+  <h2>8 bước, từ dữ liệu thô tới web demo</h2>
   <div class="qt">{o}</div>
   {chan()}
 </section>'''
@@ -326,7 +347,7 @@ def slide_roc(D: dict) -> str:
     tb = D["cuoi"]["tung_benh"]
     ten = {"Medial OA": "Thoái hoá khoang trong", "Baker's": "Nang Baker", "ACL": "Dây chằng chéo trước",
            "Synovitis": "Viêm màng hoạt dịch", "Lateral OA": "Thoái hoá khoang ngoài"}
-    dong = "".join(f'<tr><td>{ten[k]}</td><td class="so">{tb[k]:.3f}</td></tr>'
+    dong = "".join(f'<tr><td>{ten[k]}</td><td class="so">{so_vn(tb[k], 3)}</td></tr>'
                    for k in ("Medial OA", "Baker's", "ACL", "Lateral OA", "Synovitis"))
     ghi_chu = ("Đường cong ROC của model cuối cho từng bệnh trên 58 ca bác sĩ. Mỗi điểm là một ngưỡng: trục ngang là tỷ lệ "
                "ca âm bị báo nhầm, trục dọc là tỷ lệ ca dương được phát hiện; diện tích dưới đường cong là AUC. Thoái hoá "
@@ -339,11 +360,87 @@ def slide_roc(D: dict) -> str:
     <img src="{uri("roc.png")}" alt="ROC" style="width:100%; height:100%; object-fit:contain; object-position:left top; min-height:0">
     <div class="the"><span class="tt">AUC trên 58 ca bác sĩ</span>
       <table>{dong}</table>
-      <p class="gc">Mỗi bệnh chỉ có 9–35 ca dương tính nên đường cong có dạng bậc thang. Macro AUC <b class="so">{D['cuoi']['nhom']['gop_6_cnn']['auc']:.3f}</b>.</p>
+      <p class="gc">Mỗi bệnh chỉ có 9–35 ca dương tính nên đường cong có dạng bậc thang. Macro AUC <b class="so">{so_vn(D['cuoi']['nhom']['gop_6_cnn']['auc'], 3)}</b>.</p>
     </div>
   </div>
   {chan()}
 </section>'''
+
+
+def roc_svg(D: dict) -> str:
+    """Ve lai dung ROC cua scripts/71, bang SVG: chu >= 18px, so kieu Viet.
+
+    Chi doc du lieu cuc bo; khong ghi de roc.png. Kiem thu tu ca va AUC truoc khi ve.
+    """
+    import numpy as np
+    from scipy.stats import rankdata
+    from sklearn.metrics import roc_auc_score, roc_curve
+
+    sys.path.insert(0, str(REPO / "src"))
+    from rsna_knee.config import LABELS
+    from rsna_knee.oof import gold_theo_fold, ma_thu_tu
+
+    y, _, uid = gold_theo_fold()
+    with np.load(REPO / "reports" / "day15_model_cuoi_du_doan.npz") as z:
+        if str(z["uid_md5"]) != ma_thu_tu(uid):
+            raise SystemExit("ROC: thu tu ca du doan khac thu tu ca bac si")
+        P = np.mean([np.column_stack([rankdata(z[f"model_{s}"][:, j]) for j in range(12)])
+                     for s in range(1, 7)], axis=0)
+    ten = ("Dây chằng chéo trước", "Dây chằng bên trong", "Sụn chêm trong", "Sụn chêm ngoài",
+           "Thoái hoá khoang trong", "Thoái hoá khoang ngoài", "Thoái hoá bánh chè – đùi", "Tràn dịch khớp",
+           "Viêm màng hoạt dịch", "Nang Baker", "Dập xương", "Gãy xương")
+    if y.shape != (58, 12) or P.shape != y.shape or len(LABELS) != len(ten):
+        raise SystemExit("ROC: mong doi 58 ca, 12 benh")
+    auc = [roc_auc_score(y[:, j], P[:, j]) for j in range(12)]
+    if abs(float(np.mean(auc)) - D["cuoi"]["nhom"]["gop_6_cnn"]["auc"]) > 5e-4:
+        raise SystemExit("ROC: macro AUC tinh lai lech so lieu bao cao")
+    for j, k in enumerate(LABELS):
+        if abs(auc[j] - D["cuoi"]["tung_benh"][k]) > 5e-4:
+            raise SystemExit(f"ROC: AUC benh {k} lech so lieu bao cao")
+
+    # 1040 x 730 duoc hien thi 1:1 tren slide 17; title 20px, chu trong o 18px.
+    svg = ['<svg class="roc" viewBox="0 0 1040 730" role="img" aria-label="ROC">']
+    for j, t in enumerate(ten):
+        ox, oy = 36 + (j % 4) * 250, 8 + (j // 4) * 224
+        x, top, w, ht = ox + 36, oy + 54, 200, 148
+        for k, line in enumerate(textwrap.wrap(t, 23, break_long_words=False, break_on_hyphens=False)):
+            svg.append(f'<text class="roc-tieu-de" x="{ox + 136}" y="{oy + 20 + k * 23}" text-anchor="middle">{h.escape(line)}</text>')
+        svg.append(f'<path d="M{x},{top}V{top + ht}H{x + w}" fill="none" stroke="var(--muc-2)" stroke-width="1.5"/>')
+        svg.append(f'<path d="M{x},{top + ht}L{x + w},{top}" stroke="var(--truc)" stroke-width="1.5" stroke-dasharray="3 3"/>')
+        fpr, tpr, _ = roc_curve(y[:, j], P[:, j])
+        points = " ".join(f"{x + a * w:.3f},{top + (1 - b) * ht:.3f}" for a, b in zip(fpr, tpr))
+        svg.append(f'<polygon points="{x},{top + ht} {points} {x + w},{top + ht}" fill="var(--phu)" fill-opacity="0.08"/>')
+        svg.append(f'<polyline points="{points}" fill="none" stroke="var(--phu)" stroke-width="2.5"/>')
+        for v in (0, 0.5, 1):
+            if j % 4 == 0:
+                svg.append(f'<text x="{x - 8}" y="{top + (1 - v) * ht + 6}" text-anchor="end">{so_vn(v, 1)}</text>')
+            if j // 4 == 2:
+                svg.append(f'<text x="{x + v * w}" y="{top + ht + 25}" text-anchor="middle">{so_vn(v, 1)}</text>')
+        svg.append(f'<text x="{x + w - 6}" y="{top + ht - 40}" text-anchor="end">{int(y[:, j].sum())} ca dương</text>')
+        svg.append(f'<text x="{x + w - 6}" y="{top + ht - 14}" text-anchor="end">AUC {so_vn(auc[j], 3)}</text>')
+    svg.append('<text x="540" y="724" text-anchor="middle" class="roc-truc">Tỷ lệ dương tính giả (1 − độ đặc hiệu)</text>')
+    svg.append('<text transform="translate(20 350) rotate(-90)" text-anchor="middle" class="roc-truc">Độ nhạy</text></svg>')
+    return "".join(svg)
+
+
+def thay_dung_mot(s: str, tim: str, thay: str) -> str:
+    """Khong am tham bo qua khi HTML/JS nguon thay doi."""
+    if s.count(tim) != 1:
+        raise SystemExit(f"Can khop dung 1 lan, thay {s.count(tim)}: {tim[:180]}")
+    return s.replace(tim, thay, 1)
+
+
+def so_viet_trong_chu(s: str) -> str:
+    """Chi doi so thap phan trong van ban; giu 4.407, 2.5D, IP va ten file.
+
+    Khong goi tren CSS, JSON hay bieu thuc JS: chung van can dau cham cu phap.
+    """
+    def doi(m: re.Match) -> str:
+        t = m.group(0)
+        if re.fullmatch(r"[1-9]\d{0,2}(?:\.\d{3})+", t):
+            return t
+        return t.replace(".", ",")
+    return re.sub(r"(?<![\w.,])\d+\.\d+(?![\w.,])", doi, s)
 
 
 CSS_THEM = """
@@ -380,6 +477,48 @@ CSS_THEM = """
 .qt .b b { font-size:28px; line-height:1.2; }
 .qt .b span:last-child { font-size:22px; color: var(--muc-2); line-height:1.4; }
 .qt .b:not(:nth-child(4n))::after { content:"→"; position:absolute; right:-40px; top:50%; transform:translateY(-50%); font:28px var(--f-so); color: var(--muc-3); }
+
+/* May chieu 1920 x 1080: rong tieu de, san chu va tuong phan. */
+:root { --muc-2:#334155; --muc-3:#4b5866; --ke:#a6b2bf; --truc:#8493a3; --phim-mo:#cbd5e1; }
+h2 { width:100%; max-width:100%; font-size:58px; text-wrap:balance; word-break:normal; overflow-wrap:normal; }
+.slide.toi:first-of-type h1 { width:1700px; max-width:100% !important; font-size:82px !important; text-wrap:balance; }
+.nhom .nh, .nhom th, th, .ong .nh, .ong .b .so { font-size:20px; }
+.slide .chu-giai { font-size:22px !important; }
+.eyebrow { font-size:21px; }
+.chan { font-size:18px; }
+code { font-size:max(20px, 0.88em); border-width:1.5px; }
+.the, .ong .b, .qt .b { border-width:1.5px; }
+.ong .b.may { border-color:#8493a3; }
+.ong .m, .qt .b::after, .bon-anh figure::before { font-size:30px; font-weight:600; color:var(--muc-2); }
+.slide.toi { --muc-2:#cbd5e1; --muc-3:#cbd5e1; }
+.slide.toi .phu { opacity:1; }
+
+/* Be Vietnam Pro co chu so deu, dau phay hep; giu font chinh va font ma lenh. */
+.so, td.so, th.so, .so-lon, .dai-so .gt, .doi .gt, .ba-so .gt,
+.thanh .gt, .luoi .the .gt { font-family:var(--f-chu) !important; font-variant-numeric:tabular-nums; letter-spacing:0; }
+svg .chu, svg .chu-so, svg .chu-dam, svg .chu-phu { font-size:18px; }
+svg .chu-so { font-family:var(--f-chu); font-variant-numeric:tabular-nums; }
+svg .chu, svg .chu-so { fill:var(--muc-3); }
+.roc { width:1040px; max-width:100%; height:auto; display:block; }
+.roc text { font:400 18px var(--f-chu); font-variant-numeric:tabular-nums; fill:var(--muc-2); }
+.roc .roc-tieu-de, .roc .roc-truc { font-size:20px; fill:var(--muc); }
+
+/* Dau cham nam ngoai khoi chu: moi dong xuong hang thang voi chu dong dau. */
+ul.ds { padding-left:0; list-style:none; }
+ul.ds > li { position:relative; padding-left:1.05em; }
+ul.ds > li::before { content:"•"; position:absolute; left:0; top:0; color:var(--muc-3); }
+
+/* Selector theo so slide cuoi: khong anh huong cac slide cu duoc giu an. */
+.slide:nth-of-type(4) > .hai { align-self:start; }
+.ba-anh { align-content:stretch; grid-template-rows:minmax(0,1fr); }
+.ba-anh figure { grid-template-rows:minmax(0,1fr) auto; }
+.ba-anh img { height:100%; min-height:0; aspect-ratio:auto; object-fit:contain; }
+.slide:nth-of-type(6) .thanh .dong { grid-template-columns:190px minmax(0,1fr) 70px; gap:12px; }
+.qt { align-content:start; padding-top:12px; }
+.slide:nth-of-type(12) .ong > .hang:last-child > .m { visibility:hidden; }
+.slide:nth-of-type(15) > .hai, .slide:nth-of-type(19) > .hai { align-self:start; align-items:start; }
+.slide:nth-of-type(17) > .hai { grid-template-columns:1040px minmax(0,1fr); align-self:start; align-items:start; }
+.slide:nth-of-type(17) .the { align-self:start; }
 """
 
 
@@ -420,9 +559,7 @@ def main() -> None:
 
     than = "\n\n".join(hien)
     for tim, thay in SUA:
-        if than.count(tim) != 1:
-            raise SystemExit(f"Chu can sua khong khop dung 1 lan: {tim}")
-        than = than.replace(tim, thay)
+        than = thay_dung_mot(than, tim, thay)
     # thong nhat thuat ngu voi bao cao: "ca gold" -> "ca bac si"; ghi chu thuyet trinh doc bang tieng Viet
     than = than.replace("58 ca gold", "58 ca bác sĩ").replace("ca gold", "ca bác sĩ").replace("báo cáo gold", "báo cáo ca bác sĩ")
 
@@ -431,16 +568,66 @@ def main() -> None:
         g = re.sub(r"\bModel\b", "Mô hình", re.sub(r"\bmodel\b", "mô hình", g))
         return 'data-ghi-chu="' + re.sub(r"\btrain\b(?![._])", "huấn luyện", g) + '"'
     than = re.sub(r'data-ghi-chu="([^"]*)"', viet_hoa, than)
-    trang_html = (dau.replace("</style>", CSS_THEM + "</style>", 1)
-                  .replace("<title>Slide MRI gối 58 nhãn</title>", "<title>Slide PBL6 MRI gối</title>")
-                  + than + "\n\n" + "\n".join(an) + cuoi)
+    # Xu ly tung nut chu/ghi chu, khong doi thuoc tinh width, du lieu D hay cu phap JS.
+    for m in list(re.finditer(r'data-ghi-chu="[^"]*"|>[^<>]+<', than)):
+        tim = m.group(0)
+        thay = so_viet_trong_chu(tim)
+        if tim != thay:
+            than = thay_dung_mot(than, tim, thay)
+    dau = thay_dung_mot(dau, "</style>", CSS_THEM + "</style>")
+    dau = thay_dung_mot(dau, "<title>Slide MRI gối 58 nhãn</title>", "<title>Slide PBL6 MRI gối</title>")
+    trang_html = dau + than + "\n\n" + "\n".join(an) + cuoi
+    anh_roc = f'<img src="{uri("roc.png")}" alt="ROC" style="width:100%; height:100%; object-fit:contain; object-position:left top; min-height:0">'
+    trang_html = thay_dung_mot(trang_html, anh_roc, roc_svg(D))
+
+    # JS: dinh dang so hien thi, khong sua Number, toFixed toa do hay JSON.
+    trang_html = thay_dung_mot(
+        trang_html, 'const f = (x, d = 3) => Number(x).toFixed(d);',
+        'const f = (x, d = 3) => Number(Number(x).toFixed(d)).toLocaleString("vi-VN", { minimumFractionDigits: d, maximumFractionDigits: d });')
+    # Do nhan cot sau khi font tai xong; van dat data-xong o cuoi de bo chup doi duoc.
+    trang_html = thay_dung_mot(trang_html, '(() => {', 'document.fonts.ready.then(() => {')
+    trang_html = thay_dung_mot(trang_html, '})();', '});')
+    # Cung mien [0.45, 0.95], cung chieu cao vung ve 318px (H=440, top=32, bottom=90).
+    for tim, thay in (
+        ('y: [0.55, 0.80], tick: [0.55, 0.05], w: 340', 'y: [0.45, 0.95], tick: [0.45, 0.05], w: 340'),
+        ('y: [0.65, 0.95], tick: [0.65, 0.05], w: 620, h: 330, b: 40, bw: 62, d: 3, aria: "Giai đoạn 2 so với giai đoạn 1"',
+         'y: [0.45, 0.95], tick: [0.45, 0.05], w: 620, h: 330, b: 40, bw: 62, d: 3, aria: "Giai đoạn 2 so với giai đoạn 1"'),
+        ('y: [0.65, 0.95], tick: [0.65, 0.05], w: 620, h: 330, b: 40, bw: 62, d: 3, aria: "Model cuối so với các nhóm"',
+         'y: [0.45, 0.95], tick: [0.45, 0.05], w: 620, h: 330, b: 40, bw: 62, d: 3, aria: "Model cuối so với các nhóm"'),
+    ):
+        trang_html = thay_dung_mot(trang_html, tim, thay)
+    trang_html = thay_dung_mot(trang_html,
+        'const W = o.w || 520, H = o.h || 220, m = { l: 46, r: 12, t: 26, b: o.b || 46 };',
+        '''const cungTruc = ["s5-cot", "s6-buoc", "s14-cot", "s18-cot"].includes(host.id);
+    const W = cungTruc ? host.clientWidth : (o.w || 520), H = cungTruc ? 440 : (o.h || 220);
+    const m = cungTruc ? { l: 64, r: 20, t: 32, b: 90 } : { l: 46, r: 12, t: 26, b: o.b || 46 };''')
+    # Qua ta slide 14: noi cot ten va hai cot so de chu 18px khong de len nhau.
+    trang_html = thay_dung_mot(trang_html,
+        'const W = o.w || 620, hang = o.hang || 26, m = { l: o.l || 128, r: 104, t: 6, b: 30 };',
+        'const W = o.w || 620, hang = o.hang || 26, m = { l: o.l || 190, r: 170, t: 6, b: 30 };')
+    # Chen SVG truoc khi do chu; wrap theo be rong that, khong cat hay bo nhan cot.
+    trang_html = thay_dung_mot(trang_html,
+        'const lines = r.ten.split("\\n");\n      lines.forEach((t, k) => { el("text", { x: X(i), y: H - m.b + 18 + k * 15, "text-anchor": "middle", class: k ? "chu" : "chu-phu" }, g).textContent = t; });',
+        '''host.appendChild(svg);
+      const lines = [];
+      const probe = el("text", { class: "chu-phu", visibility: "hidden" }, svg);
+      const maxWidth = (W - m.l - m.r) / n - 12;
+      for (const line of r.ten.split("\\n")) {
+        let current = "";
+        for (const word of line.split(" ")) {
+          probe.textContent = current ? current + " " + word : word;
+          if (current && probe.getComputedTextLength() > maxWidth) { lines.push(current); current = word; }
+          else current = probe.textContent;
+        }
+        lines.push(current);
+      }
+      probe.remove();
+      lines.forEach((t, k) => { el("text", { x: X(i), y: H - m.b + 26 + k * 23, "text-anchor": "middle", class: k ? "chu" : "chu-phu" }, g).textContent = t; });''')
     # nhan truc bieu do hanh trinh (trong JS): "DINOv2 dong bang" dinh vao nhan cot ke ben
     nhan_cu = 'ten: "DINOv2 đóng băng\\n58 ca, 1 mặt phẳng"'
-    if trang_html.count(nhan_cu) != 1:
-        raise SystemExit("Khong thay nhan truc DINOv2 trong bieu do hanh trinh")
-    trang_html = trang_html.replace(nhan_cu, 'ten: "DINOv2\\n58 ca, 1 mặt phẳng"')
+    trang_html = thay_dung_mot(trang_html, nhan_cu, 'ten: "DINOv2\\n58 ca, 1 mặt phẳng"')
     # chu do JS dien (chan trang, dong phu slide ket luan) cung thong nhat thuat ngu
-    trang_html = (trang_html.replace("58 ca gold", "58 ca bác sĩ").replace("tự gắn", "tự gán")
+    trang_html = (trang_html.replace("58 ca gold", "58 ca bác sĩ").replace("tự gắn", "tự gán").replace("Tự gắn", "Tự gán")
                   .replace("điểm gold", "điểm ca bác sĩ").replace("CA GOLD`", "CA BÁC SĨ`"))
     RA.mkdir(parents=True, exist_ok=True)
     trang = RA / "slide.html"

@@ -137,6 +137,15 @@ Nhãn LLM dùng để train là bộ công khai, không rõ LLM và prompt. Em c
 - Nhãn train là **nhãn LLM** (khớp nhãn bác sĩ ở mức AUC 0.893), nên model bị giới hạn bởi chất lượng nhãn đó.
 - Viêm màng hoạt dịch (0.71) và gãy xương (0.79) vẫn còn yếu.
 
+## 5b. Câu hỏi khó có thể gặp (Gemini đóng vai giảng viên chấm, 25/11)
+
+1. **"Gộp theo hạng thì web demo chạy một ca lấy gì để xếp hạng?"** Web không gộp theo hạng: nó lấy **trung bình xác suất** của 5 mô hình (`src/rsna_knee/demo.py`, hàm `doan`). Gộp theo hạng chỉ dùng khi chấm cả tập 58 ca. Vì vậy số trên web là xác suất chưa hiệu chỉnh, nên đọc theo thứ tự; điểm 0,896 là của bản gộp hạng 6 CNN.
+2. **"Gemini có thể đã thấy các báo cáo này khi tiền huấn luyện?"** Không loại trừ được (báo cáo mục 6.2). Nhưng nhãn LLM chỉ dùng để huấn luyện, điểm tính bằng nhãn bác sĩ, nên cách chấm không bị lệch. Bộ nhãn công khai (LLM khác) cho kết quả ngang: 0,885 so với 0,892.
+3. **"Lấy 24 lát cách đều có bỏ lọt tổn thương nhỏ?"** Series trung vị 30 lát (khoảng tứ phân vị 25–34) nên giữ khoảng 80% số lát; series 320 lát thì chỉ giữ 1/13. Chưa đo riêng ảnh hưởng: ghi ở hạn chế (6.2), hướng tiếp là tăng số lát (6.3).
+4. **"MCL chỉ 9 ca dương, sao tin mức tăng 0,662 → 0,897?"** Khoảng tin cậy từng bệnh của mô hình cuối là [0,791; 0,978] (Bảng 5.4), cận dưới vẫn trên 0,662. Đây không phải bootstrap bắt cặp nên chỉ nói "nhiều khả năng có thật"; mức tăng macro thì có KTC bắt cặp [+0,084; +0,161].
+5. **"Nhãn tự gán kém hơn mà CNN lại cao hơn?"** Không cao hơn: hiệu số 0,892 − 0,885 có KTC [−0,009; +0,025] chứa 0, tức là ngang nhau. Hai bộ LLM khớp nhau 96,9% số ô; phần khác nhau dồn vào viêm màng hoạt dịch và dập xương, còn mô hình học từ 4.136 ca nên phần nhiễu lẻ tẻ phần lớn bị trung bình đi. Không nói "nhiễu giúp điều hoà" vì không có số đo cho điều đó.
+6. **"Sao web toàn ca đúng?"** Ca mẫu được chọn để minh hoạ và báo cáo ghi rõ (4.5.3); mục 5.6 phân tích một ca mô hình làm kém (bắt được 1/3 bệnh) và cho thấy chú ý của viêm màng hoạt dịch rải đều nhất.
+
 ---
 
 ## 6. Câu lệnh chạy mẫu
@@ -146,7 +155,7 @@ Nhãn LLM dùng để train là bộ công khai, không rõ LLM và prompt. Em c
 ```bash
 uv venv --python 3.12 .venv
 uv sync --extra data --extra dev --extra bao-cao --extra cnn
-uv run pytest -q                                   # 114 test, khoảng 20 giây
+uv run pytest -q                                   # 116 test, khoảng 20 giây
 ```
 
 **Giai đoạn 1: DINOv2 đóng băng** (chạy ở máy; phần trích đặc trưng chạy trên Kaggle):
@@ -173,7 +182,7 @@ uv run python scripts/93_cham_model_cuoi.py --tai               # model cuối g
 ```bash
 uv run python scripts/70_xuat_bao_cao.py          # -> reports/bao_cao_pbl.html
 uv run python scripts/70_xuat_bao_cao.py --slide  # -> reports/slide/ (PNG, PDF, PPTX; cần Chrome/Edge)
-uv run --extra bao-cao python scripts/71_xuat_word_pbl6.py --pdf  # báo cáo Word PBL6 theo mẫu trường -> reports/pbl6/ (cần reports/pbl6/thong_tin.json, Word trên Windows, web demo đang chạy)
+uv run --extra bao-cao python scripts/71_xuat_word_pbl6.py --pdf  # báo cáo Word PBL6 theo mẫu trường -> reports/pbl6/ (cần reports/pbl6/thong_tin.json, Word trên Windows, web demo đang chạy: script chụp web và chạy 8 ca mẫu cho mục 5.6, lưu ở data/web_demo/phan_tich_ca/)
 uv run --extra bao-cao python scripts/72_xuat_slide_pbl6.py       # slide PBL6 20 trang -> reports/pbl6/slide/ (PNG, PDF, PPTX)
 ```
 
