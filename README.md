@@ -305,7 +305,7 @@ Versions are **pinned in `uv.lock`**. Several documented numbers depend on the e
 | Compare own labels with radiologist, public LLM and lexicon labels on the 58 gold studies | `python scripts/91_so_sanh_nhan.py` | local |
 | Retrain the 2.5D CNN on own labels | `python scripts/92_day_train_nhan_minh.py` | **Kaggle GPU T4×2** |
 | **Score the final model** (6-CNN blend, pre-declared list) | `python scripts/93_cham_model_cuoi.py --tai` | local |
-| **Web demo** (sample studies + DICOM upload, 12 probabilities, attention map) | `python scripts/95_web_demo.py` → http://127.0.0.1:8790 | local |
+| **Web demo** (sample studies + DICOM upload, 12 probabilities, attention map) | `uv run --extra demo python scripts/95_web_demo.py` → http://127.0.0.1:8790 | local |
 
 ### Why feature extraction runs on Kaggle
 

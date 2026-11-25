@@ -30,6 +30,7 @@ data = ["kaggle==2.2.4"]
 dev = ["pytest>=8.0"]
 bao-cao = [
     "python-pptx==1.0.2",
+    "python-docx>=1.1",
 ]
 cnn = [
     "timm>=1.0.30",

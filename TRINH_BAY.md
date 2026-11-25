@@ -181,7 +181,7 @@ uv run python scripts/70_xuat_bao_cao.py --slide  # -> reports/slide/ (PNG, PDF,
 uv run python scripts/90_gan_nhan_llm.py          # Gemini Flash gắn nhãn 4.407 báo cáo (chạy tiếp được)
 uv run python scripts/91_so_sanh_nhan.py          # so với bác sĩ, nhãn công khai, từ điển trên 58 ca
 uv sync --extra demo
-uv run python scripts/95_web_demo.py              # mở http://127.0.0.1:8790  (thêm ?mau=mau7 để tự chạy ca mẫu)
+uv run --extra demo python scripts/95_web_demo.py           # mở http://127.0.0.1:8790  (thêm ?mau=mau7 để tự chạy ca mẫu)
 ```
 
 Chi tiết từng bước nằm trong `README.vi.md`. Kết quả số của giai đoạn 2 ở `reports/day14_cnn_25d.json`.

@@ -76,3 +76,6 @@ data/kaggle_b336/
 data/kernel_sub/
 # Ban chep sinh tu scripts/81 boi scripts/92 - nguon that la 81
 kaggle/8*/train.py
+
+# Bao cao va slide PBL6 (co anh MRI cua cuoc thi va thong tin sinh vien, repo cong khai)
+reports/pbl6/

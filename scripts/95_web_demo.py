@@ -1,7 +1,7 @@
 """Web demo: chon ca mau hoac tai ca DICOM len, model CNN 2.5D tra 12 xac suat + ban do chu y.
 
     uv sync --extra demo
-    uv run python scripts/95_web_demo.py          # mo http://127.0.0.1:8790
+    uv run --extra demo python scripts/95_web_demo.py       # mo http://127.0.0.1:8790
 
 Chi nghe 127.0.0.1 (luat may: web khong ra mang ngoai). Anh tai len nam trong thu muc tam,
 xu ly xong la xoa. Can:

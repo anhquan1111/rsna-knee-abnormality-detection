@@ -304,7 +304,7 @@ Phiên bản **ghim trong `uv.lock`**. Nhiều con số trong tài liệu gắn 
 | So nhãn tự gắn với nhãn bác sĩ, nhãn công khai, từ điển trên 58 ca gold | `python scripts/91_so_sanh_nhan.py` | máy |
 | Train lại CNN 2.5D bằng nhãn tự gắn | `python scripts/92_day_train_nhan_minh.py` | **Kaggle GPU T4×2** |
 | **Chấm model cuối** (gộp 6 CNN theo danh sách đã chốt) | `python scripts/93_cham_model_cuoi.py --tai` | máy |
-| **Web demo** (ca mẫu + tải DICOM lên, 12 xác suất, bản đồ chú ý) | `python scripts/95_web_demo.py` → http://127.0.0.1:8790 | máy |
+| **Web demo** (ca mẫu + tải DICOM lên, 12 xác suất, bản đồ chú ý) | `uv run --extra demo python scripts/95_web_demo.py` → http://127.0.0.1:8790 | máy |
 
 ### Vì sao trích đặc trưng phải chạy trên Kaggle
 
