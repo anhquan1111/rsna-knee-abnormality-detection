@@ -333,9 +333,16 @@ def chup_slide(trang: Path, ra: Path, ten: str) -> None:
                 if im.size != (3840, 2160):
                     raise SystemExit(f"slide {i}: anh {im.size}, mong doi 3840x2160")
             anh.append(png)
+        # Xoa PDF cu truoc: Chrome ghi hong (vd file dang mo ben Windows) thi khong de ban cu gia lam ban moi
         pdf = ra / f"{ten}.pdf"
-        subprocess.run(chung + ["--no-pdf-header-footer", f"--print-to-pdf={doi(pdf)}", url(trang)],
-                       capture_output=True, timeout=180)
+        pdf.unlink(missing_ok=True)
+        for _ in range(3):
+            subprocess.run(chung + ["--no-pdf-header-footer", f"--print-to-pdf={doi(pdf)}", url(trang)],
+                           capture_output=True, timeout=180)
+            if pdf.exists() and pdf.stat().st_size > 0:
+                break
+        else:
+            raise SystemExit(f"Chrome khong ghi duoc {pdf.name} (dang mo o trinh xem PDF? dong lai roi chay lai)")
     finally:
         shutil.rmtree(ho_so, ignore_errors=True)
 
@@ -349,7 +356,7 @@ def chup_slide(trang: Path, ra: Path, ten: str) -> None:
     pptx = ra / f"{ten}.pptx"
     prs.save(pptx)
     print(f"Slide: {n} PNG 3840x2160 + {pptx.name} ({pptx.stat().st_size/1024**2:.1f} MB)"
-          + (f" + {pdf.name} ({pdf.stat().st_size/1024**2:.1f} MB)" if pdf.exists() else " (PDF loi)"))
+          + f" + {pdf.name} ({pdf.stat().st_size/1024**2:.1f} MB)")
 
 
 if __name__ == "__main__":
