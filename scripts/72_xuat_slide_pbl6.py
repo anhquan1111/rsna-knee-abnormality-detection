@@ -34,11 +34,12 @@ ANH_SLIDE = REPO / "reports" / "pbl6" / "hinh" / "slide"
 
 # So thu tu (1-based) trong bo 21 slide; chu la slide moi. Bia moi luon dung dau.
 GIU = ["muc_luc", 2, "lien_quan", "du_lieu", "eda", 3, "quy_trinh", "tien_xu_ly", 4, 5, 6, 13, "attention", "giao_thuc",
-       14, 15, 17, 18, "roc", "phan_tich_ca", "web", "gioi_han", "huong_tiep", 21]
+       14, 15, 17, 18, "roc", "phan_tich_ca", "web_kien_truc", "web", "gioi_han", "huong_tiep", 21]
 # Nguoi trinh bay theo so slide cuoi (1-based, tinh ca bia): (so thu tu trong thong_tin.json sinh_vien, cac slide,
-# cau chuyen loi cho nguoi ke tiep). Moi nguoi noi mot mach, doi nguoi 1 lan: sinh vien 2 mo dau, bai toan, du lieu,
-# quy trinh (slide 1-9); sinh vien 1 giu phan kho tu giai doan 1 toi ket luan (slide 10-25).
-NGUOI_NOI = ((1, range(1, 10), "từ giai đoạn 1 tới kết luận"), (0, range(10, 26), ""))
+# cau chuyen loi cho nguoi ke tiep). Moi nguoi noi mot mach, doi nguoi 1 lan dung ranh muc 6/7 (chu nhan chot 26/11):
+# sinh vien 2 mo dau, bai toan, du lieu, quy trinh, giai doan 1 va lan do lai (slide 1-12, muc luc 1-6);
+# sinh vien 1 giu giai doan 2, web demo, gioi han va ket luan (slide 13-26, muc luc 7-9).
+NGUOI_NOI = ((1, range(1, 13), "giai đoạn 2, web demo và kết luận"), (0, range(13, 27), ""))
 # Muc lon tren dong eyebrow: so cu -> so moi (them muc 2 Du lieu, 3 Quy trinh nen danh lai)
 MUC = {"1": "1", "2": "4", "3": "5", "4": "6", "7": "7"}   # slide cu muc 5, 6, 8, 9 khong giu
 MUC_WEB = "8"
@@ -46,7 +47,7 @@ CHON_SERIES = "96,9"   # % ca du series nhay dich o ca 3 mat phang (SO_NHAT_KY c
 MUC_LUC = [("Bài toán", "12 bất thường, nghiên cứu liên quan"), ("Dữ liệu và phân tích", "4.407 ca, ảnh và báo cáo"),
            ("Quy trình, tiền xử lý", "8 bước, DICOM → khối ảnh"), ("Giai đoạn 1", "DINOv2 đóng băng"),
            ("Nhãn từ báo cáo", "từ điển, LLM"), ("Hành trình và đo lại", "0,811 → 0,764"),
-           ("Giai đoạn 2", "CNN 2.5D, attention, model cuối 0,896"), ("Web demo", "chạy cục bộ"),
+           ("Giai đoạn 2", "CNN 2.5D, attention, model cuối 0,896"), ("Web demo", "kiến trúc, giao diện"),
            ("Giới hạn, kết luận", "điều chưa làm được")]
 
 # Sua chu trong slide cu cho dung voi bao cao PBL6 (tim -> thay, moi cap phai khop dung 1 lan)
@@ -122,8 +123,8 @@ def bia(tt: dict, logo: list[str]) -> str:
                "do Hội Điện quang Bắc Mỹ RSNA công bố, trong đó chỉ 58 trên 4.407 ca có nhãn bác sĩ. Bài đi từ bài "
                "toán và dữ liệu, quy trình xử lý, cách rút nhãn từ báo cáo, hai giai đoạn mô hình, tới kết quả, web "
                "demo và giới hạn. "
-               f"Em là {tt['sinh_vien'][1]['ten']}, trình bày bài toán, dữ liệu và quy trình; bạn {tt['sinh_vien'][0]['ten']} "
-               "trình bày từ giai đoạn 1 tới kết luận.")
+               f"Em là {tt['sinh_vien'][1]['ten']}, trình bày bài toán, dữ liệu, quy trình và giai đoạn 1; bạn "
+               f"{tt['sinh_vien'][0]['ten']} trình bày giai đoạn 2, web demo và kết luận.")
     return f'''<section class="slide toi" data-ghi-chu="{h.escape(ghi_chu)}">
   <div class="goc" style="align-items:center">
     <div style="display:flex; gap:22px; align-items:center">
@@ -159,26 +160,52 @@ def slide_web(anh: Path) -> str:
     b = io.BytesIO()
     im.crop(CAT_WEB).save(b, "PNG")
     src = "data:image/png;base64," + base64.b64encode(b.getvalue()).decode()
-    ghi_chu = ("Web demo chạy trên máy, chỉ mở ở 127.0.0.1. Chọn một ca mẫu có nhãn bác sĩ, không nằm trong tập huấn "
-               "luyện, hoặc tải lên file DICOM nén zip. Máy chủ FastAPI đọc ca theo đúng quy trình lúc huấn luyện, chạy "
-               "5 mô hình CNN rồi lấy trung bình xác suất (một ca đơn lẻ thì không xếp hạng được), mất khoảng 0,2 giây "
-               "mỗi ca trên GPU. Bảng bên trái là 12 xác suất xếp "
-               "giảm dần, so với nhãn bác sĩ; khung bên phải là lát cắt MRI mà mô hình chú ý nhiều nhất. Web chạy 5 chứ "
-               "không phải 6 mô hình vì trọng số mô hình số 6 bị ghi đè trên máy chủ đám mây; dự đoán của nó vẫn được chấm.")
+    ghi_chu = ("Đây là ca mẫu 1. Bác sĩ ghi nhận 9 bệnh, và mô hình xếp cả 9 bệnh đó vào 9 xác suất cao nhất. Bảng bên "
+               "trái là 12 xác suất xếp giảm dần, cột cuối là nhãn bác sĩ; khung bên phải là lát cắt MRI mà mô hình chú ý "
+               "nhiều nhất cho bệnh đang chọn, lấy từ trọng số attention. Ca mẫu nằm ngoài tập huấn luyện nhưng được chọn "
+               "để minh hoạ, tức là những ca mô hình xếp đúng phần lớn bệnh, nên không đại diện cho kết quả chung.")
     return f'''<section class="slide" data-ghi-chu="{h.escape(ghi_chu)}">
   <span class="eyebrow">{MUC_WEB} · Web demo</span>
   <h2>Chọn một ca, xem 12 xác suất và lát mô hình chú ý</h2>
   <div style="display:grid; grid-template-columns: minmax(0, 2.3fr) minmax(0, 1fr); gap:40px; min-height:0">
     <img src="{src}" alt="Giao diện web demo" style="width:100%; height:100%; object-fit:cover; object-position:top left; border:1.5px solid var(--ke); border-radius:10px; min-height:0">
-    <div class="the"><span class="tt">Cách chạy</span>
+    <div class="the"><span class="tt">Đọc màn hình</span>
       <ul class="ds" style="font-size:26px; gap:18px">
-        <li><b>FastAPI ở 127.0.0.1:8790</b>, chỉ chạy trên máy; không gửi ảnh đi đâu.</li>
-        <li><b>Ca mẫu có nhãn bác sĩ</b> (ngoài tập huấn luyện) hoặc <b>tải lên DICOM</b> nén zip.</li>
-        <li><b>5 CNN, lấy trung bình xác suất</b>: một ca đơn lẻ không xếp hạng được; khoảng 0,2 giây mỗi ca trên GPU.</li>
-        <li><b>Lát được chú ý</b> lấy từ trọng số attention riêng từng bệnh.</li>
+        <li><b>Ca mẫu 1:</b> bác sĩ ghi nhận 9 bệnh, mô hình xếp cả 9 vào 9 xác suất cao nhất.</li>
+        <li><b>Bảng trái:</b> 12 xác suất xếp giảm dần; cột cuối là nhãn bác sĩ.</li>
+        <li><b>Khung phải:</b> lát mô hình chú ý nhất cho bệnh đang chọn.</li>
+        <li><b>Ca chọn để minh hoạ</b>, ngoài tập huấn luyện; không đại diện kết quả chung.</li>
       </ul></div>
   </div>
   <div class="chan"><span>RSNA KNEE · PBL6</span><span class="trang"></span></div>
+</section>'''
+
+
+def slide_web_kien_truc() -> str:
+    the = [("01 · Giao diện", "Trang HTML tĩnh", "Chọn ca mẫu có nhãn bác sĩ hoặc kéo thả zip DICOM; hiện 12 xác suất và lát mô hình chú ý."),
+           ("02 · Máy chủ", "FastAPI ở 127.0.0.1:8790", "Chỉ máy này gọi được; nhận ca mẫu hoặc zip tối đa 400 MB, trả JSON."),
+           ("03 · Suy luận", "5 CNN nạp sẵn trên GPU", "Gọi lại đúng hàm tiền xử lý lúc huấn luyện, để ảnh vào mô hình giống hệt.")]
+    o = "".join(f'<div class="b"><span class="so">{s}</span><b>{h.escape(t)}</b><span>{h.escape(m)}</span></div>' for s, t, m in the)
+    # Mot luot du doan (hinh trinh tu web cua bao cao, muc 4.5.2)
+    luot = [("Gửi ca", "<code>POST /api/du-doan</code>, ca mẫu hoặc zip"), ("Suy mặt phẳng", "từ header DICOM; chọn series nhạy dịch"),
+            ("Chuẩn hoá", "3 × 24 × 256², 72 cửa sổ 2.5D"), ("Chạy 5 CNN", "trung bình xác suất; khoảng 0,2 giây"),
+            ("Trả về", "12 xác suất, lát chú ý; xoá thư mục tạm")]
+    o2 = "".join(f'<div class="b"><b>{t}</b><span>{m}</span></div>' for t, m in luot)
+    ghi_chu = ("Web demo có ba lớp, chạy hoàn toàn trên máy. Giao diện là một trang HTML tĩnh. Máy chủ FastAPI chỉ nghe ở "
+               "127.0.0.1, cổng 8790, nên máy khác trong mạng không gọi được. Lớp suy luận nạp sẵn 5 mô hình CNN lên GPU; "
+               "với ca tải lên, nó tự suy mặt phẳng từ header DICOM rồi gọi lại đúng hàm tiền xử lý của lúc huấn luyện, "
+               "để ảnh vào mô hình giống hệt lúc huấn luyện. Kết quả là trung bình xác suất của 5 mô hình, vì một ca đơn "
+               "lẻ thì không gộp theo hạng được; mất khoảng 0,2 giây mỗi ca. Web chạy 5 chứ không phải 6 mô hình vì trọng "
+               "số mô hình số 6 bị ghi đè trên máy chủ đám mây; dự đoán của nó đã tải về trước nên vẫn được chấm.")
+    return f'''<section class="slide" data-ghi-chu="{h.escape(ghi_chu)}" data-k="web_kien_truc">
+  <span class="eyebrow">{MUC_WEB} · Web demo</span>
+  <h2>Ba lớp, chạy trọn trên máy</h2>
+  <div style="display:grid; gap:44px; min-height:0; align-content:start">
+    <div class="qt ht wk">{o}</div>
+    <div style="display:grid; gap:16px"><span class="nh">Một lượt dự đoán</span><div class="qt wk-luot">{o2}</div></div>
+    <div class="luu-y"><b>Không gửi ảnh ra ngoài</b><p>Ca tải lên bị xoá ngay khi xử lý xong, kể cả khi lỗi. Web chạy 5 thay vì 6 CNN: trọng số mô hình số 6 bị ghi đè trên máy chủ đám mây; dự đoán của nó đã tải về trước nên vẫn được chấm.</p></div>
+  </div>
+  {chan()}
 </section>'''
 
 
@@ -590,7 +617,8 @@ def so_viet_trong_chu(s: str) -> str:
         if re.fullmatch(r"[1-9]\d{0,2}(?:\.\d{3})+", t):
             return t
         return t.replace(".", ",")
-    return re.sub(r"(?<![\w.,])\d+\.\d+(?![\w.,])", doi, s)
+    # dau cham, phay cuoi cau ("0.764, ...", "... 0.885.") van la so; "127.0.0.1" thi khong
+    return re.sub(r"(?<![\w.,])\d+\.\d+(?![\w]|[.,]\w)", doi, s)
 
 
 CSS_THEM = """
@@ -706,6 +734,17 @@ code.ct sub { font-size:0.62em; }
 .qt.ht .b b { font-size:32px; }
 .qt.ht .b span:last-child { font-size:25px; }
 .qt.ht .b:not(:nth-child(4n))::after { content:none; }
+.qt.ht.wk .b:not(:last-child)::after { content:"→"; right:-44px; }
+.qt.ht.wk .b .so { letter-spacing:0.08em; text-transform:uppercase; }
+.qt.ht.wk .b { min-height:0; padding:28px 32px; }
+.slide[data-k="web_kien_truc"] > div { gap:36px !important; }
+.qt.wk-luot { grid-template-columns: repeat(5, minmax(0,1fr)); padding-top:0; }
+.qt.wk-luot .b { min-height:0; padding:20px 22px; }
+.qt.wk-luot .b b { font-size:25px; }
+.qt.wk-luot .b span:last-child { font-size:21px; }
+.qt.wk-luot .b:not(:nth-child(4n))::after { content:none; }
+.qt.wk-luot .b:not(:last-child)::after, .qt.ht.wk .b:not(:last-child)::after { content:"→"; position:absolute; right:-44px; top:50%; transform:translateY(-50%); font-family:var(--f-so); }
+.qt.wk-luot code { font:inherit; white-space:nowrap; color:var(--muc); background:none; border:0; padding:0; }
 """
 
 
@@ -740,7 +779,7 @@ def main() -> None:
     moi = {"muc_luc": slide_muc_luc, "lien_quan": slide_lien_quan, "du_lieu": lambda: slide_du_lieu(D, T),
            "eda": lambda: slide_eda(D, T), "quy_trinh": slide_quy_trinh, "tien_xu_ly": lambda: slide_tien_xu_ly(T),
            "attention": slide_attention, "giao_thuc": lambda: slide_giao_thuc(hang_gt), "roc": lambda: slide_roc(D),
-           "phan_tich_ca": lambda: slide_phan_tich_ca(D), "web": lambda: slide_web(ANH_WEB),
+           "phan_tich_ca": lambda: slide_phan_tich_ca(D), "web_kien_truc": slide_web_kien_truc, "web": lambda: slide_web(ANH_WEB),
            "gioi_han": slide_gioi_han, "huong_tiep": slide_huong_tiep}
     hien = [bia(tt, logo_tu_mau(tt["mau_docx"]))]
     for g in GIU:

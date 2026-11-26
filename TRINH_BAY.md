@@ -183,7 +183,7 @@ uv run python scripts/93_cham_model_cuoi.py --tai               # model cuối g
 uv run python scripts/70_xuat_bao_cao.py          # -> reports/bao_cao_pbl.html
 uv run python scripts/70_xuat_bao_cao.py --slide  # -> reports/slide/ (PNG, PDF, PPTX; cần Chrome/Edge)
 uv run --extra bao-cao python scripts/71_xuat_word_pbl6.py --pdf  # báo cáo Word PBL6 theo mẫu trường -> reports/pbl6/ (cần reports/pbl6/thong_tin.json, Word trên Windows, web demo đang chạy: script chụp web và chạy 8 ca mẫu cho mục 5.6, lưu ở data/web_demo/phan_tich_ca/)
-uv run --extra bao-cao python scripts/72_xuat_slide_pbl6.py       # slide PBL6 25 trang -> reports/pbl6/slide/ (PNG, PDF, PPTX)
+uv run --extra bao-cao python scripts/72_xuat_slide_pbl6.py       # slide PBL6 26 trang -> reports/pbl6/slide/ (PNG, PDF, PPTX)
 ```
 
 **Nhãn LLM tự gắn và web demo:**
