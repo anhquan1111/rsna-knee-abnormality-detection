@@ -145,6 +145,7 @@ Nhãn LLM dùng để train là bộ công khai, không rõ LLM và prompt. Em c
 4. **"MCL chỉ 9 ca dương, sao tin mức tăng 0,662 → 0,897?"** Khoảng tin cậy từng bệnh của mô hình cuối là [0,791; 0,978] (Bảng 5.4), cận dưới vẫn trên 0,662. Đây không phải bootstrap bắt cặp nên chỉ nói "nhiều khả năng có thật"; mức tăng macro thì có KTC bắt cặp [+0,084; +0,161].
 5. **"Nhãn tự gán kém hơn mà CNN lại cao hơn?"** Không cao hơn: hiệu số 0,892 − 0,885 có KTC [−0,009; +0,025] chứa 0, tức là ngang nhau. Hai bộ LLM khớp nhau 96,9% số ô; phần khác nhau dồn vào viêm màng hoạt dịch và dập xương, còn mô hình học từ 4.136 ca nên phần nhiễu lẻ tẻ phần lớn bị trung bình đi. Không nói "nhiễu giúp điều hoà" vì không có số đo cho điều đó.
 6. **"Sao web toàn ca đúng?"** Ca mẫu được chọn để minh hoạ và báo cáo ghi rõ (4.5.3); mục 5.6 phân tích một ca mô hình làm kém (bắt được 1/3 bệnh) và cho thấy chú ý của viêm màng hoạt dịch rải đều nhất.
+7. **"Web chỉ chạy 5 CNN, vậy web đạt bao nhiêu?"** (Gemini chấm lần 2, 26/11) Trung bình xác suất 5 CNN như web, chấm trên 58 ca bác sĩ: **0,894**, KTC 95% [0,860; 0,923]. So với gộp hạng 6 CNN (0,896): KTC bắt cặp [−0,008; +0,005] chứa 0, tức ngang nhau. Đo từ `reports/day15_model_cuoi_du_doan.npz` (mô hình #1–#5, hàm `_macro`, `ktc` của `scripts/93`).
 
 ---
 
