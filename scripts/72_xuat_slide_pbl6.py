@@ -728,7 +728,7 @@ code.ct sub { font-size:0.62em; }
 .pt-cot em s { position:absolute; right:0; bottom:4px; text-decoration:none; font-size:19px; color:var(--muc-3); }
 .pt-truc { display:grid; grid-template-columns:repeat(3,1fr); text-align:center; font-size:20px; color:var(--muc-2); padding-top:6px; }
 .pt-hang > p { font-size:25px; color:var(--muc-2); line-height:1.45; }
-.slide[data-k="gioi_han"] > .the { max-width:1500px; }
+.slide[data-k="gioi_han"] > .the { max-width:100%; }
 .qt.ht { grid-template-columns: repeat(3, minmax(0,1fr)); }
 .qt.ht .b { min-height:300px; padding:32px 34px; gap:14px; }
 .qt.ht .b b { font-size:32px; }
@@ -745,6 +745,49 @@ code.ct sub { font-size:0.62em; }
 .qt.wk-luot .b:not(:nth-child(4n))::after { content:none; }
 .qt.wk-luot .b:not(:last-child)::after, .qt.ht.wk .b:not(:last-child)::after { content:"→"; position:absolute; right:-44px; top:50%; transform:translateY(-50%); font-family:var(--f-so); }
 .qt.wk-luot code { font:inherit; white-space:nowrap; color:var(--muc); background:none; border:0; padding:0; }
+"""
+
+# Slide noi dung dồn len tren, trong 150-520 px o nua duoi (do 28/11): phong noi dung (zoom) toi muc lon nhat
+# con vua khung, chua >= 70 px toi chan trang va khong tran le phai; toi da 1,4 lan. Chay sau khi JS ve xong
+# bieu do (data-xong). Slide anh chup/ROC/phan tich ca da day, slide toi (bia, ket luan) giu nguyen.
+VUA_KHUNG = """<script>
+(() => {
+  const BO = ["web", "roc", "phan_tich_ca"], TRAN = 1812, DEM = 70;
+  const TRAN_ZOOM = { huong_tiep: 1.6, giao_thuc: 1.6, gioi_han: 1.5 };   // slide it chu: cho phong hon
+  const do_la = (sec, chan) => {
+    const r0 = sec.getBoundingClientRect(); let day = 0, phai = 0;
+    sec.querySelectorAll("*").forEach(e => {
+      const t = e.tagName.toLowerCase();
+      if (e === chan || chan.contains(e) || (t !== "svg" && e.closest("svg"))) return;
+      if (e.children.length && t !== "svg" && t !== "img") return;
+      const r = e.getBoundingClientRect();
+      if (r.width && r.height) { day = Math.max(day, r.bottom - r0.top); phai = Math.max(phai, r.right - r0.left); }
+    });
+    sec.querySelectorAll(".the, .b, .luu-y").forEach(e => {   // vien khung cung phai nam trong khung slide
+      const r = e.getBoundingClientRect();
+      if (r.height) { day = Math.max(day, r.bottom - r0.top); phai = Math.max(phai, r.right - r0.left); }
+    });
+    return [day, phai];
+  };
+  const vua = () => document.querySelectorAll("section.slide[data-k]").forEach(sec => {
+    const chan = sec.querySelector(".chan"), h2 = sec.querySelector("h2");
+    if (BO.includes(sec.dataset.k) || sec.classList.contains("toi") || !chan || !h2 || !sec.getClientRects().length) return;
+    const nd = [...sec.children].filter(e => e !== chan && (h2.compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING));
+    const gioi = chan.getBoundingClientRect().top - sec.getBoundingClientRect().top - DEM;
+    const ve = () => sec.querySelectorAll(".hinh").forEach(e => e.__ve && e.__ve());   // bieu do ve theo be rong moi
+    for (let z = TRAN_ZOOM[sec.dataset.k] || 1.4; z > 1.001; z = Math.round((z - 0.04) * 100) / 100) {
+      nd.forEach(e => { e.style.zoom = z; e.style.alignSelf = "start"; });   // khoi cao vua noi dung, khong gian ca o
+      ve();
+      const [day, phai] = do_la(sec, chan);
+      if (day <= gioi && phai <= TRAN) { sec.dataset.zoom = z; return; }
+    }
+    nd.forEach(e => { e.style.zoom = ""; e.style.alignSelf = ""; });
+    ve();
+  });
+  const cho = () => document.body.dataset.xong === "1" ? vua() : setTimeout(cho, 50);
+  document.fonts.ready.then(cho);
+})();
+</script>
 """
 
 
@@ -852,6 +895,7 @@ def main() -> None:
     trang_html = thay_dung_mot(trang_html,
         'const W = o.w || 520, H = o.h || 220, m = { l: 46, r: 12, t: 26, b: o.b || 46 };',
         '''const cungTruc = ["s5-cot", "s6-buoc", "s14-cot", "s18-cot"].includes(host.id);
+    host.__ve = () => { host.innerHTML = ""; cot(host, rows, o); };   // VUA_KHUNG ve lai sau khi phong
     const W = cungTruc ? host.clientWidth : (o.w || 520), H = cungTruc ? 440 : (o.h || 220);
     const m = cungTruc ? { l: 64, r: 20, t: 32, b: 90 } : { l: 46, r: 12, t: 26, b: o.b || 46 };''')
     # Qua ta slide 14: noi cot ten va hai cot so de chu 18px khong de len nhau.
@@ -867,8 +911,8 @@ def main() -> None:
       const maxWidth = (W - m.l - m.r) / n - 12;
       for (const line of r.ten.split("\\n")) {
         let current = "";
-        for (const word of line.split(" ")) {
-          probe.textContent = current ? current + " " + word : word;
+        for (const word of line.split(/ |(?<=-)/)) {   // ten dai (EfficientNet-B3) xuong dong o dau gach noi
+          probe.textContent = current ? current + (current.endsWith("-") ? "" : " ") + word : word;
           if (current && probe.getComputedTextLength() > maxWidth) { lines.push(current); current = word; }
           else current = probe.textContent;
         }
@@ -883,6 +927,7 @@ def main() -> None:
     trang_html = (trang_html.replace("58 ca gold", "58 ca bác sĩ").replace("tự gắn", "tự gán").replace("Tự gắn", "Tự gán")
                   .replace("điểm gold", "điểm ca bác sĩ").replace("CA GOLD`", "CA BÁC SĨ`"))
     RA.mkdir(parents=True, exist_ok=True)
+    trang_html = thay_dung_mot(trang_html, "</html>", VUA_KHUNG + "</html>")
     trang = RA / "slide.html"
     trang.write_text(trang_html, encoding="utf-8")
     print(f"{len(hien)} slide -> {trang.relative_to(REPO)}")
