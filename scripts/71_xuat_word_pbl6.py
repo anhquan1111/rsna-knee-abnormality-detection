@@ -1195,7 +1195,7 @@ def noi_dung(D, H, T) -> list:
       f"bước, so với {nk['mot_gpu_giay']} giây khi chạy một GPU. Bản cuối cho mỗi GPU huấn luyện một mô hình độc lập "
       f"trong tiến trình riêng; hai mô hình xong trong {nk['gio_kaggle']} giờ.")
     h2("4.4. Tự gán nhãn bằng Gemini Flash")
-    p("Để có bộ nhãn của riêng mình và kiểm tra bộ nhãn công khai, nhóm viết một prompt (toàn văn ở Phụ lục A) đặt "
+    p("Để có bộ nhãn của riêng mình và kiểm tra bộ nhãn công khai, nhóm viết một prompt đặt "
       "LLM vào vai bác sĩ chẩn đoán hình ảnh cơ xương khớp, định nghĩa từng bệnh và quy định thang điểm 0–100: dấu "
       "hiệu được khẳng định cho khoảng 95, được khẳng định là không có hoặc bình thường khoảng 3, không được nhắc tới "
       "khoảng 8, viết nước đôi (\"có thể\", \"không loại trừ\") khoảng 50, \"nhiều khả năng\" khoảng 75. Một số "
@@ -1228,7 +1228,7 @@ def noi_dung(D, H, T) -> list:
       "(mục 3.5.3) không dùng được ở đây vì chỉ có một ca. Kết quả gửi về gồm cả các lát sau chuẩn hoá (ảnh JPEG mã "
       f"hoá base64), nên người xem thấy đúng ảnh mô hình đã nhận. Trên RTX 4060, phần chạy 5 mô hình mất khoảng "
       f"{nk['web_giay']} giây mỗi ca. {{b:api}} liệt kê ba địa chỉ của máy chủ.")
-    K.append(("hinh", "webtt", H["web_tuan_tu"], 12.5, "Trình tự xử lý một lượt dự đoán"))
+    K.append(("hinh", "webtt", H["web_tuan_tu"], 15.0, "Trình tự xử lý một lượt dự đoán"))
     K.append(("bang", "api", "Các API của máy chủ web demo", ["Phương thức, đường dẫn", "Đầu vào", "Đầu ra"], [
         ["GET /", "Không", "Trang giao diện HTML"],
         ["GET /api/ca-mau", "Không", "Danh sách 6 ca mẫu: mã, tên, số bệnh và tên bệnh bác sĩ ghi nhận"],
@@ -1243,7 +1243,7 @@ def noi_dung(D, H, T) -> list:
       "giảm dần, so với nhãn bác sĩ nếu có (dấu ✓ đánh dấu bệnh bác sĩ ghi nhận mà mô hình xếp vào nhóm đầu), kèm "
       "khung xem lát cắt mà mô hình chú ý nhất cho bệnh đang chọn. Web chạy 5 thay vì 6 mô hình vì trọng số của mô "
       "hình #6 bị ghi đè trên máy chủ đám mây khi chạy lại #5; dự đoán của #6 đã được tải về trước nên vẫn được chấm.")
-    K.append(("hinh", "web", H["web"], 12.0, "Giao diện web demo với một ca mẫu"))
+    K.append(("hinh", "web", H["web"], 16.0, "Giao diện web demo với một ca mẫu"))
     h2("4.6. Kiểm thử")
     p(f"Dự án có {nk['n_test']} kiểm thử tự động (pytest), chạy trong khoảng 20 giây và không cần ảnh thật. Kiểm "
       "thử tập trung vào loại lỗi \"âm thầm\": chương trình vẫn chạy và cho ra một con số hợp lý, chỉ có con số đó sai. "
@@ -1553,9 +1553,12 @@ def ghi_than_bai(d, K, H):
             ke_bang(t)
             # cot chu (co o dai) can trai, cot so can giua
             trai = [j == 0 or any(len(h[j]) > 14 for h in dong) for j in range(len(dau))]
+            dai = len(dong) > 10   # bang dai (co 13) cho ngat trang, lap dong tieu de; khong thi de trong nua trang
             for i, hang in enumerate([dau] + dong):
                 trPr = t.rows[i]._tr.get_or_add_trPr()
                 trPr.append(OxmlElement("w:cantSplit"))
+                if i == 0 and dai:
+                    trPr.append(OxmlElement("w:tblHeader"))
                 for j, o in enumerate(hang):
                     c = t.cell(i, j)
                     c.width = Cm(rong[j])
@@ -1563,8 +1566,8 @@ def ghi_than_bai(d, K, H):
                     par.alignment = WD_ALIGN_PARAGRAPH.LEFT if trai[j] else WD_ALIGN_PARAGRAPH.CENTER
                     pf = par.paragraph_format
                     pf.space_before, pf.space_after, pf.line_spacing = Pt(1), Pt(1), 1.15
-                    pf.keep_with_next = i < len(dong)   # giu ca bang tren mot trang
-                    viet_chu(par, td.thay(o, so), dam_ca=i == 0, co=12)
+                    pf.keep_with_next = i < len(dong) and (not dai or i == 0 or i >= len(dong) - 2)   # bang dai: khong de 1-2 dong mo coi
+                    viet_chu(par, td.thay(o, so), dam_ca=i == 0, co=13)
             sau = d.add_paragraph()
             doan_than(sau, after=0, thut=False)
             sau.paragraph_format.line_spacing = 0.6
@@ -1581,29 +1584,6 @@ def ghi_than_bai(d, K, H):
         pf.space_before, pf.space_after, pf.line_spacing = Pt(0), Pt(3), 1.15
         par.alignment = WD_ALIGN_PARAGRAPH.LEFT
         dat_run(par.add_run(f"[{i}]\t{TAI_LIEU[k]}"), co=12)
-    # phu luc A: prompt gan nhan, doc thang tu scripts/90 (khong chep tay)
-    m = re.search(r'PROMPT = """(.*?)"""', (REPO / "scripts" / "90_gan_nhan_llm.py").read_text(encoding="utf-8"), re.DOTALL)
-    if not m:
-        raise SystemExit("Khong thay PROMPT trong scripts/90_gan_nhan_llm.py")
-    par = d.add_paragraph(style="Heading 1")
-    par.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    par.paragraph_format.page_break_before = True
-    par.paragraph_format.space_before, par.paragraph_format.space_after = Pt(0), Pt(12)
-    dat_run(par.add_run("PHỤ LỤC A. PROMPT TỰ GÁN NHÃN BẰNG GEMINI FLASH"), co=17)
-    par = d.add_paragraph()
-    doan_than(par)
-    viet_chu(par, "Prompt dưới đây được gửi nguyên văn cho mỗi lô 25 báo cáo (mục 4.4). {n} và {m} được thay bằng số "
-                  "báo cáo trong lô và chỉ số cuối; {bao_cao} được thay bằng các báo cáo, mỗi báo cáo mở đầu bằng "
-                  "dòng ### r0, ### r1, … Dấu ngoặc nhọn kép là cách viết dấu ngoặc nhọn đơn trong chuỗi định dạng "
-                  "của Python.")
-    for dong in m.group(1).rstrip().splitlines():
-        par = d.add_paragraph()
-        pf = par.paragraph_format
-        pf.space_before, pf.space_after, pf.line_spacing = Pt(0), Pt(0), 1.0
-        par.alignment = WD_ALIGN_PARAGRAPH.LEFT
-        r = par.add_run(dong if dong else " ")
-        r.font.name, r.font.size = "Consolas", Pt(7.5)
-        r._r.get_or_add_rPr().get_or_add_rFonts().set(qn("w:eastAsia"), "Consolas")
     thua = set(TAI_LIEU) - set(td.thu_tu)
     if thua:
         raise SystemExit(f"Tai lieu khai bao ma khong trich trong bai: {sorted(thua)}")
@@ -1637,6 +1617,7 @@ def sua_phan_dau(d, tt: dict, D):
     for hang in list(sv.rows)[1 + len(tt["sinh_vien"]):]:
         hang._tr.getparent().remove(hang._tr)
     dat_chu_doan(P(els[19]), tt["noi_thang"])
+    P(els[19]).paragraph_format.space_before = Pt(54)   # thap xuong sat vien duoi nhu ban chu nhan chinh tay (27/11)
 
     # tom tat: 3 doan 21-23
     g6 = D["cuoi"]["nhom"]["gop_6_cnn"]
@@ -1667,21 +1648,22 @@ def sua_phan_dau(d, tt: dict, D):
     pc = d.tables[2]
     mau_tieu_de = copy.deepcopy(pc.cell(1, 1).paragraphs[0]._p)
     mau_muc = copy.deepcopy(pc.cell(1, 1).paragraphs[1]._p)
+    # chia ~60/40 theo dung mach trinh bay tren slide (chu nhan 27/11): moi nguoi lam phan minh noi
     viec = {
-        "chinh": ("Dữ liệu, mô hình và đánh giá:", [
-            "Thu thập, phân tích và tiền xử lý dữ liệu DICOM; chia tập theo ca, chặn rò rỉ",
-            "Rút nhãn yếu từ báo cáo: từ điển luật, nhãn LLM, tự gán nhãn bằng Gemini Flash",
-            "Giai đoạn 1: trích đặc trưng DINOv2, huấn luyện các head attention",
-            "Phân tích lỗi và đo lại kết quả giai đoạn 1",
+        "chinh": ("Nhãn LLM, giai đoạn 2 và web demo:", [
+            "Tiền xử lý DICOM: chọn series, chuẩn hoá 24 lát; chia tập theo ca, chặn rò rỉ",
+            "Rút nhãn LLM; tự gán nhãn bằng Gemini Flash",
             "Giai đoạn 2: xây dựng và huấn luyện CNN 2.5D trên GPU đám mây",
             "Đánh giá AUC, bootstrap; chốt và gộp mô hình cuối",
             "Xây dựng máy chủ suy luận cho web demo",
+            "Soạn báo cáo và slide phần giai đoạn 2, web demo, kết luận",
         ]),
-        "phu": ("Khảo sát, giao diện và tài liệu:", [
-            "Khảo sát bài toán, dữ liệu và tài liệu liên quan",
-            "Thiết kế giao diện web demo",
-            "Kiểm thử web demo trên các ca mẫu",
-            "Soạn báo cáo và slide thuyết trình",
+        "phu": ("Khảo sát, dữ liệu và giai đoạn 1:", [
+            "Khảo sát bài toán và tài liệu liên quan; phân tích dữ liệu ảnh và báo cáo",
+            "Rút nhãn yếu bằng từ điển luật; so sánh các nguồn nhãn với nhãn bác sĩ",
+            "Giai đoạn 1: trích đặc trưng DINOv2, huấn luyện các head attention; phân tích lỗi và đo lại",
+            "Thiết kế giao diện và kiểm thử web demo",
+            "Soạn báo cáo và slide phần mở đầu, dữ liệu, giai đoạn 1",
         ]),
     }
     for i, s in enumerate(tt["sinh_vien"], 1):
@@ -1705,13 +1687,13 @@ def sua_phan_dau(d, tt: dict, D):
             for par in o.paragraphs:
                 pf = par.paragraph_format
                 pf.space_before, pf.space_after, pf.line_spacing = Pt(2), Pt(2), 1.2
-    # muc luc gon mot trang
+    # muc luc co 13, gian dong 1,5 nhu than bai (chu nhan 27/11); dai hon mot trang thi sang trang 2
     for ten in ("toc 1", "toc 2", "toc 3"):
         st = d.styles[ten]
-        st.font.size = Pt(12)
+        st.font.size = Pt(13)
         pf = st.paragraph_format
-        pf.space_before, pf.space_after, pf.line_spacing = Pt(0), Pt(0), 1.1
-    # muc luc chi lay cap chuong va muc (Heading 1, 2) de gon mot trang; bo \u vi \u lay ca outline level 3
+        pf.space_before, pf.space_after, pf.line_spacing = Pt(0), Pt(0), 1.5
+    # muc luc chi lay cap chuong va muc (Heading 1, 2); bo \u vi \u lay ca outline level 3
     for e in body.iter(qn("w:instrText")):
         if e.text and e.text.strip().startswith("TOC "):
             e.text = ' TOC \\h \\z \\t "Heading 1,1,Heading 2,2" '
